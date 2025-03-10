@@ -37,7 +37,7 @@ Special thanks to **Bastien Pagli** for providing the original `CRO` code in Pyt
 ### Run it at Google Colab
 You can easily run this notebook on [Google Colab](https://colab.research.google.com/). 
 
-Simply download [this notebook](https://github.com/senclimate/RO_practical/blob/b53293aef66e0749ab9b4f6dde30643acb957542/RO_parctical_with_XRO_framework.ipynb) and upload it to Google Colab. 
+Simply download [this notebook](RO_parctical_with_XRO_framework.ipynb) and upload it to Google Colab. 
 
 Once uploaded, you can execute the notebook directly— all required data and Python libraries will be downloaded and installed automatically.
 
