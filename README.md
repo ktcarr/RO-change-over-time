@@ -5,32 +5,39 @@ This repository hosts the **Recharge Oscillator (RO) Practical** for the [ENSO W
 ## **Instructors**  
 - [Sen Zhao](https://senzhao.netlify.app/), Assistant Researcher, University of Hawaiʻi at Mānoa
 - [Soong-Ki Kim](https://sites.google.com/view/skkim1), Postdoctoral Researcher, Yale University
-- Jérôme Vialard
+- [Jérôme Vialard](https://scholar.google.com/citations?user=gVtN-0sAAAAJ&hl=en), Institut de Recherche pour le Développement
 
 ## **Code Contributors**  
 - [Sen Zhao](https://github.com/senclimate), lecture notebooks, XRO, revised CRO code in python
 - [Soong-Ki Kim](https://github.com/Soong-Ki), origional CRO code in Matlab
 - [Bastien Pagli](https://github.com/bpagli), origional CRO code in Python
 
-## **Session Outline**  
+---
+## **Overview**
+The RO practial lecture, we will demonstrate how to use the `XRO` framework for **Recharge-Oscillator (RO) model** fitting, simulations, and reforecasting.
 
-## **1. Observed ENSO properties related to RO**
--  Time series, seasonal variance, asymmetry, auto-/cross-correlation, spectrum analysis.
+***Extended Nonlinear Recharge Oscillator (XRO) framework***
 
-### **2. Solving and Fitting RO using the Community RO (CRO) Model (30 min)**  
-- Introduction to the CRO code and running basic simulations, see [CRO Technical Note](CRO/CRO_Code_Technical_Note_Winter_School_v1.0.pdf)
-- `XRO` framework to fit and solve RO
+The `XRO` framework was developed to investigate the role of climate mode interactions in ENSO dynamics and predictability ([Zhao et al. 2024](https://doi.org/10.1038/s41586-024-07534-6)). When other climate modes are not considered, it simplifies to the Recharge Oscillator (RO), making it well-suited for use in this practical context. We have designed `XRO` to be user-friendly, aiming to be a valuable tool not only for research but also for operational forecasting and as an educational resource in the classroom.
 
-### **3. RO stochastic simulations with different complexities (45 min)**  
-3.1) Validating the fitted NRO model's ability to reproduce observed ENSO properties. (5 min)  
-3.2) ENSO seasonal phase locking & sensitivity to parameters (R’s seasonal cycle) (10 min)  
-3.3) ENSO asymmetry & sensitivity to parameters (*b, B*) (10 min)  
-3.4) ENSO spectrum/auto-correlation, cross-correlation (WWV-SST) & sensitivity to parameters (*F₁, F₂, R, ε*) (10 min)  
+> Check out the updated version of XRO at https://github.com/senclimate/XRO
 
-### **4. RO Forecasting (10 min)**  
-- ENSO predictability experiments using CRO code
-- Real RO forecast from January 2025  
 
-### **5. RO Extensions (Extended Recharge Oscillator, XRO) (5 min)** 
-- Introduce [XRO](https://github.com/senclimate/XRO) framework [(Zhao et al. 2024, Nature)](https://doi.org/10.1038/s41586-024-07534-6) for improved ENSO modeling and forecasting  
+***Community Recharge Oscillator (CRO) model framework***
+
+The `CRO` code package is an easy-to-use Python/MATLAB software for solving and fitting the ENSO RO model. The `CRO` code is currently under development and is planned for release in 2025. The distributed version for the ENSO Winter School 2025 is a light Python version that includes only the essential features. While we introduce the `CRO` framework in this practical, some of its functionalities are unavailable. Therefore, for consistency, we will primarily use the `XRO` framework.
+
+For those interested in the `CRO` code, please refer to the Jupyter notebook:  
+📂 *CRO_test/RO_Practical_with_CRO_Framework.ipynb*
+
+Special thanks to **Bastien Pagli** for providing the original `CRO` code in Python.
+
+---
+
+### Run it at Google Colab
+You can easily run this notebook on [Google Colab](https://colab.research.google.com/). 
+
+Simply download [this notebook](https://github.com/senclimate/RO_practical/blob/b53293aef66e0749ab9b4f6dde30643acb957542/RO_parctical_with_XRO_framework.ipynb) and upload it to Google Colab. 
+
+Once uploaded, you can execute the notebook directly— all required data and Python libraries will be downloaded and installed automatically.
 
