@@ -14,7 +14,7 @@ This repository hosts the **Recharge Oscillator (RO) Practical** for the [ENSO W
 
 ---
 ## **Overview**
-The RO practial lecture, we will demonstrate how to use the `XRO` framework for **Recharge-Oscillator (RO) model** fitting, simulations, and reforecasting.
+The RO practical lecture, we will demonstrate how to use the `XRO` framework for **Recharge-Oscillator (RO) model** fitting, simulations, and reforecasting.
 
 ***Extended Nonlinear Recharge Oscillator (XRO) framework***
 
