@@ -15,4 +15,4 @@ How do recharge oscillator parameters change over time in a large ensemble? What
   - ```RO-change-over-time.ipynb```: compute change in RO parameters over time
 - ```src```: custom module containing functions used in ```scripts```  
 - ```data```: raw and preprocessed data  
-- ```results```: figures  
+- ```results```: figures and intermediate results (e.g., model parameters)
