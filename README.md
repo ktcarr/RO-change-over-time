@@ -10,7 +10,9 @@ How do recharge oscillator parameters change over time in a large ensemble? What
 
 
 ## Description of project directory
-- ```scripts```: code used for analysis/plots  
+- ```scripts```: code used for analysis/plots
+  - ```preprocess.ipynb```: remove external forcing signal (remove ensemble mean) and compute $T$, $h$ indices
+  - ```RO-change-over-time.ipynb```: compute change in RO parameters over time
 - ```src```: custom module containing functions used in ```scripts```  
 - ```data```: raw and preprocessed data  
 - ```results```: figures  
