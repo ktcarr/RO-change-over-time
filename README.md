@@ -5,7 +5,7 @@ How do recharge oscillator parameters change over time in a large ensemble? What
 1. Clone/fork repository  (```git clone ...```)
 2. Create virtual environment  (```mamba create ...```)
 3. Activate virtual environment (```mamba activate ...```)
-4. Install packages listed in ```env.yml``` file to virtual environment
+4. Install packages listed in ```env.yml``` file to virtual environment (```mamba env update --file env.yml```)
 5. Install custom module to virtual environment (run ```pip install -e .``` in project's home directory)
 
 
