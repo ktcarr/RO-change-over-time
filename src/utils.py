@@ -90,3 +90,21 @@ def get_timescales_ensemble(model, fit_ensemble):
     T_ensemble = np.array(T_ensemble)
 
     return BJ_ac_ensemble, T_ensemble
+
+
+def get_empirical_pdf(x, edges=None):
+    """
+    Estimate the "empirical" probability distribution function for the data x.
+    In this case the result is a normalized histogram,
+    Normalized means that integrating over the histogram yields 1.
+    Returns the PDF (normalized histogram) and edges of the histogram bins
+    """
+
+    ## compute histogram
+    hist, bin_edges = np.histogram(x, bins=edges)
+
+    ## normalize to a probability distribution (PDF)
+    bin_width = bin_edges[1:] - bin_edges[:-1]
+    pdf = hist / (hist * bin_width).sum()
+
+    return pdf, bin_edges
