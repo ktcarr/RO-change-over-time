@@ -1,14 +1,19 @@
 import xarray as xr
-from src.XRO import XRO
+import numpy as np
+import pandas as pd
+import src.XRO
 import tqdm
 import warnings
 
-def get_RO_ensemble(data, T_var="T_3", h_var="h_w", verbose=False, fit_kwargs=dict(), model=None):
+
+def get_RO_ensemble(
+    data, T_var="T_3", h_var="h_w", verbose=False, fit_kwargs=dict(), model=None
+):
     """get RO params for each ensemble member"""
 
     ## initialize model
     if model is None:
-        model = XRO(ncycle=12, ac_order=1, is_forward=True)
+        model = src.XRO.XRO(ncycle=12, ac_order=1, is_forward=True)
 
     ## empty list to hold model fits
     fits = []
@@ -24,3 +29,64 @@ def get_RO_ensemble(data, T_var="T_3", h_var="h_w", verbose=False, fit_kwargs=di
             fits.append(model.fit_matrix(data_subset, **fit_kwargs))
 
     return model, xr.concat(fits, dim=data.member)
+
+
+def get_ensemble_stats(ensemble, center_method="mean", bounds_method="std"):
+    """compute ensemble 'center' and 'bounds' for plotting"""
+
+    ## compute ensemble 'center'
+    if center_method == "mean":
+        center = ensemble.mean("member")
+    else:
+        print("Not implemented")
+
+    ## compute bounds
+    if bounds_method == "std":
+        sigma = ensemble.std("member")
+        upper_bound = center + sigma
+        lower_bound = center - sigma
+    else:
+        print("Not implemented")
+
+    ## concatenate into single array
+    posn_dim = pd.Index(["center", "upper", "lower"], name="posn")
+    stats = xr.concat([center, upper_bound, lower_bound], dim=posn_dim)
+
+    return stats
+
+
+def get_timescales(model, fit):
+    """Get annual cycle of growth rate and period estimate from RO parameters"""
+
+    ## get parameters
+    params = model.get_RO_parameters(fit)
+
+    ## extract BJ index
+    BJ_ac = params["BJ_ac"]
+
+    ## extract period (based on annual avg.)
+    L0 = fit["Lcomp"].isel(ac_rank=0, cycle=0)
+    w, _ = np.linalg.eig(L0)
+    T = 2 * np.pi / w[0].imag
+
+    return BJ_ac, T
+
+
+def get_timescales_ensemble(model, fit_ensemble):
+    """Get timescales for ensemble"""
+
+    ## empty lists to hold results
+    BJ_ac_ensemble = []
+    T_ensemble = []
+
+    ## loop through ensemble members
+    for m in fit_ensemble.member:
+        BJ_ac, T = get_timescales(model, fit_ensemble.sel(member=m))
+        BJ_ac_ensemble.append(BJ_ac)
+        T_ensemble.append(T)
+
+    ## put in arrays
+    BJ_ac_ensemble = xr.concat(BJ_ac_ensemble, dim=fit_ensemble.member)
+    T_ensemble = np.array(T_ensemble)
+
+    return BJ_ac_ensemble, T_ensemble
