@@ -108,3 +108,19 @@ def get_empirical_pdf(x, edges=None):
     pdf = hist / (hist * bin_width).sum()
 
     return pdf, bin_edges
+
+
+def get_cov(X, Y=None):
+    """compute covariance"""
+
+    if Y is None:
+        Y = X
+
+    ## remove means
+    X_prime = X - X.mean(1, keepdims=True)
+    Y_prime = Y - Y.mean(1, keepdims=True)
+
+    ## number of variables
+    m = X_prime.shape[0]
+
+    return 1 / m * X_prime @ Y_prime.T
