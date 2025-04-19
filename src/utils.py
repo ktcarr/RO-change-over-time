@@ -120,7 +120,7 @@ def get_cov(X, Y=None):
     X_prime = X - X.mean(1, keepdims=True)
     Y_prime = Y - Y.mean(1, keepdims=True)
 
-    ## number of variables
-    m = X_prime.shape[0]
+    ## number of samples
+    n = X_prime.shape[1]
 
-    return 1 / m * X_prime @ Y_prime.T
+    return 1 / n * X_prime @ Y_prime.T
