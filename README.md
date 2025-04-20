@@ -7,6 +7,7 @@ How do recharge oscillator parameters change over time in a large ensemble? What
 3. Activate virtual environment (```mamba activate ...```)
 4. Install packages listed in ```env.yml``` file to virtual environment (```mamba env update --file env.yml```)
 5. Install custom module to virtual environment (run ```pip install -e .``` in project's home directory)
+6. Set filepaths for data and results, ```DATA_FP``` and ```SAVE_FP``` (```mamba env config vars set DATA_FP=...```)
 
 
 ## Description of project directory
