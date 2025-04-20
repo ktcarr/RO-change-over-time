@@ -14,4 +14,4 @@
 ## Questions
 - How to generate RO ensemble? E.g.
     - Take mean parameters?
-    - For each RO, draw parameters from distribution? (e.g., pick a different set of parameters, or draw from covariance of parameters)
+    - For each RO, draw parameters from distribution? For now we fit a different RO model to each MPI ensemble member (so we have an RO ensemble with equal number of members to MPI). To increase RO ensemble size could (i) randomly draw RO member from ensemble or (ii) estimate covariance of parameters, then randomly draw set of parameters.
