@@ -31,6 +31,21 @@ def get_RO_ensemble(
     return model, xr.concat(fits, dim=data.member)
 
 
+def generate_ensemble(
+    model, params, sampling_type="ensemble_mean", **simulation_kwargs
+):
+    """Generate ensemble of RO simulations given parameters estimated
+    from each MPI ensemble member."""
+
+    if sampling_type == "ensemble_mean":
+        RO_ensemble = model.simulate(fit_ds=params.mean("member"), **simulation_kwargs)
+
+    else:
+        print("Not a valid sampling type")
+
+    return RO_ensemble
+
+
 def get_ensemble_stats(ensemble, center_method="mean", bounds_method="std"):
     """compute ensemble 'center' and 'bounds' for plotting"""
 
@@ -120,7 +135,7 @@ def get_cov(X, Y=None):
     X_prime = X - X.mean(1, keepdims=True)
     Y_prime = Y - Y.mean(1, keepdims=True)
 
-    ## number of variables
-    m = X_prime.shape[0]
+    ## number of samples
+    n = X_prime.shape[1]
 
-    return 1 / m * X_prime @ Y_prime.T
+    return 1 / n * X_prime @ Y_prime.T
