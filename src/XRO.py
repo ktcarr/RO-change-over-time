@@ -694,8 +694,18 @@ class XRO(object):
         xr_var_names = self._get_var_names(X, var_names=var_names)
         full_vars = xr_var_names["var_names"].values
 
+        ## make sure 'member' is last dimension if it exists
+        if "member" in X.dims:
+            X = X.transpose(..., "member")
+
         XN = _convert_to_numpy(X)
         YN = gradient(XN, axis=1, is_forward=self.is_forward, ncycle=self.ncycle)
+
+        ## flatten ensemble and time dimension
+        if "member" in X.dims:
+            XN = XN.reshape(XN.shape[0], -1, order="F")
+            YN = YN.reshape(YN.shape[0], -1, order="F")
+
         XN2 = XN**2  # [rank_x, ntime]
         XN3 = XN**3  # [rank_x, ntime]
 
