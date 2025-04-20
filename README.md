@@ -12,7 +12,9 @@ How do recharge oscillator parameters change over time in a large ensemble? What
 
 ## Description of project directory
 - ```scripts```: code used for analysis/plots
-  - ```preprocess.ipynb```: remove external forcing signal (remove ensemble mean) and compute $T$, $h$ indices
+  - ```preprocess.ipynb```: remove external forcing signal (remove ensemble mean) and compute $T$, $h$ indices; also compress spatial data with EOFs
+  - ```MPI-ORAS_validation.ipynb```: compare ENSO in MPI climate model to reanalysis
+  - ```RO-MPI_validation.ipynb```: check if stats from RO simulations of ENSO match those from MPI
   - ```RO-change-over-time.ipynb```: compute change in RO parameters over time
 - ```src```: custom module containing functions used in ```scripts```  
 - ```data```: raw and preprocessed data  
