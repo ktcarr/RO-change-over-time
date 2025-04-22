@@ -205,7 +205,7 @@ class XRO(object):
     # XRO fitting part
     # --------------------------------------------------------------------------
 
-    def __compute__(self, X, Y, time=None, is_remove_nan=True):
+    def __compute__(self, X, Y, time=None, is_remove_nan=True, ac_mask_idx=None):
         """
         Core XRO fitting precedure
 
@@ -342,6 +342,19 @@ class XRO(object):
                             / 2
                         )
 
+        ## mask out annual cycle in G and C if specified
+        if not (ac_mask_idx is None):
+
+            ## get masks
+            G_mask, C_mask = src.utils.make_GC_masks(
+                ac_mask_idx, ac_order=self.ac_order, rankx=X.shape[0]
+            )
+
+            ## apply masks to covariance matrices
+            G = G * G_mask
+            C = C * C_mask
+
+        ## solve for linear operator
         L = _solve_L_with_zero(G, C)
         Lcoef = np.reshape(L, (rank_y, rank_x, ncol), "F")
 
@@ -600,7 +613,7 @@ class XRO(object):
         return xr.Dataset({"var_names": ds_names})
 
     # ---------------------------------
-    def fit(self, X, Y, time=None, is_remove_nan=True):
+    def fit(self, X, Y, time=None, is_remove_nan=True, ac_mask_idx=None):
         """
         Perform linear regression to estimate the operator L and noise term ξ in the equation:
 
@@ -628,7 +641,9 @@ class XRO(object):
 
         Y_np = _convert_to_numpy(Y)
         X_np = _convert_to_numpy(X)
-        fit_out = self.__compute__(X_np, Y_np, time=time, is_remove_nan=is_remove_nan)
+        fit_out = self.__compute__(
+            X_np, Y_np, time=time, is_remove_nan=is_remove_nan, ac_mask_idx=ac_mask_idx
+        )
         if len(fit_out.ranky) == len(fit_out.rankx) and len(fit_out.ranky) > 1:
             xr_norm = self.get_norm_fit(fit_out)
             fit_out = xr.merge([fit_out, xr_norm])
@@ -644,6 +659,7 @@ class XRO(object):
         maskNT=None,
         maskNH=None,
         time=None,
+        ac_mask_idx=None,
     ):
         """
         Fits a fully nonlinear XRO model with full-nonlinear RO model, incorporating
@@ -757,8 +773,17 @@ class XRO(object):
             print("Info: Removed duplicate T^3 in maskc & maskNT, kept in maskNT")
         # print(mask_b, mask_c, mask_NT, mask_NH)
 
+        ## get indices to mask annual cycle for
+        if ac_mask_idx is None:
+            ac_mask_idx_y, ac_mask_idx_x = [], []
+
+        else:
+            ## unzip list of (y,x) tuples to list-of-y_idx and list-of-x_idx
+            ac_mask_idx_y, ac_mask_idx_x = list(zip(*ac_mask_idx))
+
         loop_index = np.arange(0, n_var, step=1, dtype=np.int32)
         for i in loop_index:
+
             # Prepare arrays with conditional reshaping
             if mask_b[i] == 1:
                 XN2_subset = XN2[i : i + 1, :]
@@ -794,9 +819,16 @@ class XRO(object):
             var_XN = np.concatenate([XN, XN2_subset, XN3_subset, X_RON_subset], axis=0)
             # print(full_vars[i], var_XN.shape)
 
+            ## mask out annual cycle if necessary
+            if i in ac_mask_idx_y:
+                ac_mask_idx_fit = copy.deepcopy(ac_mask_idx_x[i])
+
+            else:
+                ac_mask_idx_fit = None
+
             # fit and assign linear coefficients
             var_YN = np.stack([YN[i, :]], axis=0)
-            var_res = self.fit(var_XN, var_YN, time=time)
+            var_res = self.fit(var_XN, var_YN, time=time, ac_mask_idx=ac_mask_idx_fit)
             var_resL = var_res.sel(rankx=slice(1, n_var)).assign_coords(ranky=[i + 1])
 
             if mask_b[i] == 1 and mask_c[i] == 1:

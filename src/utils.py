@@ -139,3 +139,61 @@ def get_cov(X, Y=None):
     n = X_prime.shape[1]
 
     return 1 / n * X_prime @ Y_prime.T
+
+
+def make_cossin_mask(x_idx, ac_order, rankx=2):
+    """
+    Get mask for removing annual cycle from specified parameter.
+    Args:
+    - x_idx: input index of parameter to zero out
+    - ac_order: order of annual cycle in the model
+    - ranky, rankx: number of output and input variables
+
+    Returns:
+    - array of shape rankx * (1 + 2 * ac_order)
+    """
+
+    ## mask annual cycle for input variables
+    ac_mask = np.ones([rankx, ac_order + 1])
+
+    ## set seasonality terms to zero
+    ac_mask[x_idx, 1:] = 0
+
+    ## reshape into cossin format
+    cossin_mask = np.concat(
+        [ac_mask[..., :1], ac_mask[..., 1:], ac_mask[..., 1:]], axis=-1
+    )
+
+    ## reshape to match shape of G/C
+    cossin_mask = cossin_mask.reshape(-1, order="F").astype(bool)
+
+    return cossin_mask
+
+
+def make_GC_masks(x_idx, ac_order, rankx=2):
+    """
+    Make annual cycle masks for <Y, X> and <X, X> covariance matrices.
+    Args:
+    - x_idx: input index of parameter to zero out
+    - ac_order: order of annual cycle in the model
+    - ranky, rankx: number of output and input variables
+
+    Returns:
+    - G_mask: mask for <Y, X> matrix, with shape (1xp)
+    - C_mask: mask for <X, X> matrix, with shape (pxp),
+    where p = 1 + 2 * ac_order
+    """
+
+    ## Get cossin mask
+    cossin_mask = make_cossin_mask(x_idx=x_idx, ac_order=ac_order, rankx=rankx)
+
+    ## empty arrays for G and C masks
+    p = len(cossin_mask)
+    G_mask = np.zeros([1, p])
+    C_mask = np.zeros([p, p])
+
+    ## fill with ones where values are retained
+    G_mask[:, cossin_mask] = 1.0
+    C_mask[np.ix_(cossin_mask, cossin_mask)] = 1.0
+
+    return G_mask, C_mask
