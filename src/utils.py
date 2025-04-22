@@ -7,7 +7,7 @@ import warnings
 
 
 def get_RO_ensemble(
-    data, T_var="T_3", h_var="h_w", verbose=False, fit_kwargs=dict(), model=None
+    data, T_var="T_3", h_var="h_w", verbose=False, model=None, ac_mask_idx=None
 ):
     """get RO params for each ensemble member"""
 
@@ -26,7 +26,7 @@ def get_RO_ensemble(
 
         ## fit model
         with warnings.catch_warnings(action="ignore"):
-            fits.append(model.fit_matrix(data_subset, **fit_kwargs))
+            fits.append(model.fit_matrix(data_subset, ac_mask_idx=ac_mask_idx))
 
     return model, xr.concat(fits, dim=data.member)
 
@@ -197,3 +197,16 @@ def make_GC_masks(x_idx, ac_order, rankx=2):
     C_mask[np.ix_(cossin_mask, cossin_mask)] = 1.0
 
     return G_mask, C_mask
+
+
+def unzip_tuples_to_arrays(list_of_tuples):
+    """convert list of tuples to two arrays"""
+
+    ## unzip list of (y,x) tuples to list-of-y and list-of-x
+    y_list, x_list = list(zip(*list_of_tuples))
+
+    ## convert to array
+    y_arr = np.array(y_list)
+    x_arr = np.array(x_list)
+
+    return y_arr, x_arr

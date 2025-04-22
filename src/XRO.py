@@ -25,6 +25,7 @@ If you encounter problems in running `XRO` or have questions, please feel free t
 
 import numpy as np
 import xarray as xr
+import src.utils
 
 
 class XRO(object):
@@ -779,7 +780,7 @@ class XRO(object):
 
         else:
             ## unzip list of (y,x) tuples to list-of-y_idx and list-of-x_idx
-            ac_mask_idx_y, ac_mask_idx_x = list(zip(*ac_mask_idx))
+            ac_mask_idx_y, ac_mask_idx_x = src.utils.unzip_tuples_to_arrays(ac_mask_idx)
 
         loop_index = np.arange(0, n_var, step=1, dtype=np.int32)
         for i in loop_index:
@@ -821,7 +822,7 @@ class XRO(object):
 
             ## mask out annual cycle if necessary
             if i in ac_mask_idx_y:
-                ac_mask_idx_fit = copy.deepcopy(ac_mask_idx_x[i])
+                ac_mask_idx_fit = ac_mask_idx_x[i == ac_mask_idx_y]
 
             else:
                 ac_mask_idx_fit = None
