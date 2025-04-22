@@ -1,9 +1,20 @@
 import xarray as xr
 import numpy as np
 import pandas as pd
+import xeofs as xe
 import src.XRO
 import tqdm
 import warnings
+import pathlib
+
+
+def spatial_avg(data):
+    """get spatial average, weighting by cos of latitude"""
+
+    ## get weighted data
+    weights = np.cos(np.deg2rad(data.latitude))
+
+    return data.weighted(weights).mean(["latitude", "longitude"])
 
 
 def get_RO_ensemble(
@@ -210,3 +221,23 @@ def unzip_tuples_to_arrays(list_of_tuples):
     x_arr = np.array(x_list)
 
     return y_arr, x_arr
+
+
+def load_eofs(eofs_fp):
+    """
+    Load pre-computed EOFs.
+    Args:
+        - eofs_fp: pathlib.Path object; path to saved EOFs
+    """
+
+    ## initialize EOF model
+    eofs_kwargs = dict(n_modes=150, standardize=False, use_coslat=True, center=False)
+    eofs = xe.single.EOF(**eofs_kwargs)
+
+    ## Load pre-computed model if it exists
+    if pathlib.Path(eofs_fp).is_file():
+        return eofs.load(eofs_fp, engine="netcdf4")
+
+    else:
+        print("Error: file doesn't exist! Please run preprocessing script")
+        return
