@@ -407,3 +407,10 @@ def load_oras_spatial(sst_fp, ssh_fp):
     )
 
     return data_oras
+
+
+def make_cb_range(amp, delta):
+    """Make colorbar_range for cmo.balance"""
+    return np.concatenate(
+        [np.arange(-amp, 0, delta), np.arange(delta, amp + delta, delta)]
+    )
