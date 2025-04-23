@@ -6,6 +6,7 @@ import src.XRO
 import tqdm
 import warnings
 import pathlib
+import cartopy.crs as ccrs
 
 
 def spatial_avg(data):
@@ -223,6 +224,30 @@ def unzip_tuples_to_arrays(list_of_tuples):
     return y_arr, x_arr
 
 
+def reconstruct_fn(components, scores, fn):
+    """reconstruct function of spatial data from PCs"""
+
+    ## get latitude weighting for components
+    coslat_weights = np.sqrt(np.cos(np.deg2rad(components.latitude)))
+
+    ## evaluate function on spatial components
+    fn_eval = fn(components * 1 / coslat_weights)
+
+    ## reconstruct
+    recon = (fn_eval * scores).sum("mode")
+
+    return recon
+
+
+def get_nino34(data):
+    """compute Niño 3.4 index from data"""
+
+    ## trim to nino3.4 region
+    data_trimmed = data.sel(latitude=slice(-5, 5), longitude=slice(190, 240))
+
+    return src.utils.spatial_avg(data_trimmed)
+
+
 def load_eofs(eofs_fp):
     """
     Load pre-computed EOFs.
@@ -241,3 +266,51 @@ def load_eofs(eofs_fp):
     else:
         print("Error: file doesn't exist! Please run preprocessing script")
         return
+
+
+def reconstruct_var(scores, components):
+    """reconstruct spatial variance from projected data"""
+
+    ## remove mean
+    scores_anom = scores - scores.mean(["member"])
+
+    ## compute outer product (XX^T)
+    outer_prod = xr.dot(
+        scores_anom, scores_anom.rename({"mode": "mode_out"}), dim=["time", "member"]
+    )
+
+    ## get scaling
+    n = len(scores.time) * len(scores.member)
+
+    ## get covariance of projected data
+    scores_cov = 1 / n * outer_prod
+
+    ## now reconstruct spatial field (U @ SVt @ VS) @ U
+    spatial_cov = xr.dot(
+        xr.dot(components, scores_cov, dim="mode"),
+        components.rename({"mode": "mode_out"}),
+        dim="mode_out",
+    )
+
+    ## get coslat weights
+    coslat_weights = np.cos(np.deg2rad(components.latitude))
+
+    return spatial_cov / coslat_weights
+
+
+def plot_setup(fig, lon_range, lat_range):
+    """Add a subplot to the figure with the given map projection
+    and lon/lat range. Returns an Axes object."""
+
+    ## Create subplot with given projection
+    proj = ccrs.PlateCarree(central_longitude=190)
+    ax = fig.add_subplot(projection=proj)
+
+    ## Subset to given region
+    extent = [*lon_range, *lat_range]
+    ax.set_extent(extent, crs=ccrs.PlateCarree())
+
+    ## draw coastlines
+    ax.coastlines(linewidth=0.3)
+
+    return ax
