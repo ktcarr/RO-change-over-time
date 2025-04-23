@@ -352,6 +352,43 @@ def plot_setup(fig, lon_range, lat_range):
     return ax
 
 
+def subplots_with_proj(
+    fig,
+    proj=ccrs.PlateCarree(central_longitude=190),
+    nrows=1,
+    ncols=1,
+    format_func=None,
+):
+    """create subplots with proj"""
+
+    ## get number of total plots
+    size = nrows * ncols
+
+    for row in range(nrows):
+        for col in range(ncols):
+            ## get index for plot
+            idx = row * ncols + col + 1
+
+            ## add subplot
+            ax = fig.add_subplot(nrows, ncols, idx, projection=proj)
+
+            ## format if desired
+            if format_func is not None:
+                format_func(ax)
+
+    return np.array(fig.get_axes()).reshape(nrows, ncols)
+
+
+def plot_setup_pac(ax):
+    """Plot Pacific region"""
+
+    ## trim and add coastlines
+    ax.coastlines(linewidth=0.3)
+    ax.set_extent([100, 300, -30, 30], crs=ccrs.PlateCarree())
+
+    return ax
+
+
 def detrend_dim(data, dim="time", deg=1):
     """
     Detrend along a single dimension.
@@ -414,3 +451,30 @@ def make_cb_range(amp, delta):
     return np.concatenate(
         [np.arange(-amp, 0, delta), np.arange(delta, amp + delta, delta)]
     )
+
+
+def plot_box(ax, lons, lats, **kwargs):
+    """plot box on given ax object"""
+
+    ## get box coords
+    lon_coords = [lons[0], lons[1], lons[1], lons[0], lons[0]]
+    lat_coords = [lats[0], lats[0], lats[1], lats[1], lats[0]]
+
+    ax.plot(
+        lon_coords,
+        lat_coords,
+        transform=ccrs.PlateCarree(),
+        **kwargs,
+    )
+
+    return
+
+
+def plot_nino34_box(ax, **kwargs):
+    """outline Niño 3.4 region"""
+    return plot_box(ax, lons=[190, 240], lats=[-5, 5], **kwargs)
+
+
+def plot_nino3_box(ax, **kwargs):
+    """outline Niño 3.4 region"""
+    return plot_box(ax, lons=[210, 270], lats=[-5, 5], **kwargs)
