@@ -7,6 +7,7 @@ import tqdm
 import warnings
 import pathlib
 import cartopy.crs as ccrs
+import scipy.stats
 
 
 def spatial_avg(data):
@@ -478,3 +479,18 @@ def plot_nino34_box(ax, **kwargs):
 def plot_nino3_box(ax, **kwargs):
     """outline Niño 3.4 region"""
     return plot_box(ax, lons=[210, 270], lats=[-5, 5], **kwargs)
+
+
+def get_gaussian_best_fit(x):
+    """Get gaussian best fit to data, and evaluate
+    probabilities over the range of the data."""
+
+    ## get normal distribution best fit
+    gaussian = scipy.stats.norm(loc=x.mean(), scale=x.std())
+
+    ## evaluate over range of data
+    amp = np.max(np.abs(x))
+    x_eval = np.linspace(-amp, amp)
+    pdf_eval = gaussian.pdf(x_eval)
+
+    return pdf_eval, x_eval
