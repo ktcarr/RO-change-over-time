@@ -239,13 +239,49 @@ def reconstruct_fn(components, scores, fn):
     return recon
 
 
+def get_spatial_avg_idx(data, lon_range, lat_range):
+    """get index which is a spatial average over data subset"""
+
+    ## get indexer
+    indexer = dict(longitude=slice(*lon_range), latitude=slice(*lat_range))
+
+    return spatial_avg(data.sel(indexer))
+
+
 def get_nino34(data):
     """compute Niño 3.4 index from data"""
 
-    ## trim to nino3.4 region
-    data_trimmed = data.sel(latitude=slice(-5, 5), longitude=slice(190, 240))
+    ## get indexer
+    idx = dict(latitude=slice(-5, 5), longitude=slice(190, 240))
 
-    return src.utils.spatial_avg(data_trimmed)
+    return spatial_avg(data.sel(idx))
+
+
+def get_nino3(data):
+    """compute Niño 3.4 index from data"""
+
+    ## get indexer
+    idx = dict(latitude=slice(-5, 5), longitude=slice(210, 270))
+
+    return spatial_avg(data.sel(idx))
+
+
+def get_RO_h(data):
+    """compute RO's 'h' index from data"""
+
+    ## get indexer
+    idx = dict(latitude=slice(-5, 5), longitude=slice(120, 285))
+
+    return spatial_avg(data.sel(idx))
+
+
+def get_RO_hw(data):
+    """compute RO's 'h' index from data"""
+
+    ## get indexer
+    idx = dict(latitude=slice(-5, 5), longitude=slice(120, 210))
+
+    return spatial_avg(data.sel(idx))
 
 
 def load_eofs(eofs_fp):
@@ -314,3 +350,60 @@ def plot_setup(fig, lon_range, lat_range):
     ax.coastlines(linewidth=0.3)
 
     return ax
+
+
+def detrend_dim(data, dim="time", deg=1):
+    """
+    Detrend along a single dimension.
+    'data' is an xr.Dataset or xr.DataArray
+    """
+    ## First, check if data is a dataarray. If so,
+    ## convert to dataset
+    is_dataarray = type(data) is xr.DataArray
+    if is_dataarray:
+        data = xr.Dataset({data.name: data})
+
+    ## Compute the linear best fit
+    p = data.polyfit(dim=dim, deg=deg, skipna=True)
+    fit = xr.polyval(data[dim], p)
+
+    ## empty array to hold results
+    data_detrended = np.nan * xr.ones_like(data)
+
+    ## Subtract the linear best fit for each variable
+    varnames = list(data)
+    for varname in varnames:
+        data_detrended[varname] = data[varname] - fit[f"{varname}_polyfit_coefficients"]
+
+    if is_dataarray:
+        varname = list(data_detrended)[0]
+        data_detrended = data_detrended[varname]
+
+    return data_detrended
+
+
+def load_oras_spatial(sst_fp, ssh_fp):
+    """Load spatial data for SST and SSH from ORAS5"""
+
+    ## func to trim data as opening
+    trim = lambda x: x.sel(lat=slice(-30, 30), lon=slice(100, 300))
+
+    ## open data
+    sst_oras = xr.open_mfdataset(sst_fp.glob("*.nc"), preprocess=trim)
+    ssh_oras = xr.open_mfdataset(ssh_fp.glob("*.nc"), preprocess=trim)
+
+    ## merge sst/ssh data
+    data_oras = xr.merge([sst_oras, ssh_oras]).compute()
+
+    ## rename coords
+    data_oras = data_oras.rename(
+        {
+            "sosstsst": "sst",
+            "sossheig": "ssh",
+            "lon": "longitude",
+            "lat": "latitude",
+            "time_counter": "time",
+        }
+    )
+
+    return data_oras
