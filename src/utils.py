@@ -494,3 +494,24 @@ def get_gaussian_best_fit(x):
     pdf_eval = gaussian.pdf(x_eval)
 
     return pdf_eval, x_eval
+
+
+def sel_month(x, months=None):
+    """select months in specified range.
+    Args:
+        - x: xr.DataArray or xr.Dataset
+        - months: one of {None, int, list-of-int}
+    """
+    if months is None:
+        return x
+
+    else:
+        data_months = x.time.dt.month
+
+        if type(months) is int:
+            is_month = data_months == months
+
+        else:
+            is_month = np.array([m in months for m in data_months])
+
+        return x.isel(time=is_month)
