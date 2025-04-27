@@ -515,3 +515,46 @@ def sel_month(x, months=None):
             is_month = np.array([m in months for m in data_months])
 
         return x.isel(time=is_month)
+
+
+def get_rolling_avg(x, n, dim="time"):
+    """Get rolling average over 2n+1 timesteps, and remove NaNs"""
+
+    ## compute rolling average
+    x_rolling = x.rolling({dim: 2 * n + 1}, center=True).mean()
+
+    ## remove NaNs
+    if n != 0:
+        x_rolling = x_rolling.isel({dim: slice(n, -n)})
+
+    return x_rolling
+
+
+def separate_forced(data, n=0):
+    """
+    Get forced component of ensemble. 'n' specifies number of years
+    to average over when computing "forced" component. I.e., average
+    n time over a window size of [t-n, t+n], so total window size
+    is 2n + 1.
+    Returns:
+        - forced: 'externally forced' component of ensemble
+        - anom: total minus forced component
+    """
+
+    ## compute ensemble mean
+    ensemble_mean = data.mean("member")
+
+    ## function to average in time
+    rolling_avg = lambda x: x.rolling({"time": 2 * n + 1}, center=True).mean()
+
+    ## group by month, then computing rolling mean over years
+    get_rolling_avg_ = lambda x: get_rolling_avg(x, n=n)
+    forced = ensemble_mean.groupby("time.month").map(get_rolling_avg_)
+
+    ## make sure time axis is in order
+    forced = forced.isel(time=forced.time.argsort().values)
+
+    ## compute anomalies
+    anom = data.sel(time=forced.time) - forced
+
+    return forced, anom
