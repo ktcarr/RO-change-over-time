@@ -548,6 +548,55 @@ def sel_month(x, months=None):
         return x.isel(time=is_month)
 
 
+def get_rolling_fn(x, fn, n=0):
+    """Apply function to rolling set of data. Applies to window of
+    size (2n+1), centered at each datapoint."""
+
+    ## get rolling object
+    x_rolling = x.rolling({"time": 2 * n + 1}, center=True)
+
+    ## stack member,time dimensinos
+    x_rolling = x_rolling.construct("window").stack(sample=["member", "window"])
+
+    ## apply function over sample dimension
+    fn_rolling = xr.apply_ufunc(
+        fn, x_rolling, input_core_dims=[["sample"]], kwargs={"axis": -1}
+    )
+
+    ## trim if necessary
+    if n > 0:
+        fn_rolling = fn_rolling.isel(time=slice(n, -n))
+
+    return fn_rolling
+
+
+def get_rolling_fn_bymonth(x, fn, n=0):
+    """apply function to rolling set of data by month. 'n' has units of years"""
+
+    ## apply function to data grouped by month
+    return x.groupby("time.month").map(lambda z: get_rolling_fn(z, fn=fn, n=n))
+
+
+def separate_forced(data, n=0):
+    """
+    Get forced component of ensemble. 'n' specifies number of years
+    to average over when computing "forced" component. I.e., average
+    n time over a window size of [t-n, t+n], so total window size
+    is 2n + 1.
+    Returns:
+        - forced: 'externally forced' component of ensemble
+        - anom: total minus forced component
+    """
+
+    ## forced response defined as ensemble mean, smoothed in time
+    forced = get_rolling_fn_bymonth(data, fn=np.mean, n=n)
+
+    ## anomaly is residual of total minus forced
+    anom = data.sel(time=forced.time) - forced
+
+    return forced, anom
+
+
 def get_rolling_avg(x, n, dim="time"):
     """Get rolling average over 2n+1 timesteps, and remove NaNs"""
 
