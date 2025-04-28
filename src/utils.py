@@ -225,8 +225,9 @@ def unzip_tuples_to_arrays(list_of_tuples):
     return y_arr, x_arr
 
 
-def reconstruct_fn(components, scores, fn):
-    """reconstruct function of spatial data from PCs"""
+def reconstruct_fn_da(components, scores, fn):
+    """reconstruct function of spatial data from PCs. Assumes
+    components and scores are xr.DataArrays"""
 
     ## get latitude weighting for components
     coslat_weights = np.sqrt(np.cos(np.deg2rad(components.latitude)))
@@ -236,6 +237,26 @@ def reconstruct_fn(components, scores, fn):
 
     ## reconstruct
     recon = (fn_eval * scores).sum("mode")
+
+    return recon
+
+
+def reconstruct_fn(components, scores, fn):
+    """reconstruct given function based on EOF components and scores"""
+
+    ## handle Dataset case
+    if type(components) is xr.Dataset:
+        varnames = list(components)
+        recon = xr.merge(
+            [
+                reconstruct_fn_da(components[n], scores[n], fn).rename(n)
+                for n in varnames
+            ]
+        )
+
+    ## handle DataArray case
+    else:
+        recon = reconstruct_fn_da(components, scores, fn)
 
     return recon
 
