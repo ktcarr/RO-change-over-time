@@ -8,6 +8,7 @@ import warnings
 import pathlib
 import cartopy.crs as ccrs
 import scipy.stats
+import copy
 
 
 def spatial_avg(data):
@@ -270,6 +271,15 @@ def get_spatial_avg_idx(data, lon_range, lat_range):
     return spatial_avg(data.sel(indexer))
 
 
+def get_nino4(data):
+    """compute Niño 4 index from data"""
+
+    ## get indexer
+    idx = dict(latitude=slice(-5, 5), longitude=slice(160, 210))
+
+    return spatial_avg(data.sel(idx))
+
+
 def get_nino34(data):
     """compute Niño 3.4 index from data"""
 
@@ -280,7 +290,7 @@ def get_nino34(data):
 
 
 def get_nino3(data):
-    """compute Niño 3.4 index from data"""
+    """compute Niño 3 index from data"""
 
     ## get indexer
     idx = dict(latitude=slice(-5, 5), longitude=slice(210, 270))
@@ -565,9 +575,6 @@ def separate_forced(data, n=0):
     ## compute ensemble mean
     ensemble_mean = data.mean("member")
 
-    ## function to average in time
-    rolling_avg = lambda x: x.rolling({"time": 2 * n + 1}, center=True).mean()
-
     ## group by month, then computing rolling mean over years
     get_rolling_avg_ = lambda x: get_rolling_avg(x, n=n)
     forced = ensemble_mean.groupby("time.month").map(get_rolling_avg_)
@@ -579,3 +586,22 @@ def separate_forced(data, n=0):
     anom = data.sel(time=forced.time) - forced
 
     return forced, anom
+
+
+def unstack_month_and_year(data):
+    """Function 'unstacks' month and year in a dataframe with 'time' dimension
+    The 'time' dimension is separated into a month and a year dimension
+    This increases the number of dimensions by 1"""
+
+    ## copy data to avoid overwriting
+    data_ = copy.deepcopy(data)
+
+    ## Get year and month
+    year = data_.time.dt.year.values
+    month = data_.time.dt.month.values
+
+    ## update time index
+    new_idx = pd.MultiIndex.from_arrays([year, month], names=("year", "month"))
+    data_["time"] = new_idx
+
+    return data_.unstack("time")
