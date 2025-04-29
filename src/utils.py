@@ -7,6 +7,7 @@ import tqdm
 import warnings
 import pathlib
 import cartopy.crs as ccrs
+import matplotlib.pyplot as plt
 import scipy.stats
 import copy
 
@@ -681,3 +682,96 @@ def unstack_month_and_year(data):
     data_["time"] = new_idx
 
     return data_.unstack("time")
+
+
+def make_variance_subplots(fig, axs, var0, var1, amp, amp_diff, show_colorbars):
+    """make 3-paneled subplots showing variance in ORAS5 and MPI; and (normalized) difference)"""
+
+    ## shared arguments
+    kwargs = dict(cmap="cmo.amp", transform=ccrs.PlateCarree())
+
+    ## get levels for individual plots
+    levels = np.linspace(0, amp, 9)
+    levels_diff = make_cb_range(amp_diff, amp_diff / 8)
+
+    ## plot variance in ORAS5
+    plot_data0 = axs[0, 0].contourf(
+        var0.longitude, var0.latitude, var0, levels=levels, extend="max", **kwargs
+    )
+    axs[0, 0].set_title("ORAS5")
+
+    ## plot variance in MPI
+    plot_data1 = axs[1, 0].contourf(
+        var1.longitude, var1.latitude, var1, levels=levels, extend="max", **kwargs
+    )
+    axs[1, 0].set_title("MPI")
+
+    ## plot difference
+    bias = var1 - var0
+    kwargs.update(dict(cmap="cmo.balance", levels=levels_diff))
+    plot_data2 = axs[2, 0].contourf(
+        bias.longitude, bias.latitude, bias, extend="both", **kwargs
+    )
+    axs[2, 0].set_title("Bias")
+
+    ## add colorbars if desired
+    if show_colorbars:
+        fig.colorbar(plot_data0, ax=axs[0, 0], ticks=[0, amp / 2, amp])
+        fig.colorbar(plot_data1, ax=axs[1, 0], ticks=[0, amp / 2, amp])
+        fig.colorbar(plot_data2, ax=axs[2, 0], ticks=[-amp_diff, 0, amp_diff])
+
+    return fig, axs
+
+
+def spatial_comp(
+    xhat,
+    x,
+    kwargs=dict(),
+    diff_kwargs=dict(),
+    figsize=(3, 3),
+    format_func=plot_setup_pac,
+    show_colorbars=True,
+    add_titles=True,
+):
+    """make 3-paneled subplots showing truth (x), prediction (xhat), and diff (xhat-x)"""
+
+    ## set up plotting canvas
+    fig = plt.figure(figsize=figsize, layout="constrained")
+    axs = subplots_with_proj(fig, nrows=3, ncols=1, format_func=format_func)
+
+    ## for convenience, get lon/lat
+    lon, lat = x.longitude, x.latitude
+
+    ## plot ground truth
+    plot_data0 = axs[0, 0].contourf(lon, lat, x, transform=ccrs.PlateCarree(), **kwargs)
+
+    ## Plot prediction
+    plot_data1 = axs[1, 0].contourf(
+        lon, lat, xhat, transform=ccrs.PlateCarree(), **kwargs
+    )
+
+    ## plot difference
+    plot_data2 = axs[2, 0].contourf(
+        lon, lat, xhat - x, transform=ccrs.PlateCarree(), **diff_kwargs
+    )
+
+    ## concatenate plot data
+    plot_data = [plot_data0, plot_data1, plot_data2]
+
+    ## make colorbars
+    colorbars = []
+    if show_colorbars:
+        for j, ax in enumerate(axs):
+            levels = kwargs["levels"] if j < 2 else diff_kwargs["levels"]
+            colorbars.append(
+                fig.colorbar(plot_data[j], ax=ax, ticks=[levels.min(), levels.max()])
+            )
+
+    ## add labels
+    if add_titles:
+        labels = ["truth", "recon", "error"]
+        for j, (ax, t) in enumerate(zip(axs, labels)):
+            labels = ["ground truth", "reconstruction", "error"]
+            axs[j, 0].set_title(t)
+
+    return fig, axs, plot_data, colorbars
