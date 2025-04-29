@@ -336,7 +336,7 @@ def load_eofs(eofs_fp):
         return
 
 
-def reconstruct_var(scores, components):
+def reconstruct_var(scores, components, fn=None):
     """reconstruct spatial variance based on EOF components and scores"""
 
     ## handle Dataset case
@@ -344,19 +344,21 @@ def reconstruct_var(scores, components):
         varnames = list(components)
         recon = xr.merge(
             [
-                reconstruct_var_da(scores=scores[n], components=components[n]).rename(n)
+                reconstruct_var_da(
+                    scores=scores[n], components=components[n], fn=fn
+                ).rename(n)
                 for n in varnames
             ]
         )
 
     ## handle DataArray case
     else:
-        recon = reconstruct_var_da(scores=scores, components=components)
+        recon = reconstruct_var_da(scores=scores, components=components, fn=fn)
 
     return recon
 
 
-def reconstruct_var_da(scores, components):
+def reconstruct_var_da(scores, components, fn):
     """reconstruct spatial variance from projected data"""
 
     ## remove mean
@@ -373,17 +375,22 @@ def reconstruct_var_da(scores, components):
     ## get covariance of projected data
     scores_cov = 1 / n * outer_prod
 
+    ## get latitude weighting for reconstructino
+    coslat_weights = np.sqrt(np.cos(np.deg2rad(components.latitude)))
+
+    ## apply function to components
+    if fn is None:
+        fn = lambda x: x
+    fn_eval = fn(components * 1 / coslat_weights)
+
     ## now reconstruct spatial field (U @ SVt @ VS) @ U
-    spatial_cov = xr.dot(
-        xr.dot(components, scores_cov, dim="mode"),
-        components.rename({"mode": "mode_out"}),
+    fn_var = xr.dot(
+        xr.dot(fn_eval, scores_cov, dim="mode"),
+        fn_eval.rename({"mode": "mode_out"}),
         dim="mode_out",
     )
 
-    ## get coslat weights
-    coslat_weights = np.cos(np.deg2rad(components.latitude))
-
-    return spatial_cov / coslat_weights
+    return fn_var
 
 
 def plot_setup(fig, lon_range, lat_range):
