@@ -362,7 +362,7 @@ def reconstruct_var_da(scores, components, fn):
     """reconstruct spatial variance from projected data"""
 
     ## remove mean
-    scores_anom = scores - scores.mean(["member"])
+    scores_anom = scores - scores.mean(["member", "time"])
 
     ## compute outer product (XX^T)
     outer_prod = xr.dot(
