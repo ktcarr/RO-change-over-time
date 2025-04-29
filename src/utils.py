@@ -336,7 +336,24 @@ def load_eofs(eofs_fp):
         return
 
 
-def reconstruct_var(scores, components):
+def reconstruct_var(components, scores):
+    """reconstruct spatial variance based on EOF components and scores"""
+
+    ## handle Dataset case
+    if type(components) is xr.Dataset:
+        varnames = list(components)
+        recon = xr.merge(
+            [reconstruct_var_da(components[n], scores[n]).rename(n) for n in varnames]
+        )
+
+    ## handle DataArray case
+    else:
+        recon = reconstruct_var_da(components, scores)
+
+    return recon
+
+
+def reconstruct_var_da(scores, components):
     """reconstruct spatial variance from projected data"""
 
     ## remove mean
