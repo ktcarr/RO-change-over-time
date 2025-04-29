@@ -7,6 +7,7 @@ import tqdm
 import warnings
 import pathlib
 import cartopy.crs as ccrs
+import matplotlib.pyplot as plt
 import scipy.stats
 import copy
 
@@ -336,11 +337,33 @@ def load_eofs(eofs_fp):
         return
 
 
-def reconstruct_var(scores, components):
+def reconstruct_var(scores, components, fn=None):
+    """reconstruct spatial variance based on EOF components and scores"""
+
+    ## handle Dataset case
+    if type(components) is xr.Dataset:
+        varnames = list(components)
+        recon = xr.merge(
+            [
+                reconstruct_var_da(
+                    scores=scores[n], components=components[n], fn=fn
+                ).rename(n)
+                for n in varnames
+            ]
+        )
+
+    ## handle DataArray case
+    else:
+        recon = reconstruct_var_da(scores=scores, components=components, fn=fn)
+
+    return recon
+
+
+def reconstruct_var_da(scores, components, fn):
     """reconstruct spatial variance from projected data"""
 
     ## remove mean
-    scores_anom = scores - scores.mean(["member"])
+    scores_anom = scores - scores.mean(["member", "time"])
 
     ## compute outer product (XX^T)
     outer_prod = xr.dot(
@@ -353,17 +376,22 @@ def reconstruct_var(scores, components):
     ## get covariance of projected data
     scores_cov = 1 / n * outer_prod
 
+    ## get latitude weighting for reconstructino
+    coslat_weights = np.sqrt(np.cos(np.deg2rad(components.latitude)))
+
+    ## apply function to components
+    if fn is None:
+        fn = lambda x: x
+    fn_eval = fn(components * 1 / coslat_weights)
+
     ## now reconstruct spatial field (U @ SVt @ VS) @ U
-    spatial_cov = xr.dot(
-        xr.dot(components, scores_cov, dim="mode"),
-        components.rename({"mode": "mode_out"}),
+    fn_var = xr.dot(
+        xr.dot(fn_eval, scores_cov, dim="mode"),
+        fn_eval.rename({"mode": "mode_out"}),
         dim="mode_out",
     )
 
-    ## get coslat weights
-    coslat_weights = np.cos(np.deg2rad(components.latitude))
-
-    return spatial_cov / coslat_weights
+    return fn_var
 
 
 def plot_setup(fig, lon_range, lat_range):
@@ -654,3 +682,96 @@ def unstack_month_and_year(data):
     data_["time"] = new_idx
 
     return data_.unstack("time")
+
+
+def make_variance_subplots(fig, axs, var0, var1, amp, amp_diff, show_colorbars):
+    """make 3-paneled subplots showing variance in ORAS5 and MPI; and (normalized) difference)"""
+
+    ## shared arguments
+    kwargs = dict(cmap="cmo.amp", transform=ccrs.PlateCarree())
+
+    ## get levels for individual plots
+    levels = np.linspace(0, amp, 9)
+    levels_diff = make_cb_range(amp_diff, amp_diff / 8)
+
+    ## plot variance in ORAS5
+    plot_data0 = axs[0, 0].contourf(
+        var0.longitude, var0.latitude, var0, levels=levels, extend="max", **kwargs
+    )
+    axs[0, 0].set_title("ORAS5")
+
+    ## plot variance in MPI
+    plot_data1 = axs[1, 0].contourf(
+        var1.longitude, var1.latitude, var1, levels=levels, extend="max", **kwargs
+    )
+    axs[1, 0].set_title("MPI")
+
+    ## plot difference
+    bias = var1 - var0
+    kwargs.update(dict(cmap="cmo.balance", levels=levels_diff))
+    plot_data2 = axs[2, 0].contourf(
+        bias.longitude, bias.latitude, bias, extend="both", **kwargs
+    )
+    axs[2, 0].set_title("Bias")
+
+    ## add colorbars if desired
+    if show_colorbars:
+        fig.colorbar(plot_data0, ax=axs[0, 0], ticks=[0, amp / 2, amp])
+        fig.colorbar(plot_data1, ax=axs[1, 0], ticks=[0, amp / 2, amp])
+        fig.colorbar(plot_data2, ax=axs[2, 0], ticks=[-amp_diff, 0, amp_diff])
+
+    return fig, axs
+
+
+def spatial_comp(
+    xhat,
+    x,
+    kwargs=dict(),
+    diff_kwargs=dict(),
+    figsize=(3, 3),
+    format_func=plot_setup_pac,
+    show_colorbars=True,
+    add_titles=True,
+):
+    """make 3-paneled subplots showing truth (x), prediction (xhat), and diff (xhat-x)"""
+
+    ## set up plotting canvas
+    fig = plt.figure(figsize=figsize, layout="constrained")
+    axs = subplots_with_proj(fig, nrows=3, ncols=1, format_func=format_func)
+
+    ## for convenience, get lon/lat
+    lon, lat = x.longitude, x.latitude
+
+    ## plot ground truth
+    plot_data0 = axs[0, 0].contourf(lon, lat, x, transform=ccrs.PlateCarree(), **kwargs)
+
+    ## Plot prediction
+    plot_data1 = axs[1, 0].contourf(
+        lon, lat, xhat, transform=ccrs.PlateCarree(), **kwargs
+    )
+
+    ## plot difference
+    plot_data2 = axs[2, 0].contourf(
+        lon, lat, xhat - x, transform=ccrs.PlateCarree(), **diff_kwargs
+    )
+
+    ## concatenate plot data
+    plot_data = [plot_data0, plot_data1, plot_data2]
+
+    ## make colorbars
+    colorbars = []
+    if show_colorbars:
+        for j, ax in enumerate(axs):
+            levels = kwargs["levels"] if j < 2 else diff_kwargs["levels"]
+            colorbars.append(
+                fig.colorbar(plot_data[j], ax=ax, ticks=[levels.min(), levels.max()])
+            )
+
+    ## add labels
+    if add_titles:
+        labels = ["truth", "recon", "error"]
+        for j, (ax, t) in enumerate(zip(axs, labels)):
+            labels = ["ground truth", "reconstruction", "error"]
+            axs[j, 0].set_title(t)
+
+    return fig, axs, plot_data, colorbars
