@@ -576,15 +576,22 @@ def sel_month(x, months=None):
         return x.isel(time=is_month)
 
 
-def get_rolling_fn(x, fn, n=0):
+def get_rolling_fn(x, fn, n=0, reduce_ensemble_dim=True):
     """Apply function to rolling set of data. Applies to window of
     size (2n+1), centered at each datapoint."""
 
     ## get rolling object
-    x_rolling = x.rolling({"time": 2 * n + 1}, center=True)
+    x_rolling = x.rolling({"time": 2 * n + 1}, center=True).construct("window")
 
-    ## stack member,time dimensinos
-    x_rolling = x_rolling.construct("window").stack(sample=["member", "window"])
+    if reduce_ensemble_dim:
+
+        ## stack member,time dimensinos if reducing
+        x_rolling = x_rolling.stack(sample=["member", "window"])
+
+    else:
+
+        ## otherwise, just rename 'window' dim to sample
+        x_rolling = x_rolling.rename({"window": "sample"})
 
     ## apply function over sample dimension
     fn_rolling = xr.apply_ufunc(
@@ -598,11 +605,12 @@ def get_rolling_fn(x, fn, n=0):
     return fn_rolling
 
 
-def get_rolling_fn_bymonth(x, fn, n=0):
+def get_rolling_fn_bymonth(x, fn, n=0, reduce_ensemble_dim=True):
     """apply function to rolling set of data by month. 'n' has units of years"""
 
     ## apply function to data grouped by month
-    return x.groupby("time.month").map(lambda z: get_rolling_fn(z, fn=fn, n=n))
+    kwargs = dict(fn=fn, n=n, reduce_ensemble_dim=reduce_ensemble_dim)
+    return x.groupby("time.month").map(lambda z: get_rolling_fn(z, **kwargs))
 
 
 def separate_forced(data, n=0):
