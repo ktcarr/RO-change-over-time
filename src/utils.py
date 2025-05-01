@@ -693,7 +693,9 @@ def unstack_month_and_year(data):
     return data_.unstack("time")
 
 
-def make_variance_subplots(fig, axs, var0, var1, amp, amp_diff, show_colorbars):
+def make_variance_subplots(
+    fig, axs, var0, var1, amp, amp_diff, show_colorbars, cbar_label=None
+):
     """make 3-paneled subplots showing variance in ORAS5 and MPI; and (normalized) difference)"""
 
     ## shared arguments
@@ -725,9 +727,15 @@ def make_variance_subplots(fig, axs, var0, var1, amp, amp_diff, show_colorbars):
 
     ## add colorbars if desired
     if show_colorbars:
-        fig.colorbar(plot_data0, ax=axs[0, 0], ticks=[0, amp / 2, amp])
-        fig.colorbar(plot_data1, ax=axs[1, 0], ticks=[0, amp / 2, amp])
-        fig.colorbar(plot_data2, ax=axs[2, 0], ticks=[-amp_diff, 0, amp_diff])
+        fig.colorbar(
+            plot_data0, ax=axs[0, 0], ticks=[0, amp / 2, amp], label=cbar_label
+        )
+        fig.colorbar(
+            plot_data1, ax=axs[1, 0], ticks=[0, amp / 2, amp], label=cbar_label
+        )
+        fig.colorbar(
+            plot_data2, ax=axs[2, 0], ticks=[-amp_diff, 0, amp_diff], label=cbar_label
+        )
 
     return fig, axs
 
