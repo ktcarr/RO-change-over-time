@@ -7,6 +7,7 @@ import tqdm
 import warnings
 import pathlib
 import cartopy.crs as ccrs
+import cartopy.util
 import matplotlib.pyplot as plt
 import scipy.stats
 import copy
@@ -783,3 +784,29 @@ def spatial_comp(
             axs[j, 0].set_title(t)
 
     return fig, axs, plot_data, colorbars
+
+
+def plot_cycle_hov(ax, data, **kwargs):
+    """plot hovmoller of SST on the equator"""
+
+    ## make sure month is first
+    data = data.transpose("month", ...)
+
+    ## Get cyclic point for plotting
+    data_cyclic, month_cyclic = cartopy.util.add_cyclic_point(data, data.month, axis=0)
+
+    ## plot data
+    plot_data = ax.contourf(data.longitude, month_cyclic, data_cyclic, **kwargs)
+
+    ## plot Niño 3.4 region
+    kwargs = dict(ls="--", c="w", lw=0.85)
+    ax.axvline(190, **kwargs)
+    ax.axvline(240, **kwargs)
+
+    ## labels/style
+    ax.set_yticks([1, 5, 9, 13], labels=["Jan", "May", "Sep", "Jan"])
+    ax.set_ylabel("Month")
+    ax.set_xticks([])
+    ax.set_xlim([130, 280])
+
+    return plot_data
