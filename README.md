@@ -18,7 +18,7 @@ How do recharge oscillator parameters change over time in a large ensemble? What
   - ```RO-MPI_validation.ipynb```: check if stats from RO simulations of ENSO match those from MPI
   - ```MPI_climate-change.ipynb```: evaluating how ENSO changes in MPI simulation
   - ```RO-change-over-time.ipynb```: compute change in RO parameters over time 
-- ```data```: raw and preprocessed data
+- ```data```: raw and preprocessed data (*contact for access*)
   - ```XRO_indices_oras5.nc```: precomputed $T$ and $h$ data from ORAS5 reanalysis
   - ```mpi_Th```: pre-computed $T$ and $h$ data from MPI climate model (50 ensemble members)
   - ```mpi/eofs300```: first 300 EOFs of MPI data (50 ensemble members)
