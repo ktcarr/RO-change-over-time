@@ -3,6 +3,7 @@ envs
 data
 .DS_Store
 scripts/jupyter.sh
+results/fits*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
