@@ -4,7 +4,7 @@ data
 .DS_Store
 scripts/jupyter.sh
 results/fits*
-results/20250430
+results/2025*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
