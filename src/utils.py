@@ -318,6 +318,20 @@ def get_RO_hw(data):
     return spatial_avg(data.sel(idx))
 
 
+def get_RO_indices(data):
+    """compute possible indices for RO from given dataset"""
+
+    ## specify functions and variables
+    funcs = [get_nino3, get_nino34, get_nino4, get_RO_h, get_RO_hw]
+    vars_ = ["sst", "sst", "sst", "ssh", "ssh"]
+    names = ["T_3", "T_34", "T_4", "h", "h_w"]
+
+    ## compute indices
+    indices = xr.merge([f(data[v]).rename(n) for f, v, n in zip(funcs, vars_, names)])
+
+    return indices
+
+
 def load_eofs(eofs_fp):
     """
     Load pre-computed EOFs.
