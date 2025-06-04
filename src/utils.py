@@ -480,15 +480,21 @@ def detrend_dim(data, dim="time", deg=1):
     return data_detrended
 
 
-def load_oras_spatial(sst_fp, ssh_fp):
+def load_oras_spatial(sst_fp, ssh_fp, extended_record=False):
     """Load spatial data for SST and SSH from ORAS5"""
 
-    ## func to trim data as opening
+    ## func to trim data
     trim = lambda x: x.sel(lat=slice(-30, 30), lon=slice(100, 300))
 
-    ## open data
-    sst_oras = xr.open_mfdataset(sst_fp.glob("*.nc"), preprocess=trim)
-    ssh_oras = xr.open_mfdataset(ssh_fp.glob("*.nc"), preprocess=trim)
+    if extended_record:
+        ## open data for 1959 - 2020
+        sst_oras = trim(xr.open_dataset(sst_fp))
+        ssh_oras = trim(xr.open_dataset(ssh_fp))
+
+    else:
+        ## open data for 1979 - 2018
+        sst_oras = xr.open_mfdataset(sst_fp.glob("*.nc"), preprocess=trim)
+        ssh_oras = xr.open_mfdataset(ssh_fp.glob("*.nc"), preprocess=trim)
 
     ## merge sst/ssh data
     data_oras = xr.merge([sst_oras, ssh_oras]).compute()
