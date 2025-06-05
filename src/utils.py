@@ -68,6 +68,10 @@ def get_ensemble_stats(ensemble, center_method="mean", bounds_method="std"):
     ## compute ensemble 'center'
     if center_method == "mean":
         center = ensemble.mean("member")
+
+    elif center_method == "median":
+        center = ensemble.quantile(q=0.5, dim="member")
+
     else:
         print("Not implemented")
 
@@ -76,6 +80,11 @@ def get_ensemble_stats(ensemble, center_method="mean", bounds_method="std"):
         sigma = ensemble.std("member")
         upper_bound = center + sigma
         lower_bound = center - sigma
+
+    elif bounds_method == "quantile":
+        lower_bound = ensemble.quantile(q=0.1, dim="member")
+        upper_bound = ensemble.quantile(q=0.9, dim="member")
+
     else:
         print("Not implemented")
 
@@ -865,3 +874,61 @@ def plot_cycle_hov(ax, data, **kwargs):
     ax.set_xlim([130, 280])
 
     return plot_data
+
+
+def plot_seasonal_cyc(ax, x, varname, use_quantile=False, **plot_kwargs):
+    """print seasonal cycle of data in x on specified ax object"""
+
+    ## specify arguments for computing confidence bounds
+    if use_quantile:
+        kwargs = dict(center_method="median", bounds_method="quantile")
+    else:
+        kwargs = dict(center_method="mean", bounds_method="std")
+
+    ## func to compute stats
+    get_std = lambda x: x.groupby("time.month").std("time")
+    get_stats = lambda x: get_ensemble_stats(get_std(x[varname]), **kwargs)
+
+    ## compute std for each dataset
+    x_plot = get_stats(x)
+
+    ## months (x-coordinate for plotting
+    months = np.arange(1, 13)
+
+    ## plot MPI ensemble mean
+    plot_data = ax.plot(np.arange(1, 13), x_plot.sel(posn="center"), **plot_kwargs)
+
+    ## plot MPI bounds
+    kwargs = dict(c=plot_data[0].get_color(), ls="--", lw=1)
+    for bound in ["upper", "lower"]:
+        ax.plot(months, x_plot.sel(posn=bound), **kwargs)
+
+    return plot_data
+
+
+def plot_seasonal_comp(
+    ax,
+    x0,
+    x1,
+    varname="T_34",
+    use_quantile=False,
+    plot_kwargs0=dict(),
+    plot_kwargs1=dict(),
+):
+    """Plot comparison of seasonal cycle between 2 ensembles"""
+
+    ## plot data
+    plot_data0 = plot_seasonal_cyc(
+        ax, x0, varname=varname, use_quantile=use_quantile, **plot_kwargs0
+    )
+    plot_data1 = plot_seasonal_cyc(
+        ax, x1, varname=varname, use_quantile=use_quantile, **plot_kwargs1
+    )
+
+    ## format ax
+    ax.set_xticks([1, 8, 12], labels=["Jan", "Aug", "Dec"])
+    ax.set_xlabel("Month")
+    ax.set_ylim([0.4, 1.2])
+    ax.set_yticks([])
+
+    return plot_data0, plot_data1
