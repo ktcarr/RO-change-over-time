@@ -318,12 +318,12 @@ def get_RO_hw(data):
     return spatial_avg(data.sel(idx))
 
 
-def get_RO_indices(data):
+def get_RO_indices(data, h_var="ssh"):
     """compute possible indices for RO from given dataset"""
 
     ## specify functions and variables
     funcs = [get_nino3, get_nino34, get_nino4, get_RO_h, get_RO_hw]
-    vars_ = ["sst", "sst", "sst", "ssh", "ssh"]
+    vars_ = ["sst", "sst", "sst", h_var, h_var]
     names = ["T_3", "T_34", "T_4", "h", "h_w"]
 
     ## compute indices
@@ -494,21 +494,48 @@ def detrend_dim(data, dim="time", deg=1):
     return data_detrended
 
 
-def load_oras_spatial(sst_fp, ssh_fp, extended_record=False):
+def load_oras_spatial_extended(oras_fp, varnames=["tos", "ssh", "d20"]):
+    """Load spatial data for SST and SSH from ORAS5"""
+
+    ## funcs to trim and load data
+    trim = lambda x: x.sel(lat=slice(-20, 20), lon=slice(100, 300))
+    load = lambda f, v: trim(xr.open_dataarray(f)).rename(v)
+
+    ## loop through variables
+    data = []
+    for v in varnames:
+
+        ## get filename
+        f = list(oras_fp.glob(f"{v}*.nc"))[0]
+
+        ## load data
+        data.append(load(f, v))
+
+    ## merge
+    data = xr.merge(data)
+
+    ## update varnames if desired
+    if "tos" in varnames:
+        data = data.rename({"tos": "sst"})
+
+    return update_oras_coords(data)
+
+
+def update_oras_coords(data):
+    """update coordinates on ORAS dataset"""
+
+    return data.rename({"lon": "longitude", "lat": "latitude", "time_counter": "time"})
+
+
+def load_oras_spatial(sst_fp, ssh_fp, extended_record=False, use_d20=False):
     """Load spatial data for SST and SSH from ORAS5"""
 
     ## func to trim data
     trim = lambda x: x.sel(lat=slice(-30, 30), lon=slice(100, 300))
 
-    if extended_record:
-        ## open data for 1959 - 2020
-        sst_oras = trim(xr.open_dataset(sst_fp))
-        ssh_oras = trim(xr.open_dataset(ssh_fp))
-
-    else:
-        ## open data for 1979 - 2018
-        sst_oras = xr.open_mfdataset(sst_fp.glob("*.nc"), preprocess=trim)
-        ssh_oras = xr.open_mfdataset(ssh_fp.glob("*.nc"), preprocess=trim)
+    ## open data for 1979 - 2018
+    sst_oras = xr.open_mfdataset(sst_fp.glob("*.nc"), preprocess=trim)
+    ssh_oras = xr.open_mfdataset(ssh_fp.glob("*.nc"), preprocess=trim)
 
     ## merge sst/ssh data
     data_oras = xr.merge([sst_oras, ssh_oras]).compute()
