@@ -304,7 +304,7 @@ def get_RO_h(data):
     """compute RO's 'h' index from data"""
 
     ## get indexer
-    idx = dict(latitude=slice(-5, 5), longitude=slice(120, 285))
+    idx = dict(latitude=slice(-5, 5), longitude=slice(120, 280))
 
     return spatial_avg(data.sel(idx))
 
