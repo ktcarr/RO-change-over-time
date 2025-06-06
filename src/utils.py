@@ -932,3 +932,101 @@ def plot_seasonal_comp(
     ax.set_yticks([])
 
     return plot_data0, plot_data1
+
+
+def ls_fit_xr(Y_data, idx):
+    """applies least-squares fit to index and xr.Dataset/xr.DataArray"""
+    return xr_wrapper(ls_fit_xr_da, ds=Y_data, idx=idx)
+
+
+def rho_xr(Y_data, idx):
+    """applies correlation coefficient to index and xr.Dataset/xr.DataArray"""
+    return xr_wrapper(rho_xr_da, ds=Y_data, idx=idx)
+
+
+def xr_wrapper(xr_da_func, ds, **kwargs):
+    """wrapper function which applies dataarray function to dataset"""
+    if type(ds) is xr.DataArray:
+        return xr_da_func(ds, **kwargs)
+
+    else:
+        results = []
+        varnames = list(ds)
+        for varname in varnames:
+            result = xr_da_func(ds[varname], **kwargs)
+            results.append(result)
+
+        return xr.merge(results)
+
+
+def ls_fit_xr_da(Y_data, **kwargs):
+    """xarray wrapper for ls_fit (dataarray version).
+    'E_data' and 'y_data' are both dataarrays"""
+
+    # Parse inputs
+    idx = kwargs["idx"]
+
+    ## Identify regression dimension
+    regr_dim = idx.dims[0]
+    other_dims = [d for d in Y_data.dims if d != regr_dim]
+
+    ## Stack the non-regression dimensions, if they exist
+    if len(other_dims) > 0:
+        Y_stack = Y_data.stack(other_dims=other_dims)
+    else:
+        Y_stack = Y_data
+
+    ## Empty array to hold results
+    coefs = Y_stack.isel({regr_dim: slice(None, 2)})
+    coefs = coefs.rename({regr_dim: "coef"})
+    coefs["coef"] = pd.Index(["m", "b"], name="coef")
+
+    ## perform regression
+    coefs.values = ls_fit(idx.values[:, None], Y_stack.values)
+    return coefs.unstack()
+
+
+def rho_xr_da(Y_data, **kwargs):
+    """xarray wrapper for rho (dataarray version).
+    'idx' and 'y_data' are both dataarrays"""
+
+    # Parse inputs
+    idx = kwargs["idx"]
+
+    ## Stack the non-regression dimensions
+    regr_dim = idx.dims[0]
+    other_dims = [d for d in Y_data.dims if d != regr_dim]
+    Y_stack = Y_data.stack(other_dims=other_dims)
+
+    ## Empty array to hold results
+    coef = Y_stack.isel({regr_dim: 0}, drop=True)
+
+    ## compute correlation
+    coef.values = get_rho(idx.values, Y_stack.values)
+
+    return coef.unstack()
+
+
+def add_constant(x):
+    """Add a column of ones to matrix, representing constant coefficient for mat. mult."""
+    x = np.append(x, np.ones([x.shape[0], 1]), axis=1)
+    return x
+
+
+def get_rho(x, Y):
+    """Get correlation between many timeseries (Y) and single timeseries (x)"""
+    Y = Y - np.nanmean(Y, axis=0)
+    x = x - np.nanmean(x)
+    Y[np.isnan(Y)] = 0.0
+    x[np.isnan(x)] = 0.0
+    rho = (x.T @ Y) / np.sqrt(np.sum(Y**2, axis=0) * np.dot(x, x))
+    return rho
+
+
+def ls_fit(x, Y):
+    """Function solves least-squares to get coefficients for linear projection of x onto Y
+    returns coef, a vector of the best-fit coefficients"""
+    # Add array of ones to feature vector (to represent constant term in linear model)
+    x = add_constant(x)
+    coef = np.linalg.inv(x.T @ x) @ x.T @ Y
+    return coef
