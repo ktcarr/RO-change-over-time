@@ -1789,7 +1789,7 @@ class LIM_reg(LIM):
         ax.plot(
             theta_plot,
             amp * np.sin(theta_plot),
-            label=f"$\sin(\\theta)$",
+            label=r"$\sin(\theta)$",
             c="k",
             ls=":",
         )
@@ -1798,7 +1798,7 @@ class LIM_reg(LIM):
         ax.axhline(0, ls="-", c="k", lw=0.5)
         ax.set_xticks(
             [0, np.pi / 2, np.pi, 3 * np.pi / 2, 2 * np.pi],
-            labels=["0", f"$\pi/2$", f"$\pi$", f"$3\pi/2$", f"$2\pi$"],
+            labels=["0", r"$\pi/2$", r"$\pi$", r"$3\pi/2$", r"$2\pi$"],
         )
         ax.set_xlabel("Phase")
         ax.set_ylabel("Nino 3.4")
@@ -2973,7 +2973,7 @@ class decoder:
 
         ## set axis labels/ticks
         xticks = [0, np.pi / 2, np.pi, 3 * np.pi / 2, 2 * np.pi]
-        xlabels = ["0", f"$\pi/2$", f"$\pi$", f"$3\pi/2$", f"$2\pi$"]
+        xlabels = ["0", r"$\pi/2$", r"$\pi$", r"$3\pi/2$", r"$2\pi$"]
         ax.set_xticks(xticks, labels=xlabels)
         ax.set_xlabel(r"$\theta_e$")
 

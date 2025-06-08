@@ -1030,3 +1030,61 @@ def ls_fit(x, Y):
     x = add_constant(x)
     coef = np.linalg.inv(x.T @ x) @ x.T @ Y
     return coef
+
+
+def seasonal_embed(data, month_idxs, fill=0.0):
+    """given m x n array 'data' and length-n array 'month_idxs',
+    embed data to form (m x 12) x n array 'data_tilde', such that
+    data_tilde[12*m:12*(m+1), i] = data[:,i] if (month_idxs[i]==m)
+    and 'fill' otherwise"""
+
+    ## Get size of state vector
+    m = data.shape[0]
+
+    ## allocate array to hold embedded data
+    data_tilde = fill * np.ones([m * 12, *data.shape[1:]], dtype=data.dtype)
+
+    ## loop through row block
+    for m_idx in range(12):
+        ## Get sample indices occuring in given month
+        is_month = m_idx == month_idxs
+
+        ## Put this data into the relevant rows of embedded data
+        ## think these indices are wrong...
+        data_tilde[m * m_idx : m * (m_idx + 1), is_month] = data[:, is_month]
+
+    return data_tilde
+
+
+def reverse_seasonal_embed(data_tilde, month_idxs):
+    """reverse seasonal embedding"""
+
+    m_tilde, n = data_tilde.shape
+    m = np.round(m_tilde / 12).astype(int)
+
+    data = np.zeros([m, n])
+
+    ## reverse seasonal embedding
+    for m_idx in range(12):
+        ## Get sample indices occuring in given month
+        is_month = m_idx == month_idxs
+
+        ## Put this data into the relevant rows of embedded data
+        ## think these indices are wrong...
+        data[:, is_month] = data_tilde[m * m_idx : m * (m_idx + 1), is_month]
+
+    return data
+
+
+def get_angle(c):
+    """get angle of complex number (or array of complex numbers).
+    Wrapper for np.angle which returns angle in [0,2pi) instead
+    of (-pi,pi]"""
+
+    ## compute angle in (-pi,pi]
+    phi = np.angle(c)
+
+    ## switch range from (-pi,pi] to [0,2pi)
+    phi[phi < 0] = phi[phi < 0] + 2 * np.pi
+
+    return phi
