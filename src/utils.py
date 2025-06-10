@@ -1154,3 +1154,30 @@ def plot_psd(ax, psd_results, color=None, label=None):
     format_psd_ax(ax)
 
     return
+
+
+def plot_xcorr(ax, data, **plot_kwargs):
+    """plot mean and bounds for data"""
+
+    ## center
+    plot_data = ax.plot(data.lag, data.sel(posn="center"), **plot_kwargs)
+
+    ## bounds
+    ax.fill_between(
+        data.lag,
+        data.sel(posn="upper"),
+        data.sel(posn="lower"),
+        color=plot_data[0].get_color(),
+        alpha=0.2,
+    )
+
+    ## set axis specs
+    ax.set_ylim([-0.5, 1.05])
+    ax.set_xlim([-18, 18])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    axis_kwargs = dict(c="k", lw=0.5, alpha=0.5)
+    ax.axhline(0, **axis_kwargs)
+    ax.axvline(0, **axis_kwargs)
+
+    return
