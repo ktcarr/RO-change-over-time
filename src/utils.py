@@ -1129,6 +1129,11 @@ def plot_psd(ax, psd_results, color=None, label=None):
     ## "unzip" psd results
     psd, psd_sig, psd_ci = psd_results
 
+    ## make sure 'member' is dimension
+    if "member" not in psd.dims:
+        psd = psd.expand_dims("member")
+        psd_sig = psd_sig.expand_dims("member")
+
     ## plot ensemble mean
     plot_data = ax.loglog(psd.freq, psd.mean("member"), lw=2, label=label, c=color)
 
