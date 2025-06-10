@@ -1088,3 +1088,69 @@ def get_angle(c):
     phi[phi < 0] = phi[phi < 0] + 2 * np.pi
 
     return phi
+
+
+def format_psd_ax(ax):
+    """format PSD plot's axis as desired"""
+
+    ## set limits
+    ax.set_xlim([1 / 20, 5])
+    ax.set_ylim([1e-3, 10])
+
+    ## get ENSO and 1st combination frequencies
+    Mfreq_enso = np.array([1 / 2.5, 1 / 5.5])
+    Mfreq_fplus = 1 + Mfreq_enso
+    Mfreq_fmins = 1 - Mfreq_enso
+
+    ## shade these regions
+    for Mfreq in [Mfreq_enso, Mfreq_fplus, Mfreq_fmins]:
+        ax.axvspan(*Mfreq, fc="gray", alpha=0.1)
+
+    ## label them
+    y_max = ax.get_ylim()[1]
+    kwargs = dict(ha="center", va="top", size=6)
+    ax.text(np.mean(Mfreq_enso) * 0.9, y_max, "$f_{E}$", **kwargs)
+    ax.text(np.mean(Mfreq_fplus) + 0.1, y_max, "$1+f_{E}$", **kwargs)
+    ax.text(np.mean(Mfreq_fmins), y_max, "$1-f_{E}$", **kwargs)
+
+    ## x-axis labels
+    per = [10, 5.5, 2.5, 1, 0.5]
+    xt = 1.0 / np.array(per)
+    ax.set_xticks(xt)
+    ax.set_xticklabels(map(str, per))
+    ax.set_xlabel("Period (year)")
+
+    return
+
+
+def plot_psd(ax, psd_results, color=None, label=None):
+    """plot PSD stuff for given data on specified ax"""
+
+    ## "unzip" psd results
+    psd, psd_sig, psd_ci = psd_results
+
+    ## plot ensemble mean
+    plot_data = ax.loglog(psd.freq, psd.mean("member"), lw=2, label=label, c=color)
+
+    ## plot ensemble spread
+    ax.fill_between(
+        psd.freq,
+        psd.quantile(0.1, dim="member"),
+        psd.quantile(0.9, dim="member"),
+        fc=plot_data[0].get_color(),
+        alpha=0.3,
+    )
+
+    ## plot 95% confidence levels
+    ax.semilogx(
+        psd_sig.freq,
+        psd_sig.mean("member"),
+        color=plot_data[0].get_color(),
+        linestyle="--",
+        lw=1,
+    )
+
+    ## format axis
+    format_psd_ax(ax)
+
+    return
