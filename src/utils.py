@@ -361,6 +361,12 @@ def load_eofs(eofs_fp):
         return
 
 
+def reconstruct_std(**kwargs):
+    """Reconstruct standard deviation"""
+
+    return np.sqrt(reconstruct_var(**kwargs))
+
+
 def reconstruct_var(scores, components, fn=None):
     """reconstruct spatial variance based on EOF components and scores"""
 
