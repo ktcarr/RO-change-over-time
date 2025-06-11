@@ -1233,3 +1233,36 @@ def make_composite(idx, data, peak_month=1, q=0.85):
     comp = comp.mean("sample").transpose("lag", ...)
 
     return comp
+
+
+def reconstruct_helper(scores, model, other_coord=None):
+    """reconstruct scores for given model"""
+
+    ## get weights
+    weights = get_weight(model).values
+
+    ## put raw scores into xarray
+    n = scores.shape[1]
+    scores_xr = xr.zeros_like(model.scores().isel(time=slice(None, n)))
+    scores_xr.values = scores / weights
+
+    ## do inverse transform
+    data = model.inverse_transform(scores_xr)
+
+    ## rename coord
+    if other_coord is None:
+        other_coord = pd.Index(np.arange(n), name="n")
+    data = data.rename({"time": other_coord.name})
+    data[other_coord.name] = other_coord.values
+
+    return data
+
+
+def get_weight(model):
+    """Get weights for data (used for LIM)"""
+
+    ## get explained variance of projected data relative to total
+    expvar_ratio_total = model.explained_variance_ratio().sum()
+    expvar_first = model.explained_variance()[0]
+
+    return expvar_ratio_total / np.sqrt(expvar_first)
