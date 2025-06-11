@@ -1192,3 +1192,44 @@ def plot_xcorr(ax, data, **plot_kwargs):
     ax.axvline(0, **axis_kwargs)
 
     return
+
+
+def make_composite(idx, data, peak_month=1, q=0.85):
+    """get composite for data"""
+
+    ## add ensemble dimension if it doesn't exist
+    if "member" not in data.dims:
+        idx = idx.expand_dims("member")
+        data = data.expand_dims("member")
+
+    ## stack member and time dimension
+    idx_ = idx.stack(sample=["member", "time"])
+    data_ = data.stack(sample=["member", "time"])
+    year = idx_.time.dt.year
+    month = idx_.time.dt.month
+
+    ## get valid years and month
+    valid_year = (year > year[0]) & (year < year[-1])
+    is_peak_month = peak_month == month
+    valid_idx = is_peak_month & valid_year
+
+    ## get cutoff
+    cutoff = idx_[valid_idx].quantile(q=q).values.item()
+
+    ## find peak indices
+    peak_idx = np.where((idx_ > cutoff) & valid_idx)[0]
+
+    ## create composite by pulling relevant samples
+    comp = []
+    for j in peak_idx:
+        comp_ = data_.isel(sample=slice(j - 12, j + 13))
+        comp_ = comp_.drop_vars(("sample", "member", "time"))
+        comp_ = comp_.rename({"sample": "lag"})
+        comp_["lag"] = np.arange(-12, 13)
+        comp.append(comp_)
+
+    ## put in xarray format
+    comp = xr.concat(comp, dim=pd.Index(np.arange(len(peak_idx)), name="sample"))
+    comp = comp.mean("sample").transpose("lag", ...)
+
+    return comp
