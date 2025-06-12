@@ -470,12 +470,12 @@ def subplots_with_proj(
     return np.array(fig.get_axes()).reshape(nrows, ncols)
 
 
-def plot_setup_pac(ax):
+def plot_setup_pac(ax, max_lat=30):
     """Plot Pacific region"""
 
     ## trim and add coastlines
     ax.coastlines(linewidth=0.3)
-    ax.set_extent([100, 300, -30, 30], crs=ccrs.PlateCarree())
+    ax.set_extent([100, 300, -max_lat, max_lat], crs=ccrs.PlateCarree())
 
     return ax
 
@@ -757,7 +757,15 @@ def unstack_month_and_year(data):
 
 
 def make_variance_subplots(
-    fig, axs, var0, var1, amp, amp_diff, show_colorbars, cbar_label=None
+    fig,
+    axs,
+    var0,
+    var1,
+    amp,
+    amp_diff,
+    show_colorbars,
+    cbar_label=None,
+    amp_min=0,
 ):
     """make 3-paneled subplots showing variance in ORAS5 and MPI; and (normalized) difference)"""
 
@@ -765,18 +773,21 @@ def make_variance_subplots(
     kwargs = dict(cmap="cmo.amp", transform=ccrs.PlateCarree())
 
     ## get levels for individual plots
-    levels = np.linspace(0, amp, 9)
+    levels = np.linspace(amp_min, amp, 9)
     levels_diff = make_cb_range(amp_diff, amp_diff / 8)
+
+    ## should we extend "both" or "max"?
+    extend = "min" if (amp_min == 0) else "both"
 
     ## plot variance in ORAS5
     plot_data0 = axs[0, 0].contourf(
-        var0.longitude, var0.latitude, var0, levels=levels, extend="max", **kwargs
+        var0.longitude, var0.latitude, var0, levels=levels, extend=extend, **kwargs
     )
     axs[0, 0].set_title("ORAS5")
 
     ## plot variance in MPI
     plot_data1 = axs[1, 0].contourf(
-        var1.longitude, var1.latitude, var1, levels=levels, extend="max", **kwargs
+        var1.longitude, var1.latitude, var1, levels=levels, extend=extend, **kwargs
     )
     axs[1, 0].set_title("MPI")
 
@@ -790,12 +801,8 @@ def make_variance_subplots(
 
     ## add colorbars if desired
     if show_colorbars:
-        fig.colorbar(
-            plot_data0, ax=axs[0, 0], ticks=[0, amp / 2, amp], label=cbar_label
-        )
-        fig.colorbar(
-            plot_data1, ax=axs[1, 0], ticks=[0, amp / 2, amp], label=cbar_label
-        )
+        fig.colorbar(plot_data0, ax=axs[0, 0], ticks=[amp_min, amp], label=cbar_label)
+        fig.colorbar(plot_data1, ax=axs[1, 0], ticks=[amp_min, amp], label=cbar_label)
         fig.colorbar(
             plot_data2, ax=axs[2, 0], ticks=[-amp_diff, 0, amp_diff], label=cbar_label
         )
