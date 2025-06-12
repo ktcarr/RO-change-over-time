@@ -11,6 +11,7 @@ import cartopy.util
 import matplotlib.pyplot as plt
 import scipy.stats
 import copy
+import calendar
 
 
 def spatial_avg(data):
@@ -1294,3 +1295,143 @@ def get_W_tropics_multi(models):
     Ws = [get_W_tropics(model) for model in models]
 
     return scipy.linalg.block_diag(*Ws)
+
+
+def plot_hov(ax, x, beta=1):
+    """plot hovmoller of meridional avg on equator"""
+
+    ## get colorbar levels
+    sst_lev = beta * src.utils.make_cb_range(3, 0.3)
+    ssh_lev = beta * src.utils.make_cb_range(17.5, 2.5)
+
+    ## plot SST
+    cf = ax.contourf(
+        x.longitude,
+        x.lag,
+        x["sst"],
+        cmap="cmo.balance",
+        levels=sst_lev,
+        extend="both",
+    )
+
+    ## thermocline
+    co = ax.contour(
+        x.longitude,
+        x.lag,
+        x["ssh"],
+        colors="k",
+        levels=ssh_lev,
+        extend="both",
+        linewidths=0.8,
+        alpha=0.8,
+    )
+
+    ## set xlimit and add guidelines for Niño 3.4 region
+    ax.set_xlim([120, 280])
+    kwargs = dict(lw=0.5, c="w", ls="--", alpha=0.5)
+    ax.axhline(0, **kwargs)
+    ax.axvline(190, **kwargs)
+    ax.axvline(240, **kwargs)
+
+    return cf, co
+
+
+def label_hov_yaxis(ax, peak_mon):
+    """label y-axis with ±1 year"""
+
+    ## get corresponding month name
+    mon_name = calendar.month_name[peak_mon][:3]
+
+    ## add labels
+    ax.set_yticks(
+        [-12, 0, 12], labels=[f"{mon_name}(-1)", f"{mon_name}(0)", f"{mon_name}(+1)"]
+    )
+
+    return
+
+
+def remove_sst_dependence(ds, sst_idx, remove_from_sst=False):
+    """function to remove linear dependence of variables on SST"""
+
+    ## get h-variables and T-variables
+    if remove_from_sst:
+        h_vars = list(ds)
+        T_vars = []
+    else:
+        h_vars = [n for n in list(ds) if ("h" in n) or ("d20" in n)]
+        T_vars = list(set(list(ds)) - set(h_vars))
+
+    ## create array to hold results
+    ds_hat = copy.deepcopy(ds[h_vars])
+
+    ## add "member" dimension if not included
+    if "member" not in ds.dims:
+        ds_hat = ds_hat.expand_dims("member")
+        sst_idx = sst_idx.expand_dims("member")
+
+    ## make dimensions align
+    ds_hat = ds_hat.transpose("member", ...)
+    sst_idx = sst_idx.transpose("member", ...)
+
+    ## add SST index to array
+    dims = ("member", "time")
+    ds_hat = ds_hat.assign_coords(dict(sst_idx=(dims, sst_idx.data)))
+
+    ## form sample dim
+    ds_hat = ds_hat.stack(sample=["member", "time"])
+
+    ## function to remove linear dependence
+    fn = lambda x: src.utils.detrend_dim(x, deg=1, dim="sst_idx")
+
+    ## remove linear dependence for each month separately
+    ds_hat = ds_hat.groupby("time.month").map(fn).unstack("sample")
+
+    ## drop sst index as dim and add as variable
+    ds_hat = ds_hat.drop_vars("sst_idx")
+
+    ## merge with T-data
+    ds_hat = xr.merge([ds_hat, ds[T_vars]])
+
+    return ds_hat.squeeze()
+
+
+def get_merimean_composite(idx, data, lat_range=[-5, 5], components=None, **kwargs):
+    """Get meridional-mean composite for given index and data"""
+
+    ## raw composite
+    comp = src.utils.make_composite(idx=idx, data=data, **kwargs)
+
+    ## func to get meridional mean
+    get_merimean = lambda x: x.sel(latitude=slice(*lat_range)).mean("latitude")
+
+    ## handle EOF reconstruction
+    if "mode" in data:
+        comp_merimean = src.utils.reconstruct_fn(
+            components=components, scores=comp, fn=get_merimean
+        )
+
+    else:
+        comp_merimean = get_merimean(comp)
+
+    return comp_merimean.transpose("lag", ...)
+
+
+def get_composites(idx, data, components=None):
+    """Get set of three composites for given dataset"""
+
+    ## get data with linear dependence removed
+    data_hat = remove_sst_dependence(data, idx, remove_from_sst=True)
+
+    ## shared arguments
+    kwargs = dict(idx=idx, components=components)
+
+    ## create composites (full data)
+    comp = get_merimean_composite(data=data, **kwargs)
+
+    ## create composites (no Niño 3.4 dependence)
+    comp_hat = get_merimean_composite(data=data_hat, **kwargs)
+
+    ## create composites (only Niño 3.4 dependence)
+    comp_tilde = comp - comp_hat
+
+    return comp, comp_tilde, comp_hat
