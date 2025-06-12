@@ -1301,8 +1301,8 @@ def plot_hov(ax, x, beta=1):
     """plot hovmoller of meridional avg on equator"""
 
     ## get colorbar levels
-    sst_lev = beta * src.utils.make_cb_range(3, 0.3)
-    ssh_lev = beta * src.utils.make_cb_range(17.5, 2.5)
+    sst_lev = beta * make_cb_range(3, 0.3)
+    ssh_lev = beta * make_cb_range(17.5, 2.5)
 
     ## plot SST
     cf = ax.contourf(
@@ -1381,7 +1381,7 @@ def remove_sst_dependence(ds, sst_idx, remove_from_sst=False):
     ds_hat = ds_hat.stack(sample=["member", "time"])
 
     ## function to remove linear dependence
-    fn = lambda x: src.utils.detrend_dim(x, deg=1, dim="sst_idx")
+    fn = lambda x: detrend_dim(x, deg=1, dim="sst_idx")
 
     ## remove linear dependence for each month separately
     ds_hat = ds_hat.groupby("time.month").map(fn).unstack("sample")
@@ -1399,14 +1399,14 @@ def get_merimean_composite(idx, data, lat_range=[-5, 5], components=None, **kwar
     """Get meridional-mean composite for given index and data"""
 
     ## raw composite
-    comp = src.utils.make_composite(idx=idx, data=data, **kwargs)
+    comp = make_composite(idx=idx, data=data, **kwargs)
 
     ## func to get meridional mean
     get_merimean = lambda x: x.sel(latitude=slice(*lat_range)).mean("latitude")
 
     ## handle EOF reconstruction
     if "mode" in data:
-        comp_merimean = src.utils.reconstruct_fn(
+        comp_merimean = reconstruct_fn(
             components=components, scores=comp, fn=get_merimean
         )
 
@@ -1416,20 +1416,17 @@ def get_merimean_composite(idx, data, lat_range=[-5, 5], components=None, **kwar
     return comp_merimean.transpose("lag", ...)
 
 
-def get_composites(idx, data, components=None):
+def get_composites(idx, data, **kwargs):
     """Get set of three composites for given dataset"""
 
     ## get data with linear dependence removed
     data_hat = remove_sst_dependence(data, idx, remove_from_sst=True)
 
-    ## shared arguments
-    kwargs = dict(idx=idx, components=components)
-
     ## create composites (full data)
-    comp = get_merimean_composite(data=data, **kwargs)
+    comp = get_merimean_composite(idx=idx, data=data, **kwargs)
 
     ## create composites (no Niño 3.4 dependence)
-    comp_hat = get_merimean_composite(data=data_hat, **kwargs)
+    comp_hat = get_merimean_composite(idx=idx, data=data_hat, **kwargs)
 
     ## create composites (only Niño 3.4 dependence)
     comp_tilde = comp - comp_hat
