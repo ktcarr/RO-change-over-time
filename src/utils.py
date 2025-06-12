@@ -1194,7 +1194,9 @@ def plot_xcorr(ax, data, **plot_kwargs):
     return
 
 
-def make_composite(idx, data, peak_month=1, q=0.85):
+def make_composite(
+    idx, data, peak_month=1, q=0.85, check_cutoff=lambda x, cut: x > cut
+):
     """get composite for data"""
 
     ## add ensemble dimension if it doesn't exist
@@ -1217,7 +1219,8 @@ def make_composite(idx, data, peak_month=1, q=0.85):
     cutoff = idx_[valid_idx].quantile(q=q).values.item()
 
     ## find peak indices
-    peak_idx = np.where((idx_ > cutoff) & valid_idx)[0]
+    meets_cutoff = check_cutoff(x=idx_, cut=cutoff)
+    peak_idx = np.where(meets_cutoff & valid_idx)[0]
 
     ## create composite by pulling relevant samples
     comp = []
@@ -1266,3 +1269,28 @@ def get_weight(model):
     expvar_first = model.explained_variance()[0]
 
     return expvar_ratio_total / np.sqrt(expvar_first)
+
+
+def get_W_tropics(model):
+    """get weights to subset EOFs to tropics"""
+
+    ## get weighting matrix
+    L = xr.ones_like(model.components().isel(mode=0))
+    L = L.where((L.latitude <= 5) & (L.latitude >= -5), other=0)
+
+    ## get components (fill NaNs with zeros)
+    U = model.components().where(~np.isnan(model.components()), other=0)
+
+    ## get weighting matrix
+    W = np.einsum("kij,ij,lij", U, L, U)
+
+    return W
+
+
+def get_W_tropics_multi(models):
+    """get weights to subset EOFs to tropics"""
+
+    ## Get W matrix for each model
+    Ws = [get_W_tropics(model) for model in models]
+
+    return scipy.linalg.block_diag(*Ws)
