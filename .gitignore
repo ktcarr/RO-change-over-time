@@ -5,6 +5,7 @@ data
 scripts/jupyter.sh
 results/fits*
 results/2025*
+tests/*.nc
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
