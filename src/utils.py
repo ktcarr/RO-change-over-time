@@ -328,6 +328,28 @@ def get_RO_hw(data):
     return spatial_avg(data.sel(idx))
 
 
+def get_RO_T_indices(sst_data):
+    """compute 'T' indices for RO model"""
+    funcs = [get_nino3, get_nino34, get_nino4]
+    names = ["T_3", "T_34", "T_4"]
+
+    ## compute indices
+    indices = xr.merge([f(sst_data).rename(n) for f, n in zip(funcs, names)])
+
+    return indices
+
+
+def get_RO_h_indices(ssh_data):
+    """compute 'T' indices for RO model"""
+    funcs = [get_RO_h, get_RO_hw]
+    names = ["h", "h_w"]
+
+    ## compute indices
+    indices = xr.merge([f(ssh_data).rename(n) for f, n in zip(funcs, names)])
+
+    return indices
+
+
 def get_RO_indices(data, h_var="ssh"):
     """compute possible indices for RO from given dataset"""
 

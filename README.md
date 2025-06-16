@@ -26,3 +26,8 @@ How do recharge oscillator parameters change over time in a large ensemble? What
 - ```src```: custom module containing functions used in ```scripts``` 
 - ```results```: figures and intermediate results (e.g., model parameters)
 - ```tests```: check that certain functions work as expected (e.g., EOF reconstructions)
+
+## Casper login
+1. Go to jupyterhub.hpc.ucar.edu
+2. Login with "UCAR-CIT" credentials (omit ```@ucar.edu```)
+3. Switch to environment: ```Python [conda env:envs]```
