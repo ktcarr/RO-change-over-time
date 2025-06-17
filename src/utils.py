@@ -913,7 +913,12 @@ def plot_cycle_hov(ax, data, **kwargs):
     return plot_data
 
 
-def plot_seasonal_cyc(ax, x, varname, use_quantile=False, **plot_kwargs):
+def apply_along_axis(data, fn, axis_name):
+    """apply function along given axis"""
+    return xr.apply_ufunc(fn, data, input_core_dims=[[axis_name]], kwargs={"axis": -1})
+
+
+def plot_seasonal_cyc(ax, x, varname, fn=np.std, use_quantile=False, **plot_kwargs):
     """print seasonal cycle of data in x on specified ax object"""
 
     ## specify arguments for computing confidence bounds
@@ -923,8 +928,9 @@ def plot_seasonal_cyc(ax, x, varname, use_quantile=False, **plot_kwargs):
         kwargs = dict(center_method="mean", bounds_method="std")
 
     ## func to compute stats
-    get_std = lambda x: x.groupby("time.month").std("time")
-    get_stats = lambda x: get_ensemble_stats(get_std(x[varname]), **kwargs)
+    inner_fn = lambda x: apply_along_axis(x, fn=fn, axis_name="time")
+    outer_fn = lambda x: x.groupby("time.month").map(inner_fn)
+    get_stats = lambda x: get_ensemble_stats(outer_fn(x[varname]), **kwargs)
 
     ## compute std for each dataset
     x_plot = get_stats(x)
@@ -948,6 +954,7 @@ def plot_seasonal_comp(
     x0,
     x1,
     varname="T_34",
+    fn=np.std,
     use_quantile=False,
     plot_kwargs0=dict(),
     plot_kwargs1=dict(),
@@ -956,10 +963,10 @@ def plot_seasonal_comp(
 
     ## plot data
     plot_data0 = plot_seasonal_cyc(
-        ax, x0, varname=varname, use_quantile=use_quantile, **plot_kwargs0
+        ax, x0, varname=varname, fn=fn, use_quantile=use_quantile, **plot_kwargs0
     )
     plot_data1 = plot_seasonal_cyc(
-        ax, x1, varname=varname, use_quantile=use_quantile, **plot_kwargs1
+        ax, x1, varname=varname, fn=fn, use_quantile=use_quantile, **plot_kwargs1
     )
 
     ## format ax
