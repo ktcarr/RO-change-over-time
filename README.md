@@ -31,3 +31,6 @@ How do recharge oscillator parameters change over time in a large ensemble? What
 1. Go to jupyterhub.hpc.ucar.edu
 2. Login with "UCAR-CIT" credentials (omit ```@ucar.edu```)
 3. Switch to environment: ```Python [conda env:envs]```
+
+## Data sources
+CVDP data obtained from ```/glade/campaign/cesm/development/cvcwg/cvwg/CVDP-LE_Data_Repository/cesm2-lens_1850-2100.cvdp_data.tar```
