@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import scipy.stats
 import copy
 import calendar
+import os
 
 
 def spatial_avg(data):
@@ -1461,3 +1462,23 @@ def get_composites(idx, data, **kwargs):
     comp_tilde = comp - comp_hat
 
     return comp, comp_tilde, comp_hat
+
+
+def load_cesm_indices():
+    """Load cesm indices"""
+
+    ## get filepath for cesm data
+    DATA_FP = pathlib.Path(os.environ["DATA_FP"])
+    cesm_fp = DATA_FP / "cesm"
+
+    ## Load T,h
+    Th = xr.open_dataset(cesm_fp / "Th_anom.nc")
+
+    ## load cvdp indices
+    cvdp = xr.open_dataset(cesm_fp / "cvdp_anom.nc", decode_times=False)
+
+    ## remove last timestep for Th data and fix times on cvdp
+    Th = Th.isel(time=slice(None, -1))
+    cvdp["time"] = Th.time
+
+    return xr.merge([Th, cvdp])
