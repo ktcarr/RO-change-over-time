@@ -1202,10 +1202,10 @@ def plot_xcorr(ax, data, **plot_kwargs):
     return
 
 
-def make_composite(
+def make_composite_helper(
     idx, data, peak_month=1, q=0.85, check_cutoff=lambda x, cut: x > cut
 ):
-    """get composite for data"""
+    """get samples for composite (but don't average yet)"""
 
     ## add ensemble dimension if it doesn't exist
     if "member" not in data.dims:
@@ -1241,6 +1241,22 @@ def make_composite(
 
     ## put in xarray format
     comp = xr.concat(comp, dim=pd.Index(np.arange(len(peak_idx)), name="sample"))
+
+    return comp
+
+
+def make_composite(
+    idx, data, peak_month=1, q=0.85, check_cutoff=lambda x, cut: x > cut
+):
+    """get composite for data"""
+
+    ## Get samples for composite
+    kwargs = dict(
+        idx=idx, data=data, peak_month=peak_month, q=q, check_cutoff=check_cutoff
+    )
+    comp = make_composite_helper(**kwargs)
+
+    ## average to create composite
     comp = comp.mean("sample").transpose("lag", ...)
 
     return comp
