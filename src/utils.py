@@ -425,6 +425,47 @@ def reconstruct_var_da(scores, components, fn):
     return fn_var
 
 
+def reconstruct_cov_da(
+    V_x, U_x, fn_x=lambda x: x, V_y=None, U_y=None, fn_y=None,
+):
+    """reconstruct local covariance from projected data"""
+
+    ## handle variance case:
+    if V_y is None:
+        V_y = V_x
+        U_y = U_x
+        fn_y = fn_x
+
+    ## remove means
+    V_x_ = V_x - V_x.mean(["member", "time"])
+    V_y_ = V_y - V_y.mean(["member", "time"])
+
+    ## compute outer product (XX^T)
+    outer_prod = xr.dot(V_x_, V_y_.rename({"mode": "mode_out"}), dim=["time", "member"])
+
+    ## get scaling
+    n = len(V_x.time) * len(V_x.member)
+
+    ## get covariance of projected data
+    V_cov = 1 / n * outer_prod
+
+    ## get latitude weighting for reconstructino
+    coslat_weights = np.sqrt(np.cos(np.deg2rad(U_x.latitude)))
+
+    ## apply function to components
+    fn_x_eval = fn_x(U_x * 1 / coslat_weights)
+    fn_y_eval = fn_y(U_y * 1 / coslat_weights)
+
+    ## now reconstruct spatial field (U @ SVt @ VS) @ U
+    fn_cov = xr.dot(
+        xr.dot(fn_x_eval, V_cov, dim="mode"),
+        fn_y_eval.rename({"mode": "mode_out"}),
+        dim="mode_out",
+    )
+
+    return fn_cov
+
+
 def plot_setup(fig, lon_range, lat_range):
     """Add a subplot to the figure with the given map projection
     and lon/lat range. Returns an Axes object."""
