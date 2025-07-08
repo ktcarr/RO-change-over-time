@@ -426,7 +426,12 @@ def reconstruct_var_da(scores, components, fn):
 
 
 def reconstruct_cov_da(
-    V_x, U_x, fn_x=lambda x: x, V_y=None, U_y=None, fn_y=None,
+    V_x,
+    U_x,
+    fn_x=lambda x: x,
+    V_y=None,
+    U_y=None,
+    fn_y=None,
 ):
     """reconstruct local covariance from projected data"""
 
@@ -434,6 +439,7 @@ def reconstruct_cov_da(
     if V_y is None:
         V_y = V_x
         U_y = U_x
+    if fn_y is None:
         fn_y = fn_x
 
     ## remove means
