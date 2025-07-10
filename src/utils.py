@@ -1507,3 +1507,47 @@ def get_composites(idx, data, **kwargs):
     comp_tilde = comp - comp_hat
 
     return comp, comp_tilde, comp_hat
+
+
+def regress_core(Y, X, dim="time"):
+    """compute regression for Y onto X"""
+
+    ## compute covariance
+    cov = xr.cov(X, Y, dim=dim, ddof=0)
+
+    ## get variance (and add small number to prevent overflow)
+    var_X = X.var(dim=dim) + np.finfo(np.float32).eps
+
+    return cov / var_X
+
+
+def regress(data, y_var, x_var, fn_x=lambda x: x):
+    """compute regression for y_var onto x_var"""
+
+    ## apply fn_x to x data
+    fn_x_eval = fn_x(data[x_var])
+
+    return regress_core(Y=data[y_var], X=fn_x_eval, dim="time")
+
+
+def regress_proj(data, y_var, x_var, fn_x=lambda x: x, fn_y=lambda x: x):
+    """compute regression for y_var onto x_var, from projected data"""
+
+    ## compute covariance
+    cov = reconstruct_cov_da(
+        V_y=data[y_var],
+        V_x=data[x_var],
+        U_y=data[f"{y_var}_comp"],
+        U_x=data[f"{x_var}_comp"],
+        fn_x=fn_x,
+        fn_y=fn_y,
+    )
+
+    ## compute variance
+    var_X = reconstruct_var(
+        scores=data[x_var],
+        components=data[f"{x_var}_comp"],
+        fn=fn_x,
+    )
+
+    return cov / var_X
