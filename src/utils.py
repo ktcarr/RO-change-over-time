@@ -641,6 +641,11 @@ def plot_box(ax, lons, lats, **kwargs):
     return
 
 
+def plot_nino4_box(ax, **kwargs):
+    """outline Niño 4 region"""
+    return plot_box(ax, lons=[160, 210], lats=[-5, 5], **kwargs)
+
+
 def plot_nino34_box(ax, **kwargs):
     """outline Niño 3.4 region"""
     return plot_box(ax, lons=[190, 240], lats=[-5, 5], **kwargs)
