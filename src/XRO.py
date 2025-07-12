@@ -1290,6 +1290,7 @@ class XRO(object):
         # use discrete noise equation
         noise_ds = gen_noise(
             stddev=stddev,
+            cov=cov,
             nyear=nyear,
             ncopy=ncopy,
             seed=seed,
@@ -1383,6 +1384,7 @@ class XRO(object):
         else:
             noise_full = gen_noise(
                 stddev=stddev,
+                cov=cov,
                 nyear=nyear,
                 ncopy=ncopy,
                 seed=seed,
@@ -1820,6 +1822,7 @@ def get_mask_array(full_vars, mask_vars):
 
 def gen_noise(
     stddev,
+    cov,
     nyear=50,
     ncopy=1,
     init=None,
