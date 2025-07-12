@@ -448,6 +448,53 @@ def reconstruct_var_da(scores, components, fn):
     return fn_var
 
 
+def reconstruct_cov_da(
+    V_x,
+    U_x,
+    fn_x=lambda x: x,
+    V_y=None,
+    U_y=None,
+    fn_y=None,
+):
+    """reconstruct local covariance from projected data"""
+
+    ## handle variance case:
+    if V_y is None:
+        V_y = V_x
+        U_y = U_x
+    if fn_y is None:
+        fn_y = fn_x
+
+    ## remove means
+    V_x_ = V_x - V_x.mean(["member", "time"])
+    V_y_ = V_y - V_y.mean(["member", "time"])
+
+    ## compute outer product (XX^T)
+    outer_prod = xr.dot(V_x_, V_y_.rename({"mode": "mode_out"}), dim=["time", "member"])
+
+    ## get scaling
+    n = len(V_x.time) * len(V_x.member)
+
+    ## get covariance of projected data
+    V_cov = 1 / n * outer_prod
+
+    ## get latitude weighting for reconstructino
+    coslat_weights = np.sqrt(np.cos(np.deg2rad(U_x.latitude)))
+
+    ## apply function to components
+    fn_x_eval = fn_x(U_x * 1 / coslat_weights)
+    fn_y_eval = fn_y(U_y * 1 / coslat_weights)
+
+    ## now reconstruct spatial field (U @ SVt @ VS) @ U
+    fn_cov = xr.dot(
+        xr.dot(fn_x_eval, V_cov, dim="mode"),
+        fn_y_eval.rename({"mode": "mode_out"}),
+        dim="mode_out",
+    )
+
+    return fn_cov
+
+
 def plot_setup(fig, lon_range, lat_range):
     """Add a subplot to the figure with the given map projection
     and lon/lat range. Returns an Axes object."""
@@ -615,6 +662,11 @@ def plot_box(ax, lons, lats, **kwargs):
     )
 
     return
+
+
+def plot_nino4_box(ax, **kwargs):
+    """outline Niño 4 region"""
+    return plot_box(ax, lons=[160, 210], lats=[-5, 5], **kwargs)
 
 
 def plot_nino34_box(ax, **kwargs):
@@ -1232,10 +1284,10 @@ def plot_xcorr(ax, data, **plot_kwargs):
     return
 
 
-def make_composite(
+def make_composite_helper(
     idx, data, peak_month=1, q=0.85, check_cutoff=lambda x, cut: x > cut
 ):
-    """get composite for data"""
+    """get samples for composite (but don't average yet)"""
 
     ## add ensemble dimension if it doesn't exist
     if "member" not in data.dims:
@@ -1271,6 +1323,22 @@ def make_composite(
 
     ## put in xarray format
     comp = xr.concat(comp, dim=pd.Index(np.arange(len(peak_idx)), name="sample"))
+
+    return comp
+
+
+def make_composite(
+    idx, data, peak_month=1, q=0.85, check_cutoff=lambda x, cut: x > cut
+):
+    """get composite for data"""
+
+    ## Get samples for composite
+    kwargs = dict(
+        idx=idx, data=data, peak_month=peak_month, q=q, check_cutoff=check_cutoff
+    )
+    comp = make_composite_helper(**kwargs)
+
+    ## average to create composite
     comp = comp.mean("sample").transpose("lag", ...)
 
     return comp
@@ -1489,3 +1557,47 @@ def load_cesm_indices():
     cvdp["time"] = Th.time
 
     return xr.merge([Th, cvdp])
+
+
+def regress_core(Y, X, dim="time"):
+    """compute regression for Y onto X"""
+
+    ## compute covariance
+    cov = xr.cov(X, Y, dim=dim, ddof=0)
+
+    ## get variance (and add small number to prevent overflow)
+    var_X = X.var(dim=dim) + np.finfo(np.float32).eps
+
+    return cov / var_X
+
+
+def regress(data, y_var, x_var, fn_x=lambda x: x):
+    """compute regression for y_var onto x_var"""
+
+    ## apply fn_x to x data
+    fn_x_eval = fn_x(data[x_var])
+
+    return regress_core(Y=data[y_var], X=fn_x_eval, dim="time")
+
+
+def regress_proj(data, y_var, x_var, fn_x=lambda x: x, fn_y=lambda x: x):
+    """compute regression for y_var onto x_var, from projected data"""
+
+    ## compute covariance
+    cov = reconstruct_cov_da(
+        V_y=data[y_var],
+        V_x=data[x_var],
+        U_y=data[f"{y_var}_comp"],
+        U_x=data[f"{x_var}_comp"],
+        fn_x=fn_x,
+        fn_y=fn_y,
+    )
+
+    ## compute variance
+    var_X = reconstruct_var(
+        scores=data[x_var],
+        components=data[f"{x_var}_comp"],
+        fn=fn_x,
+    )
+
+    return cov / var_X

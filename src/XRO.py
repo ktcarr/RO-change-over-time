@@ -978,6 +978,22 @@ class XRO(object):
         fit_X = res_L["X"].sel(ranky=1).drop("ranky")
         res_L["X"] = fit_X
 
+        #### Compute noise covariance
+        ## keyword args
+        cov_kwargs = dict(outer_dim="ranky", cov_dim="time")
+
+        ## compute error
+        error = res_L["Yfit"] - res_L["Y"]
+
+        ## stationary covariance
+        res_L["xi_cov"] = cov_xr(error, **cov_kwargs)
+
+        ## cyclostationary covariance
+        month = np.round(np.mod(res_L["time"], 1), 3)
+        xi_covac = error.groupby(month).map(cov_xr, **cov_kwargs)
+        xi_covac = xi_covac.rename({"time": "cycle"})
+        res_L["xi_covac"] = xi_covac.assign_coords({"cycle": res_L.cycle})
+
         # get eigs and norm operators
         xr_norm = self.get_norm_fit(res_L)
 
@@ -1156,7 +1172,7 @@ class XRO(object):
                 - NROH (numpy.ndarray): Nonlinear RO terms for the ENSO H equation.
         """
         Lac_da = fit_ds["Lac"]
-        Noise_ds = fit_ds[["xi_stdac", "xi_std", "xi_a1"]]
+        Noise_ds = fit_ds[["xi_stdac", "xi_std", "xi_a1", "xi_cov", "xi_covac"]]
         NLb_da = fit_ds.get("NLb_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop("rankx")))
         NLc_da = fit_ds.get("NLc_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop("rankx")))
         #
@@ -1175,12 +1191,14 @@ class XRO(object):
 
         if is_xi_stdac:
             stddev = Noise_ds["xi_stdac"].values
+            cov = Noise_ds["xi_covac"].values
         else:
             stddev = Noise_ds["xi_std"].values
+            cov = Noise_ds["xi_cov"].values
 
         NLb = NLb_da.values
         NLc = NLc_da.values
-        return Lac, a1, stddev, NLb, NLc, NROT, NROH
+        return Lac, a1, stddev, cov, NLb, NLc, NROT, NROH
 
     # --------------------------------------------------------------------------
     # XRO solving part
@@ -1235,6 +1253,7 @@ class XRO(object):
         is_xi_stdac=True,
         xi_B=None,
         is_heaviside=False,
+        use_noise_cov=False,
     ):
         """
         Simulates the time evolution of the system using the fitted model parameters.
@@ -1251,6 +1270,7 @@ class XRO(object):
             is_xi_stdac (bool, optional): If True, uses the standard deviation of the autocorrelated noise. Default is True.
             xi_B (float or np.ndarray, optional): Scaling factor for noise perturbation. Default is None.
             is_heaviside (bool, optional): If True, applies a Heaviside function to the noise factor. Default is False.
+            use_noise_cov (bool, optional): If True, account for covariance of residuals when generating noise
 
         Returns:
             xarray.Dataset: Simulated state evolution over time.
@@ -1263,18 +1283,20 @@ class XRO(object):
         dt = 1.0 / ncycle / nstep
         n_time = ncycle * nyear
 
-        Lac, a1, stddev, NLb, NLc, NROT, NROH = self._retrieve_fit_parameters(
+        Lac, a1, stddev, cov, NLb, NLc, NROT, NROH = self._retrieve_fit_parameters(
             fit_ds, is_xi_stdac
         )
 
         # use discrete noise equation
         noise_ds = gen_noise(
             stddev=stddev,
+            cov=cov,
             nyear=nyear,
             ncopy=ncopy,
             seed=seed,
             noise_type=noise_type,
             a1=a1,
+            use_noise_cov=use_noise_cov,
         )
         Bcoef = _B_coeff(rank_y, ncopy, B=xi_B)
         if is_heaviside:
@@ -1353,7 +1375,7 @@ class XRO(object):
         nyear = int(np.ceil(n_month / 12)) + 1
         members = np.arange(0, ncopy, step=1).astype(np.int32)
 
-        Lac, a1, stddev, NLb, NLc, NROT, NROH = self._retrieve_fit_parameters(
+        Lac, a1, stddev, cov, NLb, NLc, NROT, NROH = self._retrieve_fit_parameters(
             fit_ds, is_xi_stdac
         )
 
@@ -1362,6 +1384,7 @@ class XRO(object):
         else:
             noise_full = gen_noise(
                 stddev=stddev,
+                cov=cov,
                 nyear=nyear,
                 ncopy=ncopy,
                 seed=seed,
@@ -1798,7 +1821,15 @@ def get_mask_array(full_vars, mask_vars):
 
 
 def gen_noise(
-    stddev, nyear=50, ncopy=1, init=None, seed=None, noise_type="white", a1=None
+    stddev,
+    cov,
+    nyear=50,
+    ncopy=1,
+    init=None,
+    seed=None,
+    use_noise_cov=False,
+    noise_type="white",
+    a1=None,
 ):
     """
     generate noise with amplitude of seasonal standard deviation (seastd)
@@ -1839,9 +1870,19 @@ def gen_noise(
     elif noise_type == "white":
         for iy in range(nyear):
             for ic in range(ncycle):
-                noise_ts[:, iy * ncycle + ic, :] = stddev[
-                    :, ic, np.newaxis
-                ] * np.random.normal(size=(ranky, ncopy))
+
+                if use_noise_cov:
+                    ## using correlated noise
+                    M = get_M(cov[:, ic])
+                    n = np.random.normal(size=(ranky, ncopy))
+                    noise_ts[:, iy * ncycle + ic, :] = M @ n
+
+                else:
+                    ## using uncorrelated noise (original)
+                    noise_ts[:, iy * ncycle + ic, :] = stddev[
+                        :, ic, np.newaxis
+                    ] * np.random.normal(size=(ranky, ncopy))
+
     else:
         raise ValueError("Invalid noise_type. Must be 'white' or 'red'.")
 
@@ -1887,3 +1928,28 @@ def variable_model_to_xarray(model_X, var_names):
         else:
             model_ds[var] = tmp_var
     return model_ds
+
+
+def cov_xr(data, outer_dim="ranky", cov_dim="time"):
+    """compute covariance of 2-D data along specified dimension"""
+
+    ## get number of samples
+    n = len(data[cov_dim])
+
+    ## remove mean
+    X = data - data.mean(cov_dim)
+    Xt = X.rename({outer_dim: f"{outer_dim}_"})
+
+    ## outer product
+    XXt = (X * Xt).sum(cov_dim)
+
+    return 1 / n * XXt
+
+
+def get_M(cov):
+    """get matrix 'M' satisfying M@M.T = cov"""
+
+    ## compute svd
+    U, s, _ = np.linalg.svd(cov)
+
+    return U @ np.diag(np.sqrt(s))
