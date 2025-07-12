@@ -455,35 +455,17 @@ class XRO(object):
         xi_a1 = _calc_a1(xr_residual, maxlags=self.maxlags)
         xi_lambda = -np.log(xi_a1) / delta_tim
 
-        ## some helper functions for reshaping/renaming noise
-        def expand_cycle_coord(x):
-            """expand 'cycle' dimension"""
-            return x.expand_dims(dim={"cycle": cycle}).transpose(..., "cycle")
-
-        def update_cycle_coord(x):
-            return x.rename({"cycle_idx": "cycle"}).assign_coords({"cycle": cycle})
-
-        # seasonally-varying noise
+        # noise memory (red noise standard devition)
         xr_stdac = xr_residual.groupby("cycle_idx").std("time")
-        xr_stdac = update_cycle_coord(xr_stdac)
+        xr_stdac = xr_stdac.rename({"cycle_idx": "cycle"}).assign_coords(
+            {"cycle": cycle}
+        )
+        xi_std = (
+            xr_residual.std(dim="time")
+            .expand_dims(dim={"cycle": cycle})
+            .transpose(..., "cycle")
+        )
 
-        ## stationary noise
-        xi_std = xr_residual.std(dim="time")
-        xi_std = expand_cycle_coord(xi_std)
-
-        ## noise covariance
-        cov_kwargs = dict(outer_dim="ranky", cov_dim="time")
-
-        # first, different for each month
-        xi_covac = xr_residual.groupby("cycle_idx").map(cov_xr, **cov_kwargs)
-        xi_covac = update_cycle_coord(xi_covac)
-
-        # then, over all months
-        print(xr_residual.shape)
-        xi_cov = cov_xr(xr_residual, **cov_kwargs)
-        xi_cov = expand_cycle_coord(xi_cov)
-
-        ## get actual/forecast values
         y_stdac = (
             xr_Yraw.groupby("cycle_idx")
             .std("time")
@@ -508,8 +490,6 @@ class XRO(object):
                 "corr": xr_corr,
                 "xi_std": xi_std,
                 "xi_stdac": xr_stdac,
-                "xi_cov": xi_cov,
-                "xi_covac" : xi_covac,
                 "xi_a1": xi_a1,
                 "xi_lambda": xi_lambda,
                 "Y_stdac": y_stdac,
@@ -997,6 +977,22 @@ class XRO(object):
         #
         fit_X = res_L["X"].sel(ranky=1).drop("ranky")
         res_L["X"] = fit_X
+
+        #### Compute noise covariance
+        ## keyword args
+        cov_kwargs = dict(outer_dim="ranky", cov_dim="time")
+
+        ## compute error
+        error = res_L["Yfit"] - res_L["Y"]
+
+        ## stationary covariance
+        res_L["xi_cov"] = cov_xr(error, **cov_kwargs)
+
+        ## cyclostationary covariance
+        month = np.round(np.mod(res_L["time"], 1), 3)
+        xi_covac = error.groupby(month).map(cov_xr, **cov_kwargs)
+        xi_covac = xi_covac.rename({"time": "cycle"})
+        res_L["xi_covac"] = xi_covac.assign_coords({"cycle": res_L.cycle})
 
         # get eigs and norm operators
         xr_norm = self.get_norm_fit(res_L)
