@@ -965,6 +965,131 @@ def plot_cycle_hov(ax, data, **kwargs):
     return plot_data
 
 
+def plot_cycle_hov_v2(ax, data, amp, is_filled=True):
+    """plot data on ax object"""
+
+    ## specify shared kwargs
+    shared_kwargs = dict(levels=make_cb_range(amp, amp / 5), extend="both")
+
+    ## specify kwargs
+    if is_filled:
+        plot_fn = ax.contourf
+        kwargs = dict(cmap="cmo.balance")
+
+    else:
+        plot_fn = ax.contour
+        kwargs = dict(colors="k", linewidths=0.8)
+
+    def merimean(x):
+        """helper func. to compute meridional mean"""
+        kwargs = dict(longitude=slice(140, 285), latitude=slice(-5, 5))
+        return x.sel(**kwargs).mean("latitude")
+
+    ## do the plotting
+    cp = plot_fn(
+        merimean(data).longitude,
+        merimean(data).month,
+        merimean(data),
+        **kwargs,
+        **shared_kwargs,
+    )
+
+    ## format ax object
+    xticks = [160, 210]
+    kwargs = dict(c="w", ls="--", lw=1)
+    ax.set_xlabel("Lon")
+    ax.set_xticks(xticks)
+    for tick in xticks:
+        ax.axvline(tick, **kwargs)
+
+    return cp
+
+
+def make_pcolor_plot(ax, x, amp, sel=lambda x: x.mean("month")):
+    """plot data on ax object"""
+    cp = ax.pcolormesh(
+        x.longitude,
+        x.latitude,
+        sel(x),
+        vmax=amp,
+        vmin=-amp,
+        cmap="cmo.balance",
+        transform=ccrs.PlateCarree(),
+    )
+
+    return cp0
+
+
+def make_contour_plot(ax, x, amp, sel=lambda x: x.mean("month")):
+    """plot data on ax object"""
+    cp = ax.contourf(
+        x.longitude,
+        x.latitude,
+        sel(x),
+        levels=src.utils.make_cb_range(amp, amp / 10),
+        cmap="cmo.balance",
+        transform=ccrs.PlateCarree(),
+        extend="both",
+    )
+
+    return cp
+
+
+def get_bias(data, ref_data):
+    """get bias, accounting for grid differences
+    1. reverse direction of latitude
+    2. get longitudes to match
+    """
+
+    ## get target grid
+    grid = dict(longitude=ref_data.longitude, latitude=ref_data.latitude)
+
+    return data.interp(grid) - ref_data
+
+
+def make_scatter(ax, data, x_var, y_var, fn_x, fn_y, scale=1):
+    """scatter plot data on axis"""
+
+    ## evaluate functions
+    if "mode" in data.dims:
+        fn_x_eval = reconstruct_fn(
+            scores=data[x_var], components=data[f"{x_var}_comp"], fn=fn_x
+        )
+        fn_y_eval = reconstruct_fn(
+            scores=data[y_var], components=data[f"{y_var}_comp"], fn=fn_y
+        )
+
+        ## stack member/time dim
+        stack = lambda x: x.stack(sample=["member", "time"])
+        fn_x_eval = stack(fn_x_eval)
+        fn_y_eval = stack(fn_y_eval)
+        dim = "sample"
+
+    else:
+        fn_x_eval = fn_x(data[x_var])
+        fn_y_eval = fn_y(data[y_var])
+        dim = "time"
+
+    ## compute slope for best fit line
+    slope = regress_core(X=fn_x_eval, Y=scale * fn_y_eval, dim=dim)
+
+    ## convert to numpy
+    slope = slope.values.item()
+
+    ## plot data
+    ax.scatter(fn_x_eval, scale * fn_y_eval, s=0.5)
+
+    ## plot best fit
+    xtest = np.linspace(fn_x_eval.values.min(), fn_x_eval.values.max())
+    ax.plot(xtest, slope * xtest, c="k", lw=1)
+
+    ## plot some guidelines
+    ax.axhline(0, ls="--", lw=0.8, c="k")
+    ax.axvline(0, ls="--", lw=0.8, c="k")
+
+    return slope
+
+
 def apply_along_axis(data, fn, axis_name):
     """apply function along given axis"""
     return xr.apply_ufunc(fn, data, input_core_dims=[[axis_name]], kwargs={"axis": -1})
