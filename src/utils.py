@@ -1005,6 +1005,66 @@ def plot_cycle_hov_v2(ax, data, amp, is_filled=True):
     return cp
 
 
+def plot_cycle_hov_v3(ax, data, amp, is_filled=True):
+    """plot data on ax object"""
+
+    ## specify shared kwargs
+    shared_kwargs = dict(levels=make_cb_range(amp, amp / 5), extend="both")
+
+    ## specify kwargs
+    if is_filled:
+        plot_fn = ax.contourf
+        kwargs = dict(cmap="cmo.balance")
+
+    else:
+        plot_fn = ax.contour
+        kwargs = dict(colors="k", linewidths=0.8)
+
+    def merimean(x):
+        """helper func. to compute meridional mean"""
+        kwargs = dict(longitude=slice(140, 285), latitude=slice(-5, 5))
+        return x.sel(**kwargs).mean("latitude")
+
+    ## do the plotting
+    cp = plot_fn(
+        merimean(data).longitude,
+        merimean(data).month,
+        merimean(data),
+        **kwargs,
+        **shared_kwargs,
+    )
+
+    ## xticks
+    xticks = [160, 210, 240]
+    kwargs = dict(c="w", ls="--", lw=1)
+    ax.set_xticks(xticks)
+    for tick in xticks:
+        ax.axvline(tick, **kwargs)
+
+    ## yticks
+    ax.set_yticks([3, 10], labels=["Mar", "Oct"])
+
+    return cp
+
+
+def format_hov_v3(axs):
+    """format plot for plot_cycle_hov_v3"""
+
+    axs[0].set_xticks([160, 210, 240])
+    axs[0].set_xlabel("Lon")
+    axs[0].xaxis.set_label_position("top")
+    axs[0].xaxis.tick_top()
+    axs[0].set_ylabel("Coefficients")
+    axs[1].set_xticks([])
+    axs[1].set_ylabel("Bias")
+    axs[1].set_xlabel(None)
+
+    for ax in axs:
+        ax.yaxis.set_label_position("right")
+
+    return axs
+
+
 def make_pcolor_plot(ax, x, amp, sel=lambda x: x.mean("month")):
     """plot data on ax object"""
     cp = ax.pcolormesh(
