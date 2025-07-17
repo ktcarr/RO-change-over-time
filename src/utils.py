@@ -1035,9 +1035,9 @@ def plot_cycle_hov_v3(ax, data, amp, is_filled=True):
     )
 
     ## xticks
+    ax.set_xticks([])
     xticks = [160, 210, 240]
     kwargs = dict(c="w", ls="--", lw=1)
-    ax.set_xticks(xticks)
     for tick in xticks:
         ax.axvline(tick, **kwargs)
 
@@ -1055,9 +1055,7 @@ def format_hov_v3(axs):
     axs[0].xaxis.set_label_position("top")
     axs[0].xaxis.tick_top()
     axs[0].set_ylabel("Coefficients")
-    axs[1].set_xticks([])
     axs[1].set_ylabel("Bias")
-    axs[1].set_xlabel(None)
 
     for ax in axs:
         ax.yaxis.set_label_position("right")
