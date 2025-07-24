@@ -239,12 +239,24 @@ def unzip_tuples_to_arrays(list_of_tuples):
     return y_arr, x_arr
 
 
+def get_coslat_weights(components):
+    """helper function: return coslat weights if 'latitude' is in components;
+    otherwise, return 1"""
+
+    ## Cosine-latitude weights
+    if "latitude" in components.coords:
+        return np.sqrt(np.cos(np.deg2rad(components.latitude)))
+
+    else:
+        return 1.0
+
+
 def reconstruct_fn_da(components, scores, fn):
     """reconstruct function of spatial data from PCs. Assumes
     components and scores are xr.DataArrays"""
 
     ## get latitude weighting for components
-    coslat_weights = np.sqrt(np.cos(np.deg2rad(components.latitude)))
+    coslat_weights = get_coslat_weights(components)
 
     ## evaluate function on spatial components
     fn_eval = fn(components * 1 / coslat_weights)
@@ -431,7 +443,7 @@ def reconstruct_var_da(scores, components, fn):
     scores_cov = 1 / n * outer_prod
 
     ## get latitude weighting for reconstructino
-    coslat_weights = np.sqrt(np.cos(np.deg2rad(components.latitude)))
+    coslat_weights = get_coslat_weights(components)
 
     ## apply function to components
     if fn is None:
@@ -479,11 +491,11 @@ def reconstruct_cov_da(
     V_cov = 1 / n * outer_prod
 
     ## get latitude weighting for reconstructino
-    coslat_weights = np.sqrt(np.cos(np.deg2rad(U_x.latitude)))
+    weights = get_coslat_weights(components=U_x)
 
     ## apply function to components
-    fn_x_eval = fn_x(U_x * 1 / coslat_weights)
-    fn_y_eval = fn_y(U_y * 1 / coslat_weights)
+    fn_x_eval = fn_x(U_x * 1 / weights)
+    fn_y_eval = fn_y(U_y * 1 / weights)
 
     ## now reconstruct spatial field (U @ SVt @ VS) @ U
     fn_cov = xr.dot(
