@@ -491,11 +491,12 @@ def reconstruct_cov_da(
     V_cov = 1 / n * outer_prod
 
     ## get latitude weighting for reconstructino
-    weights = get_coslat_weights(components=U_x)
+    weights_x = get_coslat_weights(components=U_x)
+    weights_y = get_coslat_weights(components=U_y)
 
     ## apply function to components
-    fn_x_eval = fn_x(U_x * 1 / weights)
-    fn_y_eval = fn_y(U_y * 1 / weights)
+    fn_x_eval = fn_x(U_x * 1 / weights_x)
+    fn_y_eval = fn_y(U_y * 1 / weights_y)
 
     ## now reconstruct spatial field (U @ SVt @ VS) @ U
     fn_cov = xr.dot(
