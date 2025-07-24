@@ -852,7 +852,7 @@ def make_variance_subplots(
     levels_diff = make_cb_range(amp_diff, amp_diff / 8)
 
     ## should we extend "both" or "max"?
-    extend = "min" if (amp_min == 0) else "both"
+    extend = "max" if (amp_min == 0) else "both"
 
     ## plot variance in ORAS5
     plot_data0 = axs[0, 0].contourf(
