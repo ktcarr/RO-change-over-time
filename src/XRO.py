@@ -26,6 +26,7 @@ If you encounter problems in running `XRO` or have questions, please feel free t
 import numpy as np
 import xarray as xr
 import src.utils
+import tqdm
 
 
 class XRO(object):
@@ -1465,7 +1466,7 @@ class XRO(object):
         var_names = list(init_ds.data_vars)
         X = variable_xarray_to_model(init_ds, ncycle=len(fit_ds.cycle))
 
-        for i, init_t in enumerate(range(len(X.time))):
+        for i, init_t in tqdm.tqdm(enumerate(range(len(X.time)))):
             t0_cycle = np.mod(init_t + t0_mon, len(fit_ds.cycle))
             X0 = X.isel(time=init_t).values
             t0 = X.time[init_t]
