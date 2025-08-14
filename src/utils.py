@@ -13,6 +13,7 @@ import scipy.stats
 import copy
 import calendar
 import os
+import src.XRO
 
 
 def spatial_avg(data):
@@ -1797,3 +1798,46 @@ def regress_proj(data, y_var, x_var, fn_x=lambda x: x, fn_y=lambda x: x):
     )
 
     return cov / var_X
+
+
+def remove_sst_dependence_core(h, T, dims=["time", "member"]):
+    """function to remove linear dependence of h on T"""
+
+    ## get covariance/variance
+    cov = xr.cov(h, T, dim=dims, ddof=0)
+    var = T.var(dim=dims)
+
+    ## remove linear dependence
+    return h - cov / var * T
+
+
+def remove_sst_dependence_v2(Th, T_var="T_3", h_var="h_w", dims=["time", "member"]):
+    """remove sst dependence by month"""
+
+    helper_fn = lambda x: remove_sst_dependence_core(h=x[h_var], T=x[T_var], dims=dims)
+
+    ## apply to each month
+    return Th.groupby("time.month").map(helper_fn)
+
+
+def get_ddt(ds):
+    """compute time derivative for each variable in dataset"""
+
+    ## transpose so time is last dimension
+    ds = ds.transpose(..., "time")
+
+    ## loop through variables
+    for n in list(ds):
+
+        if f"ddt" in n:
+            pass
+
+        elif "comp" in n:
+            ds[f"ddt_{n}"] = ds[n]
+
+        else:
+            ## create empty variable and fill with gradient
+            ds[f"ddt_{n}"] = xr.zeros_like(ds[n])
+            ds[f"ddt_{n}"].values = src.XRO.gradient(ds[n].values)
+
+    return ds
