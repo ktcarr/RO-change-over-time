@@ -1803,6 +1803,39 @@ def regress_proj(data, y_var, x_var, fn_x=lambda x: x, fn_y=lambda x: x):
     return cov / var_X
 
 
+def multi_regress(data, y_var, x_vars):
+    """multiple linear regression"""
+
+    ## Get covariates and targets
+    X = data[x_vars].to_dataarray(dim="i")
+    Y = data[y_var]
+
+    ## compute covariance matrices
+    YXt = xr.cov(Y, X, dim=["member", "time"])
+    XXt = xr.cov(X, X.rename({"i": "j"}), dim=["member", "time"])
+
+    ## invert XX^T
+    XXt_inv = xr.zeros_like(XXt)
+    XXt_inv.values = np.linalg.inv(XXt.values)
+
+    ## get least-squares fit, YX^T @ (XX^T)^{-1}
+    m_proj = (YXt * XXt_inv).sum("i")
+
+    # ## reconstruct spatial fields
+    m = src.utils.reconstruct_fn(
+        scores=m_proj,
+        components=data[f"{y_var}_comp"],
+        fn=lambda x: x,
+    )
+
+    return m.to_dataset(dim="j")
+
+
+def multi_regress_bymonth(data, y_var, x_vars):
+    """do multiple linear regression for each month separately"""
+    return data.groupby("time.month").map(multi_regress, y_var=y_var, x_vars=x_vars)
+
+
 def remove_sst_dependence_core(h, T, dims=["time", "member"]):
     """function to remove linear dependence of h on T"""
 
