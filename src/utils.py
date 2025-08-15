@@ -248,6 +248,9 @@ def get_coslat_weights(components):
     if "latitude" in components.coords:
         return np.sqrt(np.cos(np.deg2rad(components.latitude)))
 
+    elif "lat" in components.coords:
+        return np.sqrt(np.cos(np.deg2rad(components.lat)))
+
     else:
         return 1.0
 
