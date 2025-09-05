@@ -1101,7 +1101,7 @@ def make_contour_plot(ax, x, amp, sel=lambda x: x.mean("month")):
         x.longitude,
         x.latitude,
         sel(x),
-        levels=src.utils.make_cb_range(amp, amp / 10),
+        levels=make_cb_range(amp, amp / 10),
         cmap="cmo.balance",
         transform=ccrs.PlateCarree(),
         extend="both",
@@ -1822,7 +1822,7 @@ def multi_regress(data, y_var, x_vars):
     m_proj = (YXt * XXt_inv).sum("i")
 
     # ## reconstruct spatial fields
-    m = src.utils.reconstruct_fn(
+    m = reconstruct_fn(
         scores=m_proj,
         components=data[f"{y_var}_comp"],
         fn=lambda x: x,
@@ -1877,3 +1877,278 @@ def get_ddt(ds):
             ds[f"ddt_{n}"].values = src.XRO.gradient(ds[n].values)
 
     return ds
+
+
+def get_THF(bar, prime):
+    """thermocline feedback"""
+    return get_wdTdz(w=bar["w"], T=prime["T"])
+
+
+def get_EKM(bar, prime):
+    """thermocline feedback"""
+    return get_wdTdz(T=bar["T"], w=prime["w"])
+
+
+def get_ZAF(bar, prime):
+    """zonal advective feedback"""
+    return -get_udTdx(T=bar["T"], u=prime["u"])
+
+
+def get_DD(bar, prime):
+    """dynamical damping"""
+    return -get_udTdx(T=prime["T"], u=bar["u"])
+
+
+def get_feedbacks(bar, prime):
+    """
+    Given bar and prime for {u,w,T}, compute following feedbacks:
+        - thermocline
+        - Ekman
+        - zonal advective
+        - dynamical damping
+    """
+
+    ## initialize dataset
+    feedbacks = xr.Dataset()
+
+    ## compute
+    feedbacks["THF"] = get_THF(bar, prime)
+    feedbacks["EKM"] = get_EKM(bar, prime)
+    feedbacks["ZAF"] = get_ZAF(bar, prime)
+    feedbacks["DD"] = get_DD(bar, prime)
+    feedbacks["ADV"] = (
+        feedbacks["THF"] + feedbacks["EKM"] + feedbacks["ZAF"] + feedbacks["DD"]
+    )
+
+    return feedbacks
+
+
+def decompose_feedback_change(
+    bar_early,
+    bar_late,
+    prime_early,
+    prime_late,
+    feedback_fn,
+    prefix="",
+):
+    """
+    Decompose feedback change into:
+        - "mean" component
+        - "anomaly" component
+        - "nonlinear" component
+    """
+
+    ## empty dataset to hold result
+    feedback_change = xr.Dataset()
+
+    ## compute differences
+    delta_bar = bar_late - bar_early
+    delta_prime = prime_late - prime_early
+
+    ## compute
+    feedback_change[f"{prefix}_mean"] = feedback_fn(delta_bar, prime_early)
+    feedback_change[f"{prefix}_anom"] = feedback_fn(bar_early, delta_prime)
+    feedback_change[f"{prefix}_nl"] = feedback_fn(delta_bar, delta_prime)
+
+    return feedback_change
+
+
+def decompose_feedback_changes(
+    bar_early,
+    bar_late,
+    prime_early,
+    prime_late,
+):
+    """
+    Wrapper function to decompose feedback changes into:
+        - "mean" component
+        - "anomaly" component
+        - "nonlinear" component
+    """
+
+    ## specify feedback names and functions
+    names = ["THF", "EKM", "ZAF", "DD"]
+    fns = [get_THF, get_EKM, get_ZAF, get_DD]
+
+    ## shared args
+    kwargs = dict(
+        bar_early=bar_early,
+        bar_late=bar_late,
+        prime_early=prime_early,
+        prime_late=prime_late,
+    )
+
+    ## empty list to hold result
+    feedbacks = []
+
+    ## loop thru feedbacks
+    for n, fn in zip(names, fns):
+        feedbacks.append(
+            decompose_feedback_change(
+                feedback_fn=fn,
+                prefix=f"delta_{n}",
+                bar_early=bar_early,
+                bar_late=bar_late,
+                prime_early=prime_early,
+                prime_late=prime_late,
+            ),
+        )
+
+    return xr.merge(feedbacks)
+
+
+def reconstruct_wrapper(data, fn=lambda x: x):
+    """
+    Convenience function to reconstruct data which has both scores
+    and components
+    """
+
+    ## first, get list of components
+    comp_names = [v for v in list(data) if "_comp" in v]
+    scores_names = [v[:-5] for v in comp_names]
+    rename_dict = {n0: n1 for n0, n1 in zip(comp_names, scores_names)}
+
+    ## reconstruct
+    recon = reconstruct_fn(
+        scores=data[scores_names],
+        components=data[comp_names].rename(rename_dict),
+        fn=fn,
+    )
+
+    return recon
+
+
+def reconstruct_clim(data):
+    """
+    Convenience function to reconstruct monthly climatology from projected data
+    """
+    return reconstruct_wrapper(data.groupby("time.month").mean())
+
+
+def get_ml_avg_ds(ds, **ml_kwargs):
+    """wrapper function to compute mixed layer average for each
+    variable in given xr.dataset"""
+
+    for v in list(ds):
+        if "z_t" in ds[v].coords:
+            ds[f"{v}_ml"] = get_ml_avg(ds[v], **ml_kwargs)
+
+    return ds
+
+
+def get_ml_avg(data, Hm, delta=5, H0=None):
+    """func to average data from surface to Hm + delta"""
+
+    ## tweak integration bounds
+    if H0 is None:
+        Hm = Hm + delta
+
+    else:
+        Hm = H0
+
+    ## average over everything above the mixed layer
+    return data.where(data.z_t <= Hm).mean("z_t")
+
+
+def get_wdTdz(w, T):
+    """function to get vertical flux (handles diff. w/T grids)"""
+
+    ## get dTdz (convert from 1/cm to 1/m)
+    dTdz = T.differentiate("z_t")
+
+    return w * dTdz
+
+
+def get_udTdx(u, T):
+    """zonal advection"""
+
+    ## get grid spacing
+    dlon_deg = T.longitude.values[1] - T.longitude.values[0]
+    lat_deg = 0.0
+    dx_m = get_dx(lat_deg=lat_deg, dlon_deg=dlon_deg)
+
+    ## differentiate and convert units to K/yr
+    u_dTdx = u * T.differentiate("longitude") * 1 / dx_m
+    return u_dTdx
+
+
+def get_dy(dlat_deg):
+    """get spacing between latitudes in meters"""
+
+    ## convert from degrees to radians
+    dlat_rad = dlat / 180.0 * np.pi
+
+    ## multiply by radius of earth
+    R = 6.378e8  # earth radius (centimeters)
+    dlat_meters = R * dlat_rad
+
+    return dlat_meters
+
+
+def get_dx(lat_deg, dlon_deg):
+    """get spacing between longitudes in meters"""
+
+    ## convert from degrees to radians
+    dlon_rad = dlon_deg / 180.0 * np.pi
+    lat_rad = lat_deg / 180 * np.pi
+
+    ## multiply by radius of earth
+    R = 6.378e6  # earth radius (meters)
+    dlon_meters = R * np.cos(lat_rad) * dlon_rad
+
+    return dlon_meters
+
+
+def get_dydx(data):
+    """get dy and dx for given data"""
+
+    ## empty array to hold result
+    grid = xr.Dataset(
+        coords=dict(
+            latitude=data["latitude"].values,
+            longitude=data["longitude"].values,
+        ),
+    )
+
+    grid["dlat"] = grid["latitude"].values[1] - grid["latitude"].values[0]
+    grid["dlon"] = grid["longitude"].values[1] - grid["longitude"].values[0]
+
+    grid["dlat_rad"] = grid["dlat"] / 180.0 * np.pi
+    grid["dlon_rad"] = grid["dlon"] / 180.0 * np.pi
+    R = 6.378e8  # earth radius (centimeters)
+
+    ## height of gridcell doesn't depend on longitude
+    grid["dy"] = R * grid["dlat_rad"]  # unit: meters
+    grid["dy"] = grid["dy"] * xr.ones_like(grid["latitude"])
+
+    ## Compute width of gridcell
+    grid["lat_rad"] = grid["latitude"] / 180 * np.pi  # latitude in radians
+    grid["dx"] = R * np.cos(grid["lat_rad"]) * grid["dlon_rad"]
+
+    return grid[["dy", "dx"]]
+
+
+def regress_v2(data, y_var, x_vars):
+    """multiple linear regression"""
+
+    ## Get covariates and targets
+    X = data[x_vars].to_dataarray(dim="i")
+    Y = data[y_var]
+
+    ## compute covariance matrices
+    YXt = xr.cov(Y, X, dim=["member", "time"])
+    XXt = xr.cov(X, X.rename({"i": "j"}), dim=["member", "time"])
+
+    ## invert XX^T
+    XXt_inv = xr.zeros_like(XXt)
+    XXt_inv.values = np.linalg.inv(XXt.values)
+
+    ## get least-squares fit, YX^T @ (XX^T)^{-1}
+    m = (YXt * XXt_inv).sum("i")
+
+    return m.to_dataset(dim="j")
+
+
+def regress_bymonth(data, y_var, x_vars):
+    """do multiple linear regression for each month separately"""
+    return data.groupby("time.month").map(regress_v2, y_var=y_var, x_vars=x_vars)
