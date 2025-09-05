@@ -2018,11 +2018,32 @@ def reconstruct_wrapper(data, fn=lambda x: x):
     return recon
 
 
-def reconstruct_clim(data):
+def reconstruct_var_wrapper(data, fn=lambda x: x):
+    """
+    Convenience function to reconstruct data which has both scores
+    and components
+    """
+
+    ## first, get list of components
+    comp_names = [v for v in list(data) if "_comp" in v]
+    scores_names = [v[:-5] for v in comp_names]
+    rename_dict = {n0: n1 for n0, n1 in zip(comp_names, scores_names)}
+
+    ## reconstruct
+    recon = reconstruct_var(
+        scores=data[scores_names],
+        components=data[comp_names].rename(rename_dict),
+        fn=fn,
+    )
+
+    return recon
+
+
+def reconstruct_clim(data, fn=lambda x: x):
     """
     Convenience function to reconstruct monthly climatology from projected data
     """
-    return reconstruct_wrapper(data.groupby("time.month").mean())
+    return reconstruct_wrapper(data.groupby("time.month").mean(), fn=fn)
 
 
 def get_ml_avg_ds(ds, **ml_kwargs):
@@ -2152,3 +2173,23 @@ def regress_v2(data, y_var, x_vars):
 def regress_bymonth(data, y_var, x_vars):
     """do multiple linear regression for each month separately"""
     return data.groupby("time.month").map(regress_v2, y_var=y_var, x_vars=x_vars)
+
+
+def get_dT_sub(Tsub, Hm, delta=25):
+    """
+    Get temperature difference b/n entrainment zone and mixed layer.
+    (positive if entrainment zone is warmer than ML)
+    """
+
+    ## find indices in ML and entrainment zone (ez)
+    in_ml = Tsub.z_t <= Hm
+    in_ez = (Tsub.z_t > Hm) & (Tsub.z_t < (delta + Hm))
+
+    ## get Tbar and Tplus (following Frankignoul et al paper)
+    Tbar = Tsub.where(in_ml).mean("z_t")
+    Tplus = Tsub.where(in_ez).mean("z_t")
+
+    ## get gradient
+    dT = Tplus - Tbar
+
+    return dT
