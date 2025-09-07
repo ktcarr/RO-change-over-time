@@ -2193,3 +2193,19 @@ def get_dT_sub(Tsub, Hm, delta=25):
     dT = Tplus - Tbar
 
     return dT
+
+
+def split_components(data):
+    """separate components from given dataset"""
+
+    ## get list of component variables
+    comp_vars = [v for v in list(data) if "_comp" in v]
+
+    ## get components and everything else
+    components = data[comp_vars]
+    other = data.drop_vars(comp_vars)
+
+    ## rename variables in components
+    components = components.rename({c: c[:-5] for c in comp_vars})
+
+    return components, other
