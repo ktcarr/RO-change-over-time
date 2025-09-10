@@ -1941,6 +1941,27 @@ def get_feedbacks(bar, prime):
 
     return feedbacks
 
+def get_surface_feedbacks(bar, prime, u_var="uvel", v_var="vvel", T_var="sst"):
+    """
+    Given bar and prime for {u,v,T}, compute following feedbacks:
+        - zonal/meridional advective
+        - dynamical damping (zonal/meridional)
+    """
+
+    ## initialize dataset
+    feedbacks = xr.Dataset()
+
+    ## compute
+    feedbacks["ZAF_"] = get_ZAF(bar, prime, u_var=u_var, T_var=T_var)
+    feedbacks["DD_"] = get_DD(bar, prime, u_var=u_var, T_var=T_var)
+    feedbacks["MAF_"] = get_MAF(bar, prime, v_var=v_var, T_var=T_var)
+    feedbacks["DDM_"] = get_DDM(bar, prime, v_var=v_var, T_var=T_var)
+    feedbacks["ADV_"] = (
+        feedbacks["ZAF_"] + feedbacks["DD_"] + feedbacks["MAF_"] + feedbacks["DDM_"]
+    )
+
+    return feedbacks
+
 
 def decompose_feedback_change(
     bar_early,
