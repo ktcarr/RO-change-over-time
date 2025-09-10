@@ -1896,14 +1896,26 @@ def get_EKM(bar, prime):
     return get_wdTdz(T=bar["T"], w=prime["w"])
 
 
-def get_ZAF(bar, prime):
+def get_ZAF(bar, prime, u_var="u", T_var="T"):
     """zonal advective feedback"""
-    return -get_udTdx(T=bar["T"], u=prime["u"])
+    return -get_udTdx(T=bar[T_var], u=prime[u_var])
 
 
-def get_DD(bar, prime):
+def get_DD(bar, prime, u_var="u", T_var="T"):
     """dynamical damping"""
-    return -get_udTdx(T=prime["T"], u=bar["u"])
+    return -get_udTdx(T=prime[T_var], u=bar[u_var])
+
+
+def get_MAF(bar, prime, v_var="v", T_var="T"):
+    """meridional advection"""
+
+    return -get_vdTdy(T=bar[T_var], v=prime[v_var])
+
+
+def get_DDM(bar, prime, v_var="v", T_var="T"):
+    """meridional advection"""
+
+    return -get_vdTdy(T=prime[T_var], v=bar[v_var])
 
 
 def get_feedbacks(bar, prime):
@@ -2090,24 +2102,33 @@ def get_wdTdz(w, T):
 def get_udTdx(u, T):
     """zonal advection"""
 
-    ## get grid spacing
-    dlon_deg = T.longitude.values[1] - T.longitude.values[0]
-    lat_deg = 0.0
-    dx_m = get_dx(lat_deg=lat_deg, dlon_deg=dlon_deg)
+    ## number of meters in 1 deg longitude on equator
+    m_per_deglon = get_dx(lat_deg=0, dlon_deg=1.0)
 
     ## differentiate and convert units to K/yr
-    u_dTdx = u * T.differentiate("longitude") * 1 / dx_m
+    u_dTdx = u * T.differentiate("longitude") * 1 / m_per_deglon
     return u_dTdx
+
+
+def get_vdTdy(v, T):
+    """zonal advection"""
+
+    ## number of meters in 1 deg latitude on equator
+    m_per_deglat = get_dy(dlat_deg=1)
+
+    ## differentiate and convert units to K/yr
+    v_dTdy = v * T.differentiate("latitude") * 1 / m_per_deglat
+    return v_dTdy
 
 
 def get_dy(dlat_deg):
     """get spacing between latitudes in meters"""
 
     ## convert from degrees to radians
-    dlat_rad = dlat / 180.0 * np.pi
+    dlat_rad = dlat_deg / 180.0 * np.pi
 
     ## multiply by radius of earth
-    R = 6.378e8  # earth radius (centimeters)
+    R = 6.378e6  # earth radius (centimeters)
     dlat_meters = R * dlat_rad
 
     return dlat_meters
