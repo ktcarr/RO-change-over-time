@@ -1843,6 +1843,73 @@ def multi_regress_bymonth(data, y_var, x_vars):
     return data.groupby("time.month").map(multi_regress, y_var=y_var, x_vars=x_vars)
 
 
+def regress_xr(data, y_vars, x_vars):
+    """
+    Regress projected y_vars onto x_vars in given dataset,
+    and reconstruct.
+    """
+
+    ## get projected coefficients
+    m_proj = regress_xr_proj(data, y_vars=y_vars, x_vars=x_vars)
+
+    ## loop thru variables to reconstruct
+    m = []
+    for n in list(m_proj):
+
+        ## check if 'ddt' is in name
+        if "ddt_" in n:
+            comp_name = n[4:]
+        else:
+            comp_name = n
+
+        ## reconstruct
+        m_ = src.utils.reconstruct_fn(
+            scores=m_proj[n],
+            components=data[f"{comp_name}_comp"],
+            fn=lambda x: x,
+        )
+
+        ## append to list
+        m.append(m_.rename(n))
+
+    return xr.merge(m)
+
+
+def regress_xr_proj(data, y_vars, x_vars):
+    """
+    Regress projected y_vars onto x_vars in given dataset
+    """
+
+    ## Get covariates and targets
+    X = data[x_vars].to_dataarray(dim="i")
+    Y = data[y_vars].to_dataarray(dim="k")
+
+    ## compute covariance matrices
+    YXt = xr.cov(Y, X, dim=["member", "time"])
+    XXt = xr.cov(X, X.rename({"i": "j"}), dim=["member", "time"])
+
+    # ## invert XX^T
+    XXt_inv = xr.zeros_like(XXt)
+    XXt_inv.values = np.linalg.inv(XXt.values)
+
+    ## get least-squares fit, YX^T @ (XX^T)^{-1}
+    m_proj = (YXt * XXt_inv).sum("i")
+
+    ## convert to dataset
+    m_proj = m_proj.to_dataset(dim="k")
+
+    return m_proj
+
+
+def regress_xr_bymonth(data, y_vars, x_vars):
+    """
+    apply 'regress_xr' function by month
+    """
+
+    kwargs = dict(y_vars=y_vars, x_vars=x_vars)
+    return data.groupby("time.month").map(regress_xr, **kwargs)
+
+
 def remove_sst_dependence_core(h, T, dims=["time", "member"]):
     """function to remove linear dependence of h on T"""
 
@@ -1940,6 +2007,7 @@ def get_feedbacks(bar, prime):
     )
 
     return feedbacks
+
 
 def get_surface_feedbacks(bar, prime, u_var="uvel", v_var="vvel", T_var="sst"):
     """
