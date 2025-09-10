@@ -2326,3 +2326,94 @@ def split_components(data):
     components = components.rename({c: c[:-5] for c in comp_vars})
 
     return components, other
+
+
+def format_subsurf_axs(axs):
+    """add labels/formatting to 3-panel axs"""
+
+    ## loop thru axs
+    for ax in axs:
+        ax.set_ylim(ax.get_ylim()[::-1])
+        ax.set_xlim([None, 281])
+        ax.set_yticks([])
+        ax.set_xlabel("Longitude")
+    axs[0].set_yticks([300, 150, 0])
+    axs[0].set_ylabel("Depth (m)")
+
+    return
+
+
+def format_hov_axs(axs):
+    """put hovmoller axs in standardized format"""
+
+    ## set fontsize
+    font_kwargs = dict(size=8)
+    axs[0].set_ylabel("Month", **font_kwargs)
+    axs[0].set_title("Early", **font_kwargs)
+    axs[1].set_title("Late", **font_kwargs)
+    axs[2].set_title("Difference (x2)", **font_kwargs)
+
+    axs[1].set_yticks([])
+    axs[2].set_yticks([])
+    axs[0].set_yticks([1, 5, 9, 12], labels=["Jan", "May", "Sep", "Dec"])
+
+    for ax in axs:
+        # ax.set_xlim([190, None])
+        ax.set_xticks([190, 240])
+        ax.axvline(240, ls="--", c="w", lw=1)
+        ax.axvline(190, ls="--", c="w", lw=1)
+
+    return
+
+
+def merimean(x, lat_bound=5):
+    """get meridional mean"""
+
+    ## get bounds for latitude averaging
+    coords = dict(
+        longitude=slice(140, 285),
+        latitude=slice(-lat_bound, lat_bound),
+    )
+
+    return x.sel(coords).mean("latitude")
+
+
+def make_cycle_hov(ax, data, amp, is_filled=True, xticks=[190, 240], lat_bound=5):
+    """plot data on ax object"""
+
+    ## specify shared kwargs
+    shared_kwargs = dict(levels=src.utils.make_cb_range(amp, amp / 5), extend="both")
+
+    ## specify kwargs
+    if is_filled:
+        plot_fn = ax.contourf
+        kwargs = dict(cmap="cmo.balance")
+
+    else:
+        plot_fn = ax.contour
+        kwargs = dict(colors="k", linewidths=0.8)
+
+    ## average over latitudes (if necessary)
+    if "latitude" in data.coords:
+        plot_data = merimean(data, lat_bound=lat_bound)
+    else:
+        plot_data = data
+
+    ## do the plotting
+    cp = plot_fn(
+        plot_data.longitude,
+        plot_data.month,
+        plot_data.transpose("month", "longitude"),
+        **kwargs,
+        **shared_kwargs,
+    )
+
+    ## format ax object
+    kwargs = dict(c="w", ls="--", lw=1)
+    ax.set_xlim([145, 280])
+    ax.set_xlabel("Lon")
+    ax.set_xticks(xticks)
+    for tick in xticks:
+        ax.axvline(tick, **kwargs)
+
+    return cp
