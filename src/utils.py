@@ -1821,10 +1821,17 @@ def multi_regress(data, y_var, x_vars):
     ## get least-squares fit, YX^T @ (XX^T)^{-1}
     m_proj = (YXt * XXt_inv).sum("i")
 
-    # ## reconstruct spatial fields
+    ## reconstruct spatial fields
+    # get name of component variable
+    if "ddt_" in y_var:
+        comp_name = y_var[4:]
+    else:
+        comp_name = y_var
+
+    # do reconstruction
     m = reconstruct_fn(
         scores=m_proj,
-        components=data[f"{y_var}_comp"],
+        components=data[f"{comp_name}_comp"],
         fn=lambda x: x,
     )
 
