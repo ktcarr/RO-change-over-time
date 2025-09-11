@@ -2504,3 +2504,29 @@ def make_scatter2(ax, data, x_var, y_var, scale=1, fn_x=None, fn_y=None, months=
     ax.axvline(0, ls="--", lw=0.8, c="k")
 
     return slope
+
+
+def plot_hov2(fig, ax, data, amp, label=None):
+    """Plot hovmoller of longitude vs. year"""
+
+    plot_data = ax.contourf(
+        data.month,
+        data.year,
+        data.T,
+        cmap="cmo.balance",
+        extend="max",
+        levels=src.utils.make_cb_range(amp, amp / 10),
+    )
+    cb = fig.colorbar(
+        plot_data,
+        orientation="horizontal",
+        ticks=[-amp, 0, amp],
+        label=label,
+    )
+    cb.ax.tick_params(labelsize=8)
+
+    ## remove ticks
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    return
