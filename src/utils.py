@@ -2417,3 +2417,83 @@ def make_cycle_hov(ax, data, amp, is_filled=True, xticks=[190, 240], lat_bound=5
         ax.axvline(tick, **kwargs)
 
     return cp
+
+
+def set_ylims(axs):
+    lims = np.stack([ax.get_ylim() for ax in axs.flatten()], axis=0)
+
+    lb = lims[:, 0].min()
+    ub = lims[:, 1].max()
+
+    for ax in axs:
+        ax.set_ylim([lb, ub])
+
+    return
+
+
+def set_xlims(axs):
+    lims = np.stack([ax.get_xlim() for ax in axs.flatten()], axis=0)
+
+    lb = lims[:, 0].min()
+    ub = lims[:, 1].max()
+
+    for ax in axs:
+        ax.set_xlim([lb, ub])
+
+    return
+
+
+def set_lims(axs):
+    """set both x and y limits on pair of axes objects"""
+
+    set_xlims(axs)
+    set_ylims(axs)
+    return
+
+
+def eval_fn(data, varname, fn=None, months=None):
+    """helper to get evaluated function"""
+
+    ## subset for months and data
+    data_subset = src.utils.sel_month(data[varname], months=months)
+
+    ## reconstruct data
+    if fn is None:
+        fn_eval = data_subset
+
+    else:
+        fn_eval = src.utils.reconstruct_fn(
+            scores=data_subset, components=data[f"{varname}_comp"], fn=fn
+        )
+
+    return fn_eval
+
+
+def make_scatter2(ax, data, x_var, y_var, scale=1, fn_x=None, fn_y=None, months=None):
+    """scatter plot data on axis"""
+
+    ## helper function to stack time/member dims
+    stack = lambda x: x.stack(sample=["member", "time"])
+
+    ## evaluate data
+    x = stack(eval_fn(data, x_var, fn=fn_x, months=months))
+    y = stack(eval_fn(data, y_var, fn=fn_y, months=months)) * scale
+
+    ## compute slope for best fit line
+    slope = src.utils.regress_core(X=x, Y=y, dim="sample")
+
+    ## convert to numpy
+    slope = slope.values.item()
+
+    ## plot data
+    ax.scatter(x, y, s=0.5)
+
+    ## plot best fit
+    xtest = np.linspace(x.values.min(), x.values.max())
+    ax.plot(xtest, slope * xtest, c="k", lw=1)
+
+    ## plot some guidelines
+    ax.axhline(0, ls="--", lw=0.8, c="k")
+    ax.axvline(0, ls="--", lw=0.8, c="k")
+
+    return slope
