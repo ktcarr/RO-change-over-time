@@ -2462,8 +2462,15 @@ def eval_fn(data, varname, fn=None, months=None):
         fn_eval = data_subset
 
     else:
+
+        ## get name of components
+        if "ddt_" in varname:
+            n = varname[4:]
+        else:
+            n = varname
+
         fn_eval = src.utils.reconstruct_fn(
-            scores=data_subset, components=data[f"{varname}_comp"], fn=fn
+            scores=data_subset, components=data[f"{n}_comp"], fn=fn
         )
 
     return fn_eval
