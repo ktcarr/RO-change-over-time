@@ -843,7 +843,8 @@ def unstack_month_and_year(data):
 
     ## update time index
     new_idx = pd.MultiIndex.from_arrays([year, month], names=("year", "month"))
-    data_["time"] = new_idx
+    new_idx = xr.Coordinates.from_pandas_multiindex(new_idx, "time")
+    data_ = data_.assign_coords(new_idx)
 
     return data_.unstack("time")
 
