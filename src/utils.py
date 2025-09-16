@@ -1844,14 +1844,18 @@ def multi_regress_bymonth(data, y_var, x_vars):
     return data.groupby("time.month").map(multi_regress, y_var=y_var, x_vars=x_vars)
 
 
-def regress_xr(data, y_vars, x_vars):
+def regress_xr(data, y_vars, x_vars, helper_fn=None, **helper_kwargs):
     """
     Regress projected y_vars onto x_vars in given dataset,
     and reconstruct.
     """
 
-    ## get projected coefficients
-    m_proj = regress_xr_proj(data, y_vars=y_vars, x_vars=x_vars)
+    ## get helper function if not specified
+    if helper_fn is None:
+        helper_fn = regress_xr_proj
+
+    ## compute projected coefficients
+    m_proj = helper_fn(data, y_vars=y_vars, x_vars=x_vars, **helper_kwargs)
 
     ## loop thru variables to reconstruct
     m = []
@@ -1909,6 +1913,88 @@ def regress_xr_bymonth(data, y_vars, x_vars):
 
     kwargs = dict(y_vars=y_vars, x_vars=x_vars)
     return data.groupby("time.month").map(regress_xr, **kwargs)
+
+
+def get_F(month, max_order=5):
+    """function to get fourier matrix"""
+
+    ## coefficients to build fourier matrix
+    order_np = np.arange(0, max_order + 1)
+
+    ## sin
+    sin_order_coord = xr.Coordinates(dict(order=[f"sin_{n}" for n in order_np[1:]]))
+    sin_order = xr.DataArray(order_np[1:], coords=sin_order_coord)
+
+    ## cos
+    cos_order_coord = xr.Coordinates(dict(order=[f"cos_{n}" for n in order_np]))
+    cos_order = xr.DataArray(order_np, coords=cos_order_coord)
+
+    ## convert month to theta
+    theta = (month - 0.5) / 12 * (2 * np.pi)
+
+    ## build the matrix
+    F = xr.concat(
+        [np.cos(cos_order * theta), np.sin(sin_order * theta)],
+        dim="order",
+    )
+
+    return F
+
+
+def regress_harm(data, y_vars, x_vars):
+    """
+    Regress projected y_vars onto x_vars in given dataset
+    """
+
+    ## Get covariates and targets
+    X = data[x_vars].to_dataarray(dim="ell")
+    Y = data[y_vars].to_dataarray(dim="k")
+
+    ## stack harmonic dim
+    X = X.stack(i=["ell", "order"])
+    harm_coord = copy.deepcopy(X.i)
+
+    ## compute covariance matrices
+    X_ = X.rename({"i": "j"}).drop_vars(["order", "ell"])
+    XXt = xr.cov(X, X_, dim=["member", "time"])
+    YXt = xr.cov(Y, X, dim=["member", "time"])
+
+    # ## invert XX^T
+    XXt_inv = xr.zeros_like(XXt)
+    XXt_inv.values = np.linalg.inv(XXt.values)
+
+    ## get least-squares fit, YX^T @ (XX^T)^{-1}
+    m_proj = (YXt * XXt_inv).sum("i")
+
+    ## convert to dataset
+    m_proj = m_proj.to_dataset(dim="k")
+
+    ## add back harmonic coord and unstack
+    m_proj = m_proj.rename({"j": "i"}).assign_coords(i=harm_coord).unstack("i")
+
+    return m_proj
+
+
+def regress_harm_wrapper(data, y_vars, x_vars, max_order=3):
+    """
+    Regress projected y_vars onto x_vars in given dataset
+    """
+
+    ## matrix to project data on harmonics
+    F = get_F(month=data.time.dt.month, max_order=max_order)
+
+    ## updated data
+    data_proj = xr.merge([F * data[x_vars], data[y_vars]])
+
+    ## compute coefficients
+    coefs_proj = regress_harm(data=data_proj, y_vars=y_vars, x_vars=x_vars)
+
+    ## inverse Fourier transform
+    month = xr.DataArray(np.arange(1, 13), coords=dict(month=np.arange(1, 13)))
+    # coefs = scores = (get_F(month - 0.5) * coefs_proj).sum("order")
+    coefs = scores = (get_F(month) * coefs_proj).sum("order")
+
+    return coefs
 
 
 def remove_sst_dependence_core(h, T, dims=["time", "member"]):
