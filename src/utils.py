@@ -2017,7 +2017,7 @@ def remove_sst_dependence_v2(Th, T_var="T_3", h_var="h_w", dims=["time", "member
     return Th.groupby("time.month").map(helper_fn)
 
 
-def get_ddt(ds):
+def get_ddt(ds, is_forward=True):
     """compute time derivative for each variable in dataset"""
 
     ## transpose so time is last dimension
@@ -2035,7 +2035,9 @@ def get_ddt(ds):
         else:
             ## create empty variable and fill with gradient
             ds[f"ddt_{n}"] = xr.zeros_like(ds[n])
-            ds[f"ddt_{n}"].values = src.XRO.gradient(ds[n].values)
+            ds[f"ddt_{n}"].values = src.XRO.gradient(
+                ds[n].values, is_forward=is_forward
+            )
 
     return ds
 
