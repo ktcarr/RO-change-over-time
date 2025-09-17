@@ -2617,3 +2617,55 @@ def plot_hov2(fig, ax, data, amp, label=None):
     ax.set_yticks([])
 
     return
+
+
+def align_pop_times(x, pop_vars=["uvel", "vvel", "u", "w", "T", "nhf"]):
+    """fix misalignment b/n MMLEA and POP"""
+
+    ## get variables in POP and MMLEA
+    mmlea_vars = list(set(list(x)) - set(pop_vars))
+
+    ## Get valid times
+    valid_time = xr.date_range(
+        start="1850-01-01",
+        freq="MS",
+        periods=3012,
+        calendar="noleap",
+        use_cftime=True,
+    )
+
+    ## fix time coord
+    if len(mmlea_vars) > 0:
+        x_pop = x[pop_vars].isel(time=slice(1, None)).assign_coords(time=valid_time)
+        x_ = xr.merge([x_pop, x[mmlea_vars].sel(time=valid_time)])
+
+    else:
+        x_ = x[pop_vars].assign_coords(time=valid_time)
+
+    return x_
+
+
+def load_budget_data():
+    """utility function to load budget data. (note: pop times already aligned!)"""
+
+    ## directory with data
+    CONS_DIR = pathlib.Path(os.environ["DATA_FP"], "cesm", "consolidated")
+
+    ## open data and align pop times
+    forced = xr.open_dataset(CONS_DIR / "budg_forced.nc")
+    anom = xr.open_dataset(CONS_DIR / "budg_anom.nc")
+
+    return forced, anom
+
+
+def load_consolidated():
+    """utility function to load consolidated data"""
+
+    ## directory with data
+    CONS_DIR = pathlib.Path(os.environ["DATA_FP"], "cesm", "consolidated")
+
+    ## open data and align pop times
+    forced = align_pop_times(xr.open_dataset(CONS_DIR / "forced.nc"))
+    anom = align_pop_times(xr.open_dataset(CONS_DIR / "anom.nc"))
+
+    return forced, anom
