@@ -696,6 +696,11 @@ def plot_nino3_box(ax, **kwargs):
     return plot_box(ax, lons=[210, 270], lats=[-5, 5], **kwargs)
 
 
+def plot_hw_box(ax, **kwargs):
+    """outliner h_w region"""
+    return plot_box(ax, lats=[-5, 5], lons=[120, 210], **kwargs)
+
+
 def get_gaussian_best_fit(x):
     """Get gaussian best fit to data, and evaluate
     probabilities over the range of the data."""
