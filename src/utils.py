@@ -2676,3 +2676,45 @@ def load_consolidated():
     anom = align_pop_times(xr.open_dataset(CONS_DIR / "anom.nc"))
 
     return forced, anom
+
+
+def get_windowed(data, window_size=480, stride=60):
+    """Get windowed version of data (used for computing parameter values over time)"""
+
+    ## get windowed data
+    data_rolling = data.rolling({"time": window_size}, center=True)
+    data_windowed = data_rolling.construct(window_dim="sample", stride=stride)
+
+    ## trim (remove nan values)
+    n_trim = int(window_size / 2 / stride)
+    data_windowed = data_windowed.isel(time=slice(n_trim, -(n_trim - 1)))
+
+    ## rename window coord from time to year
+    year_coord = dict(year=data_windowed.time.dt.year.values)
+    data_windowed = data_windowed.rename({"time": "year"}).assign_coords(year_coord)
+
+    ## rename sample coord to time (use arbitrary time, used for seasonality)
+    time_coord = dict(
+        time=xr.date_range(start="1850-01-01", freq="MS", periods=window_size)
+    )
+    data_windowed = data_windowed.rename({"sample": "time"}).assign_coords(time_coord)
+
+    return data_windowed
+
+
+def get_params(fits, model):
+    """Get parameters from fits dataarray"""
+
+    ## get parameters from fits
+    params = model.get_RO_parameters(fits)
+
+    ## get normalized noise stats
+    fix_coords = lambda x: x.assign_coords({"cycle": params.cycle})
+    params["xi_T_norm"] = fix_coords(fits["normxi_stdac"].isel(ranky=0))
+    params["xi_h_norm"] = fix_coords(fits["normxi_stdac"].isel(ranky=1))
+
+    ## get wyrtki index
+    sign = np.sign(params["F1"] * params["F2"])
+    params["wyrtki"] = sign * np.sqrt(np.abs(params["F1"] * params["F2"]))
+
+    return params.squeeze()
