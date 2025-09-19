@@ -2718,3 +2718,43 @@ def get_params(fits, model):
     params["wyrtki"] = sign * np.sqrt(np.abs(params["F1"] * params["F2"]))
 
     return params.squeeze()
+
+
+def get_H(T):
+    """compute thermocline depth"""
+
+    ## find index for max (negative gradient)
+    min_idx = T.differentiate("z_t").argmin("z_t")
+
+    return T.z_t.isel(z_t=min_idx)
+
+
+def get_H_int(T, thresh=0):
+    """get H using a different method"""
+
+    ## compute vertical grad
+    dTdz = T.differentiate("z_t")
+
+    ## find where grad exceeds thresh
+    dTdz = dTdz.where(np.abs(dTdz) > thresh, other=0)
+
+    ## compute numerator and denom
+    num = (dTdz.z_t * dTdz).integrate("z_t")
+    den = dTdz.integrate("z_t")
+
+    return num / den
+
+
+def frac_change(x, inv=True):
+    """get fractional change"""
+
+    ## get inverse if desired
+    if inv:
+        x_ = 1 / x
+    else:
+        x_ = x
+
+    ## compute initial value and change
+    x0_ = x_.isel(year=0)
+
+    return (x_ - x0_) / x0_
