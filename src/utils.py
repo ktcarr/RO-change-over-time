@@ -1534,7 +1534,12 @@ def make_composite_helper(
 
 
 def make_composite(
-    idx, data, peak_month=1, q=0.85, check_cutoff=lambda x, cut: x > cut
+    idx,
+    data,
+    peak_month=1,
+    q=0.85,
+    check_cutoff=lambda x, cut: x > cut,
+    avg=True,
 ):
     """get composite for data"""
 
@@ -1544,10 +1549,11 @@ def make_composite(
     )
     comp = make_composite_helper(**kwargs)
 
-    ## average to create composite
-    comp = comp.mean("sample").transpose("lag", ...)
+    ## average to create composite (otherwise, make spaghetti)
+    if avg:
+        comp = comp.mean("sample")
 
-    return comp
+    return comp.transpose("lag", ...)
 
 
 def reconstruct_helper(scores, model, other_coord=None):
