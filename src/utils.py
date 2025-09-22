@@ -1491,7 +1491,12 @@ def plot_xcorr(ax, data, **plot_kwargs):
 
 
 def make_composite_helper(
-    idx, data, peak_month=1, q=0.85, check_cutoff=lambda x, cut: x > cut
+    idx,
+    data,
+    peak_month=1,
+    q=0.85,
+    check_cutoff=lambda x, cut: x > cut,
+    event_type=None,
 ):
     """get samples for composite (but don't average yet)"""
 
@@ -1518,6 +1523,10 @@ def make_composite_helper(
     meets_cutoff = check_cutoff(x=idx_, cut=cutoff)
     peak_idx = np.where(meets_cutoff & valid_idx)[0]
 
+    ## filter peaks by event type (e.g., 1-year v 2-year)
+    if event_type is not None:
+        peak_idx = sort_peak_idx(peak_idx)[event_type]
+
     ## create composite by pulling relevant samples
     comp = []
     for j in peak_idx:
@@ -1533,6 +1542,46 @@ def make_composite_helper(
     return comp
 
 
+def sort_peak_idx(peak_idxs):
+    """sort into single-year, double-year, or triple-year"""
+
+    ## empty lists to hold results
+    peak_idxs1 = []
+    peak_idxs2 = []
+    peak_idxs3 = []
+
+    ## loop counter
+    i = 0
+
+    ## loop through peak indices
+    while i < len(peak_idxs):
+
+        ## get peak index variable
+        peak_idx = peak_idxs[i]
+
+        ## check for triple-year
+        if ((peak_idx + 24) in peak_idxs) & ((peak_idx + 12) in peak_idxs):
+            peak_idxs3.append(peak_idx)
+            i += 3
+
+        ## check for double-year
+        elif (peak_idx + 12) in peak_idxs:
+            peak_idxs2.append(peak_idx)
+            i += 2
+
+        ## otherwise, count as single-year
+        else:
+            peak_idxs1.append(peak_idx)
+            i += 1
+
+    ## convert to numpy array
+    peak_idxs1 = np.array(peak_idxs1)
+    peak_idxs2 = np.array(peak_idxs2)
+    peak_idxs3 = np.array(peak_idxs3)
+
+    return {1: peak_idxs1, 2: peak_idxs2, 3: peak_idxs3}
+
+
 def make_composite(
     idx,
     data,
@@ -1540,12 +1589,18 @@ def make_composite(
     q=0.85,
     check_cutoff=lambda x, cut: x > cut,
     avg=True,
+    event_type=None,
 ):
     """get composite for data"""
 
     ## Get samples for composite
     kwargs = dict(
-        idx=idx, data=data, peak_month=peak_month, q=q, check_cutoff=check_cutoff
+        idx=idx,
+        data=data,
+        peak_month=peak_month,
+        q=q,
+        check_cutoff=check_cutoff,
+        event_type=event_type,
     )
     comp = make_composite_helper(**kwargs)
 
