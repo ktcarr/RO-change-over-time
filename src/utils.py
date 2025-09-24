@@ -2580,7 +2580,7 @@ def set_ylims(axs):
     lb = lims[:, 0].min()
     ub = lims[:, 1].max()
 
-    for ax in axs:
+    for ax in axs.flatten():
         ax.set_ylim([lb, ub])
 
     return
@@ -2592,7 +2592,7 @@ def set_xlims(axs):
     lb = lims[:, 0].min()
     ub = lims[:, 1].max()
 
-    for ax in axs:
+    for ax in axs.flatten():
         ax.set_xlim([lb, ub])
 
     return
