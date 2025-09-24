@@ -2726,6 +2726,19 @@ def load_budget_data():
     return forced, anom
 
 
+def load_flux_data():
+    """utilitiy func to load surface flux data. Note POP/CAM times already aligned"""
+
+    ## directory with data
+    CONS_DIR = pathlib.Path(os.environ["DATA_FP"], "cesm", "consolidated")
+
+    ## open data and align pop times
+    forced = xr.open_dataset(CONS_DIR / "flux_forced.nc")
+    anom = xr.open_dataset(CONS_DIR / "flux_anom.nc")
+
+    return forced, anom
+
+
 def load_consolidated():
     """utility function to load consolidated data"""
 
