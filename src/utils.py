@@ -1806,7 +1806,20 @@ def get_composites(idx, data, **kwargs):
     return comp, comp_tilde, comp_hat
 
 
-def load_cesm_indices():
+def get_thermocline_h_indices():
+    """function to get h-variables using z20"""
+
+    ## load eofs
+    z20 = load_consolidated()[1][["z20", "z20_comp"]]
+
+    ## compute indices
+    z20_hw = reconstruct_wrapper(z20, fn=get_RO_hw).rename({"z20": "h_w_z20"})
+    z20_h = reconstruct_wrapper(z20, fn=get_RO_h).rename({"z20": "h_z20"})
+
+    return xr.merge([z20_hw, z20_h])
+
+
+def load_cesm_indices(load_z20=False, load_h_cust=False):
     """Load cesm indices"""
 
     ## get filepath for cesm data
@@ -1823,7 +1836,20 @@ def load_cesm_indices():
     Th = Th.isel(time=slice(None, -1))
     cvdp["time"] = Th.time
 
-    return xr.merge([Th, cvdp])
+    ## merge
+    Th = xr.merge([Th, cvdp])
+
+    ## (optional) load thermocline indices
+    if load_z20:
+        Th = xr.merge([Th, get_thermocline_h_indices()])
+
+    if load_h_cust:
+        _, h_cust = load_h_data()
+        h_w = h_cust.sel(longitude=slice(120, 210)).mean("longitude")
+        h = h_cust.sel(longitude=slice(120, 280)).mean("longitude")
+        Th = xr.merge([Th, h_w.rename("h_w_cust"), h.rename("h_cust")])
+
+    return Th
 
 
 def regress_core(Y, X, dim="time"):
