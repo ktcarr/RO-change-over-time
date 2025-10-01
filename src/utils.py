@@ -2739,6 +2739,19 @@ def load_flux_data():
     return forced, anom
 
 
+def load_h_data():
+    """utilitiy func to load surface flux data. Note POP/CAM times already aligned"""
+
+    ## directory with data
+    H_DIR = pathlib.Path(os.environ["SAVE_FP"], "h_ests")
+
+    ## open data
+    h = xr.open_dataarray(H_DIR / "h_int_40.nc")
+
+    ## split to forced/anom
+    return separate_forced(h)
+
+
 def load_consolidated():
     """utility function to load consolidated data"""
 
