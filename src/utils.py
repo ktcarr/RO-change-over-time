@@ -2687,7 +2687,7 @@ def plot_hov2(fig, ax, data, amp, label=None):
     return
 
 
-def align_pop_times(x, pop_vars=["uvel", "vvel", "u", "w", "T", "nhf"]):
+def align_pop_times(x, pop_vars=["uvel", "vvel", "u", "w", "T", "nhf", "z20"]):
     """fix misalignment b/n MMLEA and POP"""
 
     ## get variables in POP and MMLEA
