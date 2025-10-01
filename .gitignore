@@ -6,6 +6,7 @@ scripts/jupyter.sh
 results/fits*
 results/2025*
 results/forecast_data
+results/h_ests
 tests/*.nc
 
 # Byte-compiled / optimized / DLL files

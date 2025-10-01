@@ -266,7 +266,7 @@ def reconstruct_fn_da(components, scores, fn):
     fn_eval = fn(components * 1 / coslat_weights)
 
     ## reconstruct
-    recon = (fn_eval * scores).sum("mode")
+    recon = (fn_eval * scores).sum("mode", skipna=False)
 
     return recon
 
