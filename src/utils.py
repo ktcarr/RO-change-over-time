@@ -2890,3 +2890,144 @@ def frac_change(x, inv=True):
     x0_ = x_.isel(year=0)
 
     return (x_ - x0_) / x0_
+
+
+def get_perturbed_multi(params, idxs, fix_others=False, fix_noise=False):
+    """
+    Fix values of R parameter set.
+    if 'fix_others' is True, then other parameters are fixed to their
+    initial value. Otherwise, given parameter is fixed to its initial value
+    """
+
+    ## unfold indices
+
+    ## initialize empty array to hold parameters
+    params_new = copy.deepcopy(params)
+    for L in ["Lac", "Lcoef"]:
+        params_new[L] = params_new[L].transpose("year", "ranky", "rankx", ...)
+
+    ## get numpy version of linear operator
+    Lac = params_new["Lac"].values
+    Lcoef = params_new["Lcoef"].values
+
+    if fix_others:
+
+        ## get copies of 'perturbed' parameters
+        Lac_pparams = [copy.deepcopy(Lac[:, y_i, x_i]) for (y_i, x_i) in idxs]
+        Lcoef_pparams = [copy.deepcopy(Lcoef[:, y_i, x_i]) for (y_i, x_i) in idxs]
+
+        ## fix all parameters to initial value
+        Lac = Lac[:1] * np.ones_like(Lac)
+        Lcoef = Lcoef[:1] * np.ones_like(Lcoef)
+
+        ## add back perturbed parameters
+        for i, (y_i, x_i) in enumerate(idxs):
+            Lac[:, y_i, x_i] = Lac_pparams[i]
+            Lcoef[:, y_i, x_i] = Lcoef_pparams[i]
+
+    else:
+
+        ## update Lac
+        for y_i, x_i in idxs:
+            Lac[:, y_i, x_i] = Lac[:1, y_i, x_i]
+            Lcoef[:, y_i, x_i] = Lcoef[:1, y_i, x_i]
+
+    ## add back to parameters
+    params_new["Lac"] = xr.ones_like(params_new["Lac"]) * Lac
+    params_new["Lcoef"] = xr.ones_like(params_new["Lcoef"]) * Lcoef
+
+    ## fix noise if necessary
+    if fix_noise:
+        params_new = get_perturbed_noise(params_new, fix_others=False)
+
+    return params_new
+
+
+def get_perturbed_R_cyc(params):
+    """fix values of R parameter set"""
+
+    ## initialize empty array to hold parameters
+    pparams = copy.deepcopy(params)
+    pparams["Lac"] = pparams["Lac"].transpose("year", "ranky", "rankx", ..., "cycle")
+
+    ## get copy of linear operator
+    Lac = pparams["Lac"].values
+
+    ## update
+    R = Lac[:, 0, 0]
+    R_mean = R.mean(-1, keepdims=True)
+    Lac[:, 0, 0] = R * R_mean[1] / R_mean
+
+    ## update Lac
+    pparams["Lac"] = xr.ones_like(pparams["Lac"]) * Lac
+
+    return pparams
+
+
+def get_perturbed_noise_helper(params, name):
+    """get version of parameters where specified parameter
+    is fixed to its starting value"""
+
+    ## copy of params to hold perturbed values
+    pparams = copy.deepcopy(params)
+
+    ## get initial value of parameter and broadcast it to correct shape
+    x0 = params[name].isel(year=1) * xr.ones_like(params[name])
+
+    ## transpose dims to make sure they match
+    x0 = x0.transpose(*params[name].dims)
+
+    ## update parameters
+    pparams[name].values = x0
+
+    return pparams
+
+
+def get_perturbed_noise(params, fix_others=False):
+    """fix values of noise in parameter set"""
+
+    if fix_others:
+
+        ## copy parameters
+        pparams = copy.deepcopy(params)
+
+        ## get Lac
+        pparams["Lac"] = pparams["Lac"].transpose("year", "ranky", "rankx", ...)
+
+        ## get numpy version of linear operator
+        Lac = copy.deepcopy(pparams["Lac"].values)
+
+        ## fix all parameters to initial value
+        Lac = Lac[:1] * np.ones_like(Lac)
+
+        ## add back to parameters
+        pparams["Lac"] = xr.ones_like(pparams["Lac"]) * Lac
+
+    else:
+
+        ## get copy of params
+        pparams = copy.deepcopy(params)
+
+        ## fix all noise parameters
+        for noise_p in ["xi_stdac", "xi_std", "xi_cov", "xi_covac"]:
+            pparams = get_perturbed_noise_helper(pparams, noise_p)
+
+    return pparams
+
+
+def get_perturbed_xi(params, ranky):
+    """fix values of R and epsilon in parameter set"""
+
+    ## initialize empty array to hold parameters
+    pparams = copy.deepcopy(params)
+
+    ## get copy of linear operator
+    for n in ["xi_std", "xi_stdac"]:
+        xi = pparams[n].transpose("year", "ranky", ...)
+        xi0 = xi.values[1:2, ranky]
+
+        ## update matrix
+        xi.values[:, ranky] = xi0
+        pparams[n] = xi
+
+    return pparams
