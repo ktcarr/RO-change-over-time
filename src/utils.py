@@ -2858,6 +2858,25 @@ def get_H_int(T, thresh=0):
     return num / den
 
 
+def get_H_int2(T, cutoff_frac=0.5):
+    """define threshold for integration based on ratio of max grad"""
+
+    ## compute vertical grad
+    dTdz = T.differentiate("z_t")
+
+    ## get threshold (fraction of max grad)
+    thresh = cutoff_frac * dTdz.min("z_t")
+
+    ## find where grad exceeds thresh
+    dTdz = dTdz.where(dTdz < thresh, other=0)
+
+    ## compute numerator and denom
+    num = (dTdz.z_t * dTdz).integrate("z_t")
+    den = dTdz.integrate("z_t")
+
+    return num / den
+
+
 def frac_change(x, inv=True):
     """get fractional change"""
 
