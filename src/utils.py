@@ -432,19 +432,22 @@ def reconstruct_var(scores, components, fn=None):
 def reconstruct_var_da(scores, components, fn):
     """reconstruct spatial variance from projected data"""
 
-    ## remove mean
-    scores_anom = scores - scores.mean(["member", "time"])
-
-    ## compute outer product (XX^T)
-    outer_prod = xr.dot(
-        scores_anom, scores_anom.rename({"mode": "mode_out"}), dim=["time", "member"]
+    ## empty array to hold result
+    mode_vals = scores.mode.values
+    cov_proj = xr.DataArray(
+        coords=dict(mode=mode_vals, mode_out=mode_vals),
+        dims=["mode", "mode_out"],
     )
 
-    ## get scaling
-    n = len(scores.time) * len(scores.member)
+    ## stack time and member dims
+    X = scores.stack(sample=["member", "time"]).transpose("mode", "sample")
 
-    ## get covariance of projected data
-    scores_cov = 1 / n * outer_prod
+    ## remove mean
+    X_prime = X - X.mean("sample")
+
+    ## Get covariance of projected data
+    n = len(X.sample)
+    cov_proj.values = 1 / n * (X_prime.values @ X_prime.values.T)
 
     ## get latitude weighting for reconstructino
     coslat_weights = get_coslat_weights(components)
@@ -456,7 +459,7 @@ def reconstruct_var_da(scores, components, fn):
 
     ## now reconstruct spatial field (U @ SVt @ VS) @ U
     fn_var = xr.dot(
-        xr.dot(fn_eval, scores_cov, dim="mode"),
+        xr.dot(fn_eval, cov_proj, dim="mode"),
         fn_eval.rename({"mode": "mode_out"}),
         dim="mode_out",
     )
@@ -481,18 +484,25 @@ def reconstruct_cov_da(
     if fn_y is None:
         fn_y = fn_x
 
-    ## remove means
-    V_x_ = V_x - V_x.mean(["member", "time"])
-    V_y_ = V_y - V_y.mean(["member", "time"])
+    ## empty array to hold result
+    mode_vals = V_x.mode.values
+    cov_proj = xr.DataArray(
+        coords=dict(mode=mode_vals, mode_out=mode_vals),
+        dims=["mode", "mode_out"],
+    )
 
-    ## compute outer product (XX^T)
-    outer_prod = xr.dot(V_x_, V_y_.rename({"mode": "mode_out"}), dim=["time", "member"])
+    ## preprocessing funcs
+    stack = lambda X: X.stack(sample=["member", "time"]).transpose("mode", "sample")
+    get_prime = lambda X: X - X.mean("sample")
+    prep = lambda X: get_prime(stack(X))
 
-    ## get scaling
-    n = len(V_x.time) * len(V_x.member)
+    ## prep data
+    V_x_prime = prep(V_x)
+    V_y_prime = prep(V_y)
 
-    ## get covariance of projected data
-    V_cov = 1 / n * outer_prod
+    ## get covariance
+    n = len(V_x_prime.sample)
+    cov_proj.values = 1 / n * (V_x_prime.values @ V_y_prime.values.T)
 
     ## get latitude weighting for reconstructino
     weights_x = get_coslat_weights(components=U_x)
@@ -504,7 +514,7 @@ def reconstruct_cov_da(
 
     ## now reconstruct spatial field (U @ SVt @ VS) @ U
     fn_cov = xr.dot(
-        xr.dot(fn_x_eval, V_cov, dim="mode"),
+        xr.dot(fn_x_eval, cov_proj, dim="mode"),
         fn_y_eval.rename({"mode": "mode_out"}),
         dim="mode_out",
     )
