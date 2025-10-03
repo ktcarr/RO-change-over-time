@@ -2833,8 +2833,15 @@ def get_params(fits, model):
 
     ## get normalized noise stats
     fix_coords = lambda x: x.assign_coords({"cycle": params.cycle})
+
+    # first, normalize by data standard dev
     params["xi_T_norm"] = fix_coords(fits["normxi_stdac"].isel(ranky=0))
     params["xi_h_norm"] = fix_coords(fits["normxi_stdac"].isel(ranky=1))
+
+    # next, get signal to noise ratio
+    nsr = fix_coords(fits["xi_stdac"] / fits["Y_stdac"])
+    params["T_nsr"] = nsr.isel(ranky=0)
+    params["h_nsr"] = nsr.isel(ranky=1)
 
     ## get wyrtki index
     sign = np.sign(params["F1"] * params["F2"])
