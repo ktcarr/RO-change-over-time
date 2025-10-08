@@ -1826,7 +1826,24 @@ def get_thermocline_h_indices():
     z20_hw = reconstruct_wrapper(z20, fn=get_RO_hw).rename({"z20": "h_w_z20"})
     z20_h = reconstruct_wrapper(z20, fn=get_RO_h).rename({"z20": "h_z20"})
 
-    return xr.merge([z20_hw, z20_h])
+    #### load estimates for other contour levels
+
+    ## load data
+    z_ests = load_z_ests()[1]
+
+    ## compute area-averages
+    hw_ests = z_ests.sel(longitude=slice(120, 210)).mean("longitude")
+    h_ests = z_ests.sel(longitude=slice(120, 280)).mean("longitude")
+
+    ## rename
+    hw_ests = hw_ests.rename(
+        {f"z{lev}_est": f"h_w_z{lev}_est" for lev in np.arange(20, 25)}
+    )
+    h_ests = h_ests.rename(
+        {f"z{lev}_est": f"h_z{lev}_est" for lev in np.arange(20, 25)}
+    )
+
+    return xr.merge([z20_hw, z20_h, hw_ests, h_ests])
 
 
 def load_cesm_indices(load_z20=False, load_h_cust=False):
@@ -2786,6 +2803,25 @@ def load_h_data():
 
     ## split to forced/anom
     return separate_forced(h)
+
+
+def load_z_ests():
+    """Load level estimates for thermocline"""
+
+    ## directory containing estimates
+    H_DIR = pathlib.Path(os.environ["SAVE_FP"], "h_ests")
+
+    ## empty list to hold estimates
+    ests = []
+
+    ## loop thru contour levels
+    for lev in np.arange(20, 25):
+        ests.append(xr.open_dataarray(H_DIR / f"z_{lev}.nc").rename(f"z{lev}_est"))
+
+    ## append
+    ests = xr.merge(ests)
+
+    return separate_forced(ests)
 
 
 def load_consolidated():
