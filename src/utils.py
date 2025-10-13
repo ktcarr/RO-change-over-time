@@ -2868,7 +2868,7 @@ def get_params(fits, model):
     params = model.get_RO_parameters(fits)
 
     ## get normalized noise stats
-    fix_coords = lambda x: x.assign_coords({"cycle": params.cycle})
+    fix_coords = lambda x: x.assign_coords({"cycle": params.cycle.values})
 
     # first, normalize by data standard dev
     params["xi_T_norm"] = fix_coords(fits["normxi_stdac"].isel(ranky=0))
