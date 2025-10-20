@@ -1846,7 +1846,7 @@ def get_thermocline_h_indices():
     return xr.merge([z20_hw, z20_h, hw_ests, h_ests])
 
 
-def load_cesm_indices(load_z20=False, load_h_cust=False):
+def load_cesm_indices(load_z20=False, load_h_cust=False, max_grad=False):
     """Load cesm indices"""
 
     ## get filepath for cesm data
@@ -1871,7 +1871,7 @@ def load_cesm_indices(load_z20=False, load_h_cust=False):
         Th = xr.merge([Th, get_thermocline_h_indices()])
 
     if load_h_cust:
-        _, h_cust = load_h_data()
+        _, h_cust = load_h_data(max_grad=max_grad)
         h_w = h_cust.sel(longitude=slice(120, 210)).mean("longitude")
         h = h_cust.sel(longitude=slice(120, 280)).mean("longitude")
         Th = xr.merge([Th, h_w.rename("h_w_cust"), h.rename("h_cust")])
@@ -2792,14 +2792,17 @@ def load_flux_data():
     return forced, anom
 
 
-def load_h_data():
+def load_h_data(max_grad=False):
     """utilitiy func to load surface flux data. Note POP/CAM times already aligned"""
 
     ## directory with data
     H_DIR = pathlib.Path(os.environ["SAVE_FP"], "h_ests")
 
     ## open data
-    h = xr.open_dataarray(H_DIR / "h_int_40.nc")
+    if max_grad:
+        h = xr.open_dataarray(H_DIR / "h_max-grad.nc")
+    else:
+        h = xr.open_dataarray(H_DIR / "h_int_40.nc")
 
     ## split to forced/anom
     return separate_forced(h)
