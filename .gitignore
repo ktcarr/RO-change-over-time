@@ -7,6 +7,8 @@ results/fits*
 results/2025*
 results/forecast_data
 results/h_ests
+results/bjerknes
+results/composites
 tests/*.nc
 
 # Byte-compiled / optimized / DLL files

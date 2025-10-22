@@ -2551,7 +2551,7 @@ def format_subsurf_axs(axs):
     return
 
 
-def format_hov_axs(axs):
+def format_hov_axs(axs, ticks=[190, 240]):
     """put hovmoller axs in standardized format"""
 
     ## set fontsize
@@ -2565,11 +2565,12 @@ def format_hov_axs(axs):
     axs[2].set_yticks([])
     axs[0].set_yticks([1, 5, 9, 12], labels=["Jan", "May", "Sep", "Dec"])
 
-    for ax in axs:
-        # ax.set_xlim([190, None])
-        ax.set_xticks([190, 240])
-        ax.axvline(240, ls="--", c="w", lw=1)
-        ax.axvline(190, ls="--", c="w", lw=1)
+    if ticks is not None:
+
+        for ax in axs:
+            ax.set_xticks(ticks)
+            for t in ticks:
+                ax.axvline(t, ls="--", c="w", lw=1)
 
     return
 
