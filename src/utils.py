@@ -567,12 +567,12 @@ def subplots_with_proj(
     return np.array(fig.get_axes()).reshape(nrows, ncols)
 
 
-def plot_setup_pac(ax, max_lat=30):
+def plot_setup_pac(ax, max_lat=30, lon_range=(100, 300)):
     """Plot Pacific region"""
 
     ## trim and add coastlines
     ax.coastlines(linewidth=0.3)
-    ax.set_extent([100, 300, -max_lat, max_lat], crs=ccrs.PlateCarree())
+    ax.set_extent([*lon_range, -max_lat, max_lat], crs=ccrs.PlateCarree())
 
     return ax
 
