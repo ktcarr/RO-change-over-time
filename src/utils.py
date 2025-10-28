@@ -2575,12 +2575,12 @@ def format_hov_axs(axs, ticks=[190, 240]):
     return
 
 
-def merimean(x, lat_bound=5):
+def merimean(x, lat_bound=5, lon_range=slice(140,285)):
     """get meridional mean"""
 
     ## get bounds for latitude averaging
     coords = dict(
-        longitude=slice(140, 285),
+        longitude=lon_range,
         latitude=slice(-lat_bound, lat_bound),
     )
 
