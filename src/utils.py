@@ -1402,7 +1402,7 @@ def get_angle(c):
     return phi
 
 
-def format_psd_ax(ax):
+def format_psd_ax(ax, fs=6):
     """format PSD plot's axis as desired"""
 
     ## set limits
@@ -1420,7 +1420,7 @@ def format_psd_ax(ax):
 
     ## label them
     y_max = ax.get_ylim()[1]
-    kwargs = dict(ha="center", va="top", size=6)
+    kwargs = dict(ha="center", va="top", size=fs)
     ax.text(np.mean(Mfreq_enso) * 0.9, y_max, "$f_{E}$", **kwargs)
     ax.text(np.mean(Mfreq_fplus) + 0.1, y_max, "$1+f_{E}$", **kwargs)
     ax.text(np.mean(Mfreq_fmins), y_max, "$1-f_{E}$", **kwargs)
@@ -1435,7 +1435,7 @@ def format_psd_ax(ax):
     return
 
 
-def plot_psd(ax, psd_results, color=None, label=None):
+def plot_psd(ax, psd_results, color=None, label=None, fs=6):
     """plot PSD stuff for given data on specified ax"""
 
     ## "unzip" psd results
@@ -1468,7 +1468,7 @@ def plot_psd(ax, psd_results, color=None, label=None):
     )
 
     ## format axis
-    format_psd_ax(ax)
+    format_psd_ax(ax, fs=fs)
 
     return
 
