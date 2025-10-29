@@ -972,7 +972,7 @@ def spatial_comp(
     return fig, axs, plot_data, colorbars
 
 
-def plot_cycle_hov(ax, data, **kwargs):
+def plot_cycle_hov(ax, data, xticks=[190, 240], **kwargs):
     """plot hovmoller of SST on the equator"""
 
     ## make sure month is first
@@ -986,8 +986,8 @@ def plot_cycle_hov(ax, data, **kwargs):
 
     ## plot Niño 3.4 region
     kwargs = dict(ls="--", c="w", lw=0.85)
-    ax.axvline(190, **kwargs)
-    ax.axvline(240, **kwargs)
+    for t in xticks:
+        ax.axvline(t, **kwargs)
 
     ## labels/style
     ax.set_yticks([1, 5, 9, 13], labels=["Jan", "May", "Sep", "Jan"])
@@ -2575,7 +2575,7 @@ def format_hov_axs(axs, ticks=[190, 240]):
     return
 
 
-def merimean(x, lat_bound=5, lon_range=slice(140,285)):
+def merimean(x, lat_bound=5, lon_range=slice(140, 285)):
     """get meridional mean"""
 
     ## get bounds for latitude averaging
