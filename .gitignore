@@ -9,6 +9,7 @@ results/forecast_data
 results/h_ests
 results/bjerknes
 results/composites
+results/ch3-outline
 tests/*.nc
 
 # Byte-compiled / optimized / DLL files
