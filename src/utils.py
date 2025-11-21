@@ -1999,7 +1999,7 @@ def regress_xr(data, y_vars, x_vars, helper_fn=None, **helper_kwargs):
     return xr.merge(m)
 
 
-def regress_xr_proj(data, y_vars, x_vars):
+def regress_xr_proj(data, y_vars, x_vars, dims=["member", "time"]):
     """
     Regress projected y_vars onto x_vars in given dataset
     """
@@ -2009,12 +2009,14 @@ def regress_xr_proj(data, y_vars, x_vars):
     Y = data[y_vars].to_dataarray(dim="k")
 
     ## compute covariance matrices
-    YXt = xr.cov(Y, X, dim=["member", "time"])
-    XXt = xr.cov(X, X.rename({"i": "j"}), dim=["member", "time"])
+    YXt = xr.cov(Y, X, dim=dims)
+    XXt = xr.cov(X, X.rename({"i": "j"}), dim=dims)
 
-    # ## invert XX^T
-    XXt_inv = xr.zeros_like(XXt)
-    XXt_inv.values = np.linalg.inv(XXt.values)
+    ## transpose for inverse
+    XXt = XXt.transpose(..., "i", "j")
+
+    ## invert XX^T
+    XXt_inv = np.linalg.inv(XXt)
 
     ## get least-squares fit, YX^T @ (XX^T)^{-1}
     m_proj = (YXt * XXt_inv).sum("i")
@@ -2060,7 +2062,7 @@ def get_F(month, max_order=5):
     return F
 
 
-def regress_harm(data, y_vars, x_vars):
+def regress_harm(data, y_vars, x_vars, dims=["member", "time"]):
     """
     Regress projected y_vars onto x_vars in given dataset
     """
@@ -2075,12 +2077,14 @@ def regress_harm(data, y_vars, x_vars):
 
     ## compute covariance matrices
     X_ = X.rename({"i": "j"}).drop_vars(["order", "ell"])
-    XXt = xr.cov(X, X_, dim=["member", "time"])
-    YXt = xr.cov(Y, X, dim=["member", "time"])
+    XXt = xr.cov(X, X_, dim=dims)
+    YXt = xr.cov(Y, X, dim=dims)
 
-    # ## invert XX^T
-    XXt_inv = xr.zeros_like(XXt)
-    XXt_inv.values = np.linalg.inv(XXt.values)
+    ## transpose for inverse
+    XXt = XXt.transpose(..., "i", "j")
+
+    ## invert XX^T
+    XXt_inv = np.linalg.inv(XXt)
 
     ## get least-squares fit, YX^T @ (XX^T)^{-1}
     m_proj = (YXt * XXt_inv).sum("i")
@@ -2094,7 +2098,7 @@ def regress_harm(data, y_vars, x_vars):
     return m_proj
 
 
-def regress_harm_wrapper(data, y_vars, x_vars, max_order=3):
+def regress_harm_wrapper(data, y_vars, x_vars, max_order=3, dims=["time", "member"]):
     """
     Regress projected y_vars onto x_vars in given dataset
     """
@@ -2106,7 +2110,7 @@ def regress_harm_wrapper(data, y_vars, x_vars, max_order=3):
     data_proj = xr.merge([F * data[x_vars], data[y_vars]])
 
     ## compute coefficients
-    coefs_proj = regress_harm(data=data_proj, y_vars=y_vars, x_vars=x_vars)
+    coefs_proj = regress_harm(data=data_proj, y_vars=y_vars, x_vars=x_vars, dims=dims)
 
     ## inverse Fourier transform
     month = xr.DataArray(np.arange(1, 13), coords=dict(month=np.arange(1, 13)))
@@ -2587,7 +2591,9 @@ def merimean(x, lat_bound=5, lon_range=slice(140, 285)):
     return x.sel(coords).mean("latitude")
 
 
-def make_cycle_hov(ax, data, amp, is_filled=True, xticks=[190, 240], lat_bound=5):
+def make_cycle_hov(
+    ax, data, amp, is_filled=True, xticks=[190, 240], lat_bound=5, cmap="cmo.balance"
+):
     """plot data on ax object"""
 
     ## specify shared kwargs
@@ -2596,7 +2602,7 @@ def make_cycle_hov(ax, data, amp, is_filled=True, xticks=[190, 240], lat_bound=5
     ## specify kwargs
     if is_filled:
         plot_fn = ax.contourf
-        kwargs = dict(cmap="cmo.balance")
+        kwargs = dict(cmap=cmap)
 
     else:
         plot_fn = ax.contour
@@ -2801,7 +2807,7 @@ def load_h_data(max_grad=False):
 
     ## open data
     if max_grad:
-        h = xr.open_dataarray(H_DIR / "h_max-grad.nc")
+        h = xr.open_dataarray(H_DIR / "h_max-grad_05.nc")
     else:
         h = xr.open_dataarray(H_DIR / "h_int_40.nc")
 

@@ -729,7 +729,7 @@ class XRO(object):
 
         # RO model's nonlinear forms of all two and third order version
         RO_T2 = XN[0, :] * XN[0, :]  # [ntime]
-        RO_TH = XN[0, :] * XN[1, :]  # [ntime]
+        RO_TH = XN[1, :] * XN[1, :]  # [ntime]
         RO_T3 = XN[0, :] * XN[0, :] * XN[0, :]  # [ntime]
         RO_T2H = XN[0, :] * XN[0, :] * XN[1, :]  # [ntime]
         RO_TH2 = XN[0, :] * XN[1, :] * XN[1, :]  # [ntime]
