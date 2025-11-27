@@ -784,7 +784,7 @@ def get_rolling_fn_bymonth(x, fn, n=0, reduce_ensemble_dim=True):
     return x.groupby("time.month").map(lambda z: get_rolling_fn(z, **kwargs))
 
 
-def separate_forced(data, n=0):
+def separate_forced(data, n=0, fn=np.mean):
     """
     Get forced component of ensemble. 'n' specifies number of years
     to average over when computing "forced" component. I.e., average
@@ -796,7 +796,7 @@ def separate_forced(data, n=0):
     """
 
     ## forced response defined as ensemble mean, smoothed in time
-    forced = get_rolling_fn_bymonth(data, fn=np.mean, n=n)
+    forced = get_rolling_fn_bymonth(data, fn=fn, n=n)
 
     ## anomaly is residual of total minus forced
     anom = data.sel(time=forced.time) - forced
@@ -817,7 +817,7 @@ def get_rolling_avg(x, n, dim="time"):
     return x_rolling
 
 
-def separate_forced(data, n=0):
+def separate_forced(data, n=0, use_mean=True):
     """
     Get forced component of ensemble. 'n' specifies number of years
     to average over when computing "forced" component. I.e., average
@@ -829,7 +829,10 @@ def separate_forced(data, n=0):
     """
 
     ## compute ensemble mean
-    ensemble_mean = data.mean("member")
+    if use_mean:
+        ensemble_mean = data.mean("member")
+    else:
+        ensemble_mean = data.median("member")
 
     ## group by month, then computing rolling mean over years
     get_rolling_avg_ = lambda x: get_rolling_avg(x, n=n)
@@ -2170,6 +2173,42 @@ def get_THF(bar, prime):
     return get_wdTdz(w=bar["w"], T=prime["T"])
 
 
+def get_THF_bulk(bar, prime):
+    """thermocline feedback"""
+
+    ## specify ML depth and base of entrainment one
+    H0 = 50
+    He = 70
+
+    ## get dT
+    Tml = prime["T"].sel(z_t=slice(0, H0)).mean("z_t")
+    Ten = prime["T"].sel(z_t=slice(H0, He)).mean("z_t")
+    dT = Ten - Tml
+
+    ## get w scaled by H0
+    w_H = 1 / H0 * bar["w"].sel(z_t=slice(H0, He)).mean("z_t")
+
+    return w_H * dT
+
+
+def get_EKM_bulk(bar, prime):
+    """thermocline feedback"""
+
+    ## specify ML depth and base of entrainment one
+    H0 = 50
+    He = 70
+
+    ## get dT
+    Tml = bar["T"].sel(z_t=slice(0, H0)).mean("z_t")
+    Ten = bar["T"].sel(z_t=slice(H0, He)).mean("z_t")
+    dT = Ten - Tml
+
+    ## get w scaled by H0
+    w_H = 1 / H0 * prime["w"].sel(z_t=slice(H0, He)).mean("z_t")
+
+    return w_H * dT
+
+
 def get_EKM(bar, prime):
     """thermocline feedback"""
     return get_wdTdz(T=bar["T"], w=prime["w"])
@@ -2197,7 +2236,7 @@ def get_DDM(bar, prime, v_var="v", T_var="T"):
     return -get_vdTdy(T=prime[T_var], v=bar[v_var])
 
 
-def get_feedbacks(bar, prime):
+def get_feedbacks(bar, prime, use_bulk=False):
     """
     Given bar and prime for {u,w,T}, compute following feedbacks:
         - thermocline
@@ -2210,8 +2249,14 @@ def get_feedbacks(bar, prime):
     feedbacks = xr.Dataset()
 
     ## compute
-    feedbacks["THF"] = get_THF(bar, prime)
-    feedbacks["EKM"] = get_EKM(bar, prime)
+    if use_bulk:
+        feedbacks["THF"] = get_THF_bulk(bar, prime)
+        feedbacks["EKM"] = get_EKM_bulk(bar, prime)
+
+    else:
+        feedbacks["THF"] = get_THF(bar, prime)
+        feedbacks["EKM"] = get_EKM(bar, prime)
+
     feedbacks["ZAF"] = get_ZAF(bar, prime)
     feedbacks["DD"] = get_DD(bar, prime)
     feedbacks["ADV"] = (
@@ -3094,3 +3139,21 @@ def get_perturbed_xi(params, ranky):
         pparams[n] = xi
 
     return pparams
+
+
+def load_consolidated_wide():
+    """utility function to load consolidated data"""
+
+    ## directory with data
+    CONS_DIR = pathlib.Path(os.environ["DATA_FP"], "cesm", "consolidated_05")
+
+    ## function to align and open
+    kwargs = dict(pop_vars=["u", "u_comp", "T", "T_comp", "w", "w_comp"])
+    align_and_open = lambda fp: align_pop_times(xr.open_dataset(fp), **kwargs)
+
+    ## open data and align pop times
+    kwargs = dict(pop_vars=["u", "u_comp", "T", "T_comp", "w", "w_comp"])
+    forced = align_and_open(CONS_DIR / "forced.nc")
+    anom = align_and_open(CONS_DIR / "anom.nc")
+
+    return forced, anom
