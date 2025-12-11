@@ -784,7 +784,7 @@ def get_rolling_fn_bymonth(x, fn, n=0, reduce_ensemble_dim=True):
     return x.groupby("time.month").map(lambda z: get_rolling_fn(z, **kwargs))
 
 
-def separate_forced(data, n=0):
+def separate_forced(data, n=0, fn=np.mean):
     """
     Get forced component of ensemble. 'n' specifies number of years
     to average over when computing "forced" component. I.e., average
@@ -796,7 +796,7 @@ def separate_forced(data, n=0):
     """
 
     ## forced response defined as ensemble mean, smoothed in time
-    forced = get_rolling_fn_bymonth(data, fn=np.mean, n=n)
+    forced = get_rolling_fn_bymonth(data, fn=fn, n=n)
 
     ## anomaly is residual of total minus forced
     anom = data.sel(time=forced.time) - forced
@@ -817,7 +817,7 @@ def get_rolling_avg(x, n, dim="time"):
     return x_rolling
 
 
-def separate_forced(data, n=0):
+def separate_forced(data, n=0, use_mean=True):
     """
     Get forced component of ensemble. 'n' specifies number of years
     to average over when computing "forced" component. I.e., average
@@ -829,7 +829,10 @@ def separate_forced(data, n=0):
     """
 
     ## compute ensemble mean
-    ensemble_mean = data.mean("member")
+    if use_mean:
+        ensemble_mean = data.mean("member")
+    else:
+        ensemble_mean = data.median("member")
 
     ## group by month, then computing rolling mean over years
     get_rolling_avg_ = lambda x: get_rolling_avg(x, n=n)
@@ -1999,7 +2002,7 @@ def regress_xr(data, y_vars, x_vars, helper_fn=None, **helper_kwargs):
     return xr.merge(m)
 
 
-def regress_xr_proj(data, y_vars, x_vars):
+def regress_xr_proj(data, y_vars, x_vars, dims=["member", "time"]):
     """
     Regress projected y_vars onto x_vars in given dataset
     """
@@ -2009,12 +2012,14 @@ def regress_xr_proj(data, y_vars, x_vars):
     Y = data[y_vars].to_dataarray(dim="k")
 
     ## compute covariance matrices
-    YXt = xr.cov(Y, X, dim=["member", "time"])
-    XXt = xr.cov(X, X.rename({"i": "j"}), dim=["member", "time"])
+    YXt = xr.cov(Y, X, dim=dims)
+    XXt = xr.cov(X, X.rename({"i": "j"}), dim=dims)
 
-    # ## invert XX^T
-    XXt_inv = xr.zeros_like(XXt)
-    XXt_inv.values = np.linalg.inv(XXt.values)
+    ## transpose for inverse
+    XXt = XXt.transpose(..., "i", "j")
+
+    ## invert XX^T
+    XXt_inv = np.linalg.inv(XXt)
 
     ## get least-squares fit, YX^T @ (XX^T)^{-1}
     m_proj = (YXt * XXt_inv).sum("i")
@@ -2060,7 +2065,7 @@ def get_F(month, max_order=5):
     return F
 
 
-def regress_harm(data, y_vars, x_vars):
+def regress_harm(data, y_vars, x_vars, dims=["member", "time"]):
     """
     Regress projected y_vars onto x_vars in given dataset
     """
@@ -2075,12 +2080,14 @@ def regress_harm(data, y_vars, x_vars):
 
     ## compute covariance matrices
     X_ = X.rename({"i": "j"}).drop_vars(["order", "ell"])
-    XXt = xr.cov(X, X_, dim=["member", "time"])
-    YXt = xr.cov(Y, X, dim=["member", "time"])
+    XXt = xr.cov(X, X_, dim=dims)
+    YXt = xr.cov(Y, X, dim=dims)
 
-    # ## invert XX^T
-    XXt_inv = xr.zeros_like(XXt)
-    XXt_inv.values = np.linalg.inv(XXt.values)
+    ## transpose for inverse
+    XXt = XXt.transpose(..., "i", "j")
+
+    ## invert XX^T
+    XXt_inv = np.linalg.inv(XXt)
 
     ## get least-squares fit, YX^T @ (XX^T)^{-1}
     m_proj = (YXt * XXt_inv).sum("i")
@@ -2094,7 +2101,7 @@ def regress_harm(data, y_vars, x_vars):
     return m_proj
 
 
-def regress_harm_wrapper(data, y_vars, x_vars, max_order=3):
+def regress_harm_wrapper(data, y_vars, x_vars, max_order=3, dims=["time", "member"]):
     """
     Regress projected y_vars onto x_vars in given dataset
     """
@@ -2106,7 +2113,7 @@ def regress_harm_wrapper(data, y_vars, x_vars, max_order=3):
     data_proj = xr.merge([F * data[x_vars], data[y_vars]])
 
     ## compute coefficients
-    coefs_proj = regress_harm(data=data_proj, y_vars=y_vars, x_vars=x_vars)
+    coefs_proj = regress_harm(data=data_proj, y_vars=y_vars, x_vars=x_vars, dims=dims)
 
     ## inverse Fourier transform
     month = xr.DataArray(np.arange(1, 13), coords=dict(month=np.arange(1, 13)))
@@ -2166,6 +2173,42 @@ def get_THF(bar, prime):
     return get_wdTdz(w=bar["w"], T=prime["T"])
 
 
+def get_THF_bulk(bar, prime):
+    """thermocline feedback"""
+
+    ## specify ML depth and base of entrainment one
+    H0 = 50
+    He = 70
+
+    ## get dT
+    Tml = prime["T"].sel(z_t=slice(0, H0)).mean("z_t")
+    Ten = prime["T"].sel(z_t=slice(H0, He)).mean("z_t")
+    dT = Ten - Tml
+
+    ## get w scaled by H0
+    w_H = 1 / H0 * bar["w"].sel(z_t=slice(H0, He)).mean("z_t")
+
+    return w_H * dT
+
+
+def get_EKM_bulk(bar, prime):
+    """thermocline feedback"""
+
+    ## specify ML depth and base of entrainment one
+    H0 = 50
+    He = 70
+
+    ## get dT
+    Tml = bar["T"].sel(z_t=slice(0, H0)).mean("z_t")
+    Ten = bar["T"].sel(z_t=slice(H0, He)).mean("z_t")
+    dT = Ten - Tml
+
+    ## get w scaled by H0
+    w_H = 1 / H0 * prime["w"].sel(z_t=slice(H0, He)).mean("z_t")
+
+    return w_H * dT
+
+
 def get_EKM(bar, prime):
     """thermocline feedback"""
     return get_wdTdz(T=bar["T"], w=prime["w"])
@@ -2193,7 +2236,7 @@ def get_DDM(bar, prime, v_var="v", T_var="T"):
     return -get_vdTdy(T=prime[T_var], v=bar[v_var])
 
 
-def get_feedbacks(bar, prime):
+def get_feedbacks(bar, prime, use_bulk=False):
     """
     Given bar and prime for {u,w,T}, compute following feedbacks:
         - thermocline
@@ -2206,8 +2249,14 @@ def get_feedbacks(bar, prime):
     feedbacks = xr.Dataset()
 
     ## compute
-    feedbacks["THF"] = get_THF(bar, prime)
-    feedbacks["EKM"] = get_EKM(bar, prime)
+    if use_bulk:
+        feedbacks["THF"] = get_THF_bulk(bar, prime)
+        feedbacks["EKM"] = get_EKM_bulk(bar, prime)
+
+    else:
+        feedbacks["THF"] = get_THF(bar, prime)
+        feedbacks["EKM"] = get_EKM(bar, prime)
+
     feedbacks["ZAF"] = get_ZAF(bar, prime)
     feedbacks["DD"] = get_DD(bar, prime)
     feedbacks["ADV"] = (
@@ -2587,7 +2636,9 @@ def merimean(x, lat_bound=5, lon_range=slice(140, 285)):
     return x.sel(coords).mean("latitude")
 
 
-def make_cycle_hov(ax, data, amp, is_filled=True, xticks=[190, 240], lat_bound=5):
+def make_cycle_hov(
+    ax, data, amp, is_filled=True, xticks=[190, 240], lat_bound=5, cmap="cmo.balance"
+):
     """plot data on ax object"""
 
     ## specify shared kwargs
@@ -2596,7 +2647,7 @@ def make_cycle_hov(ax, data, amp, is_filled=True, xticks=[190, 240], lat_bound=5
     ## specify kwargs
     if is_filled:
         plot_fn = ax.contourf
-        kwargs = dict(cmap="cmo.balance")
+        kwargs = dict(cmap=cmap)
 
     else:
         plot_fn = ax.contour
@@ -2801,7 +2852,7 @@ def load_h_data(max_grad=False):
 
     ## open data
     if max_grad:
-        h = xr.open_dataarray(H_DIR / "h_max-grad.nc")
+        h = xr.open_dataarray(H_DIR / "h_max-grad_05.nc")
     else:
         h = xr.open_dataarray(H_DIR / "h_int_40.nc")
 
@@ -3102,3 +3153,21 @@ def get_perturbed_xi(params, ranky):
         pparams[n] = xi
 
     return pparams
+
+
+def load_consolidated_wide():
+    """utility function to load consolidated data"""
+
+    ## directory with data
+    CONS_DIR = pathlib.Path(os.environ["DATA_FP"], "cesm", "consolidated_05")
+
+    ## function to align and open
+    kwargs = dict(pop_vars=["u", "u_comp", "T", "T_comp", "w", "w_comp"])
+    align_and_open = lambda fp: align_pop_times(xr.open_dataset(fp), **kwargs)
+
+    ## open data and align pop times
+    kwargs = dict(pop_vars=["u", "u_comp", "T", "T_comp", "w", "w_comp"])
+    forced = align_and_open(CONS_DIR / "forced.nc")
+    anom = align_and_open(CONS_DIR / "anom.nc")
+
+    return forced, anom

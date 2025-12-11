@@ -5,12 +5,14 @@ data
 scripts/jupyter.sh
 results/fits*
 results/2025*
+results/*.nc
 results/forecast_data
 results/h_ests
 results/bjerknes
 results/composites
 results/ch3-outline
 tests/*.nc
+scripts/cesm2/scratch
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
