@@ -3157,3 +3157,23 @@ def load_consolidated_wide():
     anom = align_and_open(CONS_DIR / "anom.nc")
 
     return forced, anom
+
+
+def label_subplot(ax, label, posn):
+    """Add label to subplot in custom style"""
+    posnx, posny = posn
+
+    ## kwargs for bounding box
+    bbox = dict(boxstyle="round", facecolor="white", alpha=1)
+
+    ## add label
+    ax.text(
+        posnx,
+        posny,
+        label,
+        ha="center",
+        va="center",
+        bbox=bbox,
+        transform=ax.transAxes,
+    )
+    return
