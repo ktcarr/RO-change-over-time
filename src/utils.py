@@ -2892,6 +2892,20 @@ def load_consolidated():
     return forced, anom
 
 
+def load_consolidated_05():
+    """utility function to load consolidated data"""
+
+    ## directory with data
+    CONS_DIR = pathlib.Path(os.environ["DATA_FP"], "cesm", "consolidated_05")
+
+    ## open data and align pop times
+    pop_vars = ["u", "w", "T", "u_comp", "w_comp", "T_comp"]
+    forced = align_pop_times(xr.open_dataset(CONS_DIR / "forced.nc"), pop_vars)
+    anom = align_pop_times(xr.open_dataset(CONS_DIR / "anom.nc"), pop_vars)
+
+    return forced, anom
+
+
 def get_windowed(data, window_size=480, stride=60):
     """Get windowed version of data (used for computing parameter values over time)"""
 
