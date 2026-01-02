@@ -2252,15 +2252,23 @@ def get_feedbacks(bar, prime, use_bulk=False):
     if use_bulk:
         feedbacks["THF"] = get_THF_bulk(bar, prime)
         feedbacks["EKM"] = get_EKM_bulk(bar, prime)
+        feedbacks["NDH_z"] = get_THF_bulk(prime, prime)
 
     else:
         feedbacks["THF"] = get_THF(bar, prime)
         feedbacks["EKM"] = get_EKM(bar, prime)
+        feedbacks["NDH_z"] = get_THF(prime, prime)
 
     feedbacks["ZAF"] = get_ZAF(bar, prime)
     feedbacks["DD"] = get_DD(bar, prime)
+    feedbacks["NDH_x"] = get_ZAF(prime, prime)
     feedbacks["ADV"] = (
-        feedbacks["THF"] + feedbacks["EKM"] + feedbacks["ZAF"] + feedbacks["DD"]
+        feedbacks["THF"]
+        + feedbacks["EKM"]
+        + feedbacks["ZAF"]
+        + feedbacks["DD"]
+        + feedbacks["NDH_z"]
+        + feedbacks["NDH_x"]
     )
 
     return feedbacks
