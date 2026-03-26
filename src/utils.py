@@ -2852,7 +2852,7 @@ def load_flux_data():
     return forced, anom
 
 
-def load_h_data(max_grad=False):
+def load_h_data(max_grad=False, use_wide=True):
     """utilitiy func to load surface flux data. Note POP/CAM times already aligned"""
 
     ## directory with data
@@ -2860,7 +2860,11 @@ def load_h_data(max_grad=False):
 
     ## open data
     if max_grad:
-        h = xr.open_dataarray(H_DIR / "h_max-grad_05.nc")
+        if use_wide:
+            name = "h_max-grad_05.nc"
+        else:
+            name = "h_max-grad.nc"
+        h = xr.open_dataarray(H_DIR / name)
     else:
         h = xr.open_dataarray(H_DIR / "h_int_40.nc")
 
