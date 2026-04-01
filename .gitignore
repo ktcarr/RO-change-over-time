@@ -8,7 +8,7 @@ results/2025*
 results/*.nc
 results/forecast_data
 results/h_ests
-results/bjerknes
+results/bjerknes*
 results/composites
 results/ch3-outline
 tests/*.nc
