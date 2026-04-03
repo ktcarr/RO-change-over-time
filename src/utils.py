@@ -14,6 +14,7 @@ import copy
 import calendar
 import os
 import src.XRO
+import sklearn.linear_model
 
 
 def spatial_avg(data):
@@ -3203,3 +3204,63 @@ def label_subplot(ax, label, posn):
         transform=ax.transAxes,
     )
     return
+
+
+def estimate_rect(data, xvar, yvars):
+    """estimate nonlinear rectification effect from data"""
+    ## Linear regression object
+    LR = sklearn.linear_model.LinearRegression
+
+    ## empty array to hold results
+    coefs = []
+
+    ## loop thru years
+    for year in data.year:
+
+        ## get data
+        X = data[xvar].sel(year=year)
+        Y = data[yvars].sel(year=year).to_dataarray()
+
+        ## make sure "mode" is in dims
+        if "mode" not in Y.dims:
+            Y = Y.expand_dims("mode")
+
+        ## reshape for regression
+        Y = Y.transpose("member", ...).stack(p=["variable", "mode"])
+
+        ## instantiate model
+        mod = LR(fit_intercept=True)
+        mod.fit(X=X.values[:, None], y=Y.values)
+
+        ## empty array to hold coefficients
+        coefs_y = xr.ones_like(Y.isel(member=slice(None, 2))).rename(
+            {"member": "degree"}
+        )
+
+        ## get coefficients
+        coefs_y.values = np.concatenate([mod.intercept_[:, None], mod.coef_], axis=1).T
+
+        ## track
+        coefs.append(coefs_y)
+
+    ## put coefs in array
+    coefs = xr.concat(coefs, dim=data.year)
+    coefs = coefs.unstack("p").to_dataset("variable").squeeze(drop=True)
+
+    return coefs
+
+
+def remove_rect(data, xvar, yvars, constant=False):
+    """remove nonlinear rectification effect"""
+
+    ## get coefficients for effect
+    rect_coefs = estimate_rect(data, xvar=xvar, yvars=yvars).sel(degree=1)
+
+    ## handle constant case
+    if constant:
+        rect_coefs = rect_coefs.mean("year")
+
+    ## estimate effect
+    rect_effect = data[xvar] * rect_coefs
+
+    return data[yvars].mean("member") - rect_effect.drop_vars("degree")
