@@ -3206,6 +3206,17 @@ def label_subplot(ax, label, posn):
     return
 
 
+def estimate_rect_bymonth(data, xvar, yvars):
+    """estimate rectification by month"""
+
+    ## loop thru months
+    coefs = []
+    for month in tqdm.tqdm(data.month):
+        coefs.append(estimate_rect(data.sel(month=month), xvar=xvar, yvars=yvars))
+
+    return xr.concat(coefs, dim=data.month)
+
+
 def estimate_rect(data, xvar, yvars):
     """estimate nonlinear rectification effect from data"""
     ## Linear regression object
@@ -3253,8 +3264,14 @@ def estimate_rect(data, xvar, yvars):
 def remove_rect(data, xvar, yvars, constant=False):
     """remove nonlinear rectification effect"""
 
+    ## choose function to use
+    if "month" in data.dims:
+        fn = estimate_rect_bymonth
+    else:
+        fn = estimate_rect
+
     ## get coefficients for effect
-    rect_coefs = estimate_rect(data, xvar=xvar, yvars=yvars).sel(degree=1)
+    rect_coefs = fn(data, xvar=xvar, yvars=yvars).sel(degree=1)
 
     ## handle constant case
     if constant:
