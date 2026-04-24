@@ -3281,3 +3281,19 @@ def remove_rect(data, xvar, yvars, constant=False):
     rect_effect = data[xvar] * rect_coefs
 
     return data[yvars].mean("member") - rect_effect.drop_vars("degree")
+
+
+def add_vticks(axs, xticks, xlines=None):
+    """add vertical lines to axs"""
+
+    ## specify line style
+    ax_kwargs = dict(ls="--", c="gray", lw=0.8)
+
+    ## loop thru axs
+    for ax in axs:
+        ax.set_xticks(xticks)
+        if xlines is not None:
+            for x0 in xlines:
+                ax.axvline(x0, **ax_kwargs)
+
+    return
