@@ -2847,8 +2847,8 @@ def load_flux_data():
     CONS_DIR = pathlib.Path(os.environ["DATA_FP"], "cesm", "consolidated")
 
     ## open data and align pop times
-    forced = xr.open_dataset(CONS_DIR / "flux_forced.nc")
-    anom = xr.open_dataset(CONS_DIR / "flux_anom.nc")
+    forced = xr.open_dataset(CONS_DIR / "flux_forced_with_clearsky.nc")
+    anom = xr.open_dataset(CONS_DIR / "flux_anom_with_clearsky.nc")
 
     return forced, anom
 
