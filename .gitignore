@@ -6,6 +6,7 @@ scripts/jupyter.sh
 results/fits*
 results/figs
 results/egu_poster_figs
+results/pre-egu-updates
 results/2025*
 results/*.nc
 results/forecast_data
