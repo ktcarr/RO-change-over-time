@@ -3027,14 +3027,12 @@ def frac_change(x, inv=True):
     return (x_ - x0_) / x0_
 
 
-def get_perturbed_NROT(params):
+def get_perturbed_NROT(params, nro_form_idx=None):
     """
     Fix values of R parameter set.
     if 'fix_others' is True, then other parameters are fixed to their
     initial value. Otherwise, given parameter is fixed to its initial value
     """
-
-    ## unfold indices
 
     ## initialize empty array to hold parameters
     params_new = copy.deepcopy(params)
@@ -3043,8 +3041,12 @@ def get_perturbed_NROT(params):
     ## get numpy version of linear operator
     NROT_Lac = params_new["NROT_Lac"].values
 
-    ## update Lac
-    NROT_Lac = NROT_Lac[:1]
+    ## update parameter
+    if nro_form_idx is None:
+        NROT_Lac = NROT_Lac[:1]
+
+    else:
+        NROT_Lac[:, nro_form_idx] = NROT_Lac[:1, nro_form_idx]
 
     ## add back to parameters
     params_new["NROT_Lac"] = xr.ones_like(params_new["NROT_Lac"]) * NROT_Lac
