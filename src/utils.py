@@ -748,12 +748,12 @@ def sel_month(x, months=None):
         return x.isel(time=is_month)
 
 
-def get_rolling_fn(x, fn, n=0, reduce_ensemble_dim=True):
+def get_rolling_fn(x, fn, n=0, reduce_ensemble_dim=True, min_periods=None):
     """Apply function to rolling set of data. Applies to window of
     size (2n+1), centered at each datapoint."""
 
     ## get rolling object
-    x_rolling = x.rolling({"time": 2 * n + 1}, center=True).construct("window")
+    x_rolling = x.rolling({"time": 2 * n + 1}, center=True, min_periods=min_periods).construct("window")
 
     if reduce_ensemble_dim:
 
@@ -771,17 +771,17 @@ def get_rolling_fn(x, fn, n=0, reduce_ensemble_dim=True):
     )
 
     ## trim if necessary
-    if n > 0:
+    if ((n > 0) & (min_periods is None)):
         fn_rolling = fn_rolling.isel(time=slice(n, -n))
 
     return fn_rolling
 
 
-def get_rolling_fn_bymonth(x, fn, n=0, reduce_ensemble_dim=True):
+def get_rolling_fn_bymonth(x, fn, n=0, reduce_ensemble_dim=True, min_periods=None):
     """apply function to rolling set of data by month. 'n' has units of years"""
 
     ## apply function to data grouped by month
-    kwargs = dict(fn=fn, n=n, reduce_ensemble_dim=reduce_ensemble_dim)
+    kwargs = dict(fn=fn, n=n, reduce_ensemble_dim=reduce_ensemble_dim, min_periods=min_periods)
     return x.groupby("time.month").map(lambda z: get_rolling_fn(z, **kwargs))
 
 
