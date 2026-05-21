@@ -753,7 +753,9 @@ def get_rolling_fn(x, fn, n=0, reduce_ensemble_dim=True, min_periods=None):
     size (2n+1), centered at each datapoint."""
 
     ## get rolling object
-    x_rolling = x.rolling({"time": 2 * n + 1}, center=True, min_periods=min_periods).construct("window")
+    x_rolling = x.rolling(
+        {"time": 2 * n + 1}, center=True, min_periods=min_periods
+    ).construct("window")
 
     if reduce_ensemble_dim:
 
@@ -771,7 +773,7 @@ def get_rolling_fn(x, fn, n=0, reduce_ensemble_dim=True, min_periods=None):
     )
 
     ## trim if necessary
-    if ((n > 0) & (min_periods is None)):
+    if (n > 0) & (min_periods is None):
         fn_rolling = fn_rolling.isel(time=slice(n, -n))
 
     return fn_rolling
@@ -781,7 +783,9 @@ def get_rolling_fn_bymonth(x, fn, n=0, reduce_ensemble_dim=True, min_periods=Non
     """apply function to rolling set of data by month. 'n' has units of years"""
 
     ## apply function to data grouped by month
-    kwargs = dict(fn=fn, n=n, reduce_ensemble_dim=reduce_ensemble_dim, min_periods=min_periods)
+    kwargs = dict(
+        fn=fn, n=n, reduce_ensemble_dim=reduce_ensemble_dim, min_periods=min_periods
+    )
     return x.groupby("time.month").map(lambda z: get_rolling_fn(z, **kwargs))
 
 
@@ -2592,6 +2596,15 @@ def split_components(data):
     components = components.rename({c: c[:-5] for c in comp_vars})
 
     return components, other
+
+
+def combine_components(components, scores):
+    """reverse split_components func"""
+
+    ## rename components before merge
+    components = components.rename({c: f"{c}_comp" for c in list(components)})
+
+    return xr.merge([components, scores])
 
 
 def format_subsurf_axs(axs):
