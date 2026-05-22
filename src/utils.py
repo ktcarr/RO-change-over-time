@@ -1887,6 +1887,21 @@ def load_cesm_indices(load_z20=False, load_h_cust=False, max_grad=False):
     return Th
 
 
+def load_cesm_indices_3d(mld=50):
+    """Load cesm indices computed with 3D data"""
+    data_fp = pathlib.Path(os.environ["DATA_FP"], "cesm", f"Th_{mld}.nc")
+
+    return xr.open_dataset(data_fp)
+
+
+def load_cesm_3d():
+    """load 3d data along equator"""
+
+    data_fp = pathlib.Path(os.environ["DATA_FP"], "cesm", f"Th_3D.nc")
+
+    return xr.open_dataset(data_fp)
+
+
 def regress_core(Y, X, dim="time"):
     """compute regression for Y onto X"""
 
