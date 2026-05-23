@@ -695,18 +695,18 @@ class XRO(object):
         Notes:
             - Avoid duplicating T² and T³ in both `maskb` and `maskNT`.
             make sure that first two states in X are : ENSO T & H
-            maskNT: ['T2', 'TH', 'T3', 'T2H', 'TH2'] in ENSO T tendency equation
-            maskNH: ['T2', 'TH', 'T3', 'T2H', 'TH2'] in ENSO H tendency equation
+            maskNT: ['T2', 'TH', 'T3', 'T2H', 'H2'] in ENSO T tendency equation
+            maskNH: ['T2', 'TH', 'T3', 'T2H', 'H2'] in ENSO H tendency equation
 
         Returns:
             xarray.Dataset: A dataset containing:
                 - Linear fit outputs
                 - Nonlinear fit parameters (`NLb`) for X**2 terms
                 - Nonlinear fit parameters (`NLc`) for X**3 terms
-                - Nonlinear fit parameters NROT for [T^2, T*H, T^3, T^2*H, T*H^2]
-                - Nonlinear fit parameters NROH for [T^2, T*H, T^3, T^2*H, T*H^2]
+                - Nonlinear fit parameters NROT for [T^2, T*H, T^3, T^2*H, H^2]
+                - Nonlinear fit parameters NROH for [T^2, T*H, T^3, T^2*H, H^2]
         """
-        NRO_forms = ["T2", "TH", "T3", "T2H", "TH2"]
+        NRO_forms = ["T2", "TH", "T3", "T2H", "H2"]
 
         NL_return_vars = ["Lac", "Lcoef", "Lcomp"]
         xr_var_names = self._get_var_names(X, var_names=var_names)
@@ -732,9 +732,9 @@ class XRO(object):
         RO_TH = XN[1, :] * XN[1, :]  # [ntime]
         RO_T3 = XN[0, :] * XN[0, :] * XN[0, :]  # [ntime]
         RO_T2H = XN[0, :] * XN[0, :] * XN[1, :]  # [ntime]
-        RO_TH2 = XN[0, :] * XN[1, :] * XN[1, :]  # [ntime]
+        RO_H2 = XN[1, :] * XN[1, :]  # [ntime]
 
-        X_RON = np.stack([RO_T2, RO_TH, RO_T3, RO_T2H, RO_TH2], axis=0)
+        X_RON = np.stack([RO_T2, RO_TH, RO_T3, RO_T2H, RO_H2], axis=0)
         # print(XN.shape, YN.shape, XN2.shape, XN3.shape, X_RON.shape)
 
         n_var = XN.shape[0]
@@ -1601,8 +1601,8 @@ def _NRO_tend(X, NRO, rank=0):
         RO_TH = X[0,] * X[1,]
         RO_T3 = X[0,] * X[0,] * X[0,]
         RO_T2H = X[0,] * X[0,] * X[1,]
-        RO_TH2 = X[0,] * X[1,] * X[1,]
-        X_NRO = np.stack([RO_T2, RO_TH, RO_T3, RO_T2H, RO_TH2], axis=0)
+        RO_H2 = X[1,] * X[1,]
+        X_NRO = np.stack([RO_T2, RO_TH, RO_T3, RO_T2H, RO_H2], axis=0)
         tend_nro[rank] = NRO @ X_NRO
     return tend_nro
 
