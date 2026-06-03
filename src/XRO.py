@@ -486,8 +486,8 @@ class XRO(object):
                 "Lcomp": xr_Lcomp,
                 "Lcoef": xr_Lcoef,
                 "X": xr_X,
-                "Y": xr_Yraw.drop("cycle_idx"),
-                "Yfit": xr_Yfit.drop("cycle_idx"),
+                "Y": xr_Yraw.drop_vars("cycle_idx"),
+                "Yfit": xr_Yfit.drop_vars("cycle_idx"),
                 "corr": xr_corr,
                 "xi_std": xi_std,
                 "xi_stdac": xr_stdac,
@@ -837,25 +837,25 @@ class XRO(object):
                 var_resNLb = (
                     var_res.sel(rankx=n_var + 1)
                     .assign_coords(ranky=[i + 1])[NL_return_vars]
-                    .drop("rankx")
+                    .drop_vars("rankx")
                 )
                 var_resNLc = (
                     var_res.sel(rankx=n_var + 2)
                     .assign_coords(ranky=[i + 1])[NL_return_vars]
-                    .drop("rankx")
+                    .drop_vars("rankx")
                 )
                 n_bc = 2
             elif mask_b[i] == 1 and mask_c[i] == 0:
                 var_resNLb = (
                     var_res.sel(rankx=n_var + 1)
                     .assign_coords(ranky=[i + 1])[NL_return_vars]
-                    .drop("rankx")
+                    .drop_vars("rankx")
                 )
                 var_resNLc = (
                     var_resL[NL_return_vars]
                     .sel(rankx=1)
                     .assign_coords(ranky=[i + 1])
-                    .drop("rankx")
+                    .drop_vars("rankx")
                     * 0.0
                 )
                 n_bc = 1
@@ -864,13 +864,13 @@ class XRO(object):
                     var_resL[NL_return_vars]
                     .sel(rankx=1)
                     .assign_coords(ranky=[i + 1])
-                    .drop("rankx")
+                    .drop_vars("rankx")
                     * 0.0
                 )
                 var_resNLc = (
                     var_res.sel(rankx=n_var + 1)
                     .assign_coords(ranky=[i + 1])[NL_return_vars]
-                    .drop("rankx")
+                    .drop_vars("rankx")
                 )
                 n_bc = 1
             else:
@@ -878,14 +878,14 @@ class XRO(object):
                     var_resL[NL_return_vars]
                     .sel(rankx=1)
                     .assign_coords(ranky=[i + 1])
-                    .drop("rankx")
+                    .drop_vars("rankx")
                     * 0.0
                 )
                 var_resNLc = (
                     var_resL[NL_return_vars]
                     .sel(rankx=1)
                     .assign_coords(ranky=[i + 1])
-                    .drop("rankx")
+                    .drop_vars("rankx")
                     * 0.0
                 )
                 n_bc = 0
@@ -916,7 +916,7 @@ class XRO(object):
                         var_res[NL_return_vars]
                         .sel(rankx=slice(n_var + n_bc + 1, n_var + n_bc + n_NT))
                         .isel(ranky=0)
-                        .drop("ranky")
+                        .drop_vars("ranky")
                     )
                     var_resNT_active = var_resNT_active.rename(
                         {"rankx": "nro_form"}
@@ -953,7 +953,7 @@ class XRO(object):
                         var_res[NL_return_vars]
                         .sel(rankx=slice(n_var + n_bc + 1, n_var + n_bc + n_NH))
                         .isel(ranky=0)
-                        .drop("ranky")
+                        .drop_vars("ranky")
                     )
                     var_resNH_active = var_resNH_active.rename(
                         {"rankx": "nro_form"}
@@ -976,7 +976,7 @@ class XRO(object):
                 res_NLc = xr.concat([res_NLc, var_resNLc], dim="ranky")
 
         #
-        fit_X = res_L["X"].sel(ranky=1).drop("ranky")
+        fit_X = res_L["X"].sel(ranky=1).drop_vars("ranky")
         res_L["X"] = fit_X
 
         #### Compute noise covariance
@@ -1174,8 +1174,12 @@ class XRO(object):
         """
         Lac_da = fit_ds["Lac"]
         Noise_ds = fit_ds[["xi_stdac", "xi_std", "xi_a1", "xi_cov", "xi_covac"]]
-        NLb_da = fit_ds.get("NLb_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop("rankx")))
-        NLc_da = fit_ds.get("NLc_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop("rankx")))
+        NLb_da = fit_ds.get(
+            "NLb_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop_vars("rankx"))
+        )
+        NLc_da = fit_ds.get(
+            "NLc_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop_vars("rankx"))
+        )
         #
         try:
             NROT = fit_ds.get("NROT_Lac").values
@@ -1888,7 +1892,10 @@ def gen_noise(
         raise ValueError("Invalid noise_type. Must be 'white' or 'red'.")
 
     if ncycle == 12:
-        time = xr.cftime_range("0001-01", periods=nyear * ncycle, freq="MS")
+        # time = xr.cftime_range("0001-01", periods=nyear * ncycle, freq="MS")
+        time = xr.date_range(
+            start="0001-01", periods=nyear * ncycle, freq="MS", use_cftime=True
+        )
     else:
         time = tim
     members = np.arange(0, ncopy, step=1).astype(np.int32)
@@ -1923,7 +1930,7 @@ def variable_model_to_xarray(model_X, var_names):
     model variable to individual components
     """
     for k, var in enumerate(var_names):
-        tmp_var = model_X.sel(ranky=k + 1).drop("ranky")
+        tmp_var = model_X.sel(ranky=k + 1).drop_vars("ranky")
         if k == 0:
             model_ds = xr.Dataset({var: tmp_var})
         else:
