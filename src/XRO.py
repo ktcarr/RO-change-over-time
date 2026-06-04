@@ -1209,7 +1209,9 @@ class XRO(object):
     # XRO solving part
     # --------------------------------------------------------------------------
     @staticmethod
-    def _integration_core(X, m_Lac, b, c, nro_T, nro_H, noise, dt, nstep):
+    def _integration_core(
+        X, m_Lac, b, c, nro_T, nro_H, noise, dt, nstep, noise_scale=1.0
+    ):
         """
         Core numerical integration routine for time evolution of the system.
 
@@ -1239,7 +1241,7 @@ class XRO(object):
                 + _NRO_tend(X, nro_T, rank=0)
                 + _NRO_tend(X, nro_H, rank=1)
             )
-            dX = (np.dot(m_Lac, X) + nl_terms + noise) * dt
+            dX = (np.dot(m_Lac, X) + nl_terms + noise_scale * noise) * dt
             X += dX
             tmp_X += X / nstep
         return X, tmp_X
@@ -1259,6 +1261,7 @@ class XRO(object):
         xi_B=None,
         is_heaviside=False,
         use_noise_cov=False,
+        noise_scale=1.0,
     ):
         """
         Simulates the time evolution of the system using the fitted model parameters.
@@ -1324,7 +1327,16 @@ class XRO(object):
                 b, c, nro_T, nro_H = NLb[:, j], NLc[:, j], NROT[:, j], NROH[:, j]
                 noise = noise_ds[:, i * ncycle + j, :].values * apply_noise_factor(X)
                 X, tmp_X = self._integration_core(
-                    X, m_Lac, b, c, nro_T, nro_H, noise, dt, nstep
+                    X,
+                    m_Lac,
+                    b,
+                    c,
+                    nro_T,
+                    nro_H,
+                    noise,
+                    dt,
+                    nstep,
+                    noise_scale=noise_scale,
                 )
                 YY[:, i * ncycle + j, :] = tmp_X
         coords = {
@@ -1353,6 +1365,7 @@ class XRO(object):
         is_xi_stdac=True,
         xi_B=None,
         is_heaviside=False,
+        noise_scale=1.0,
     ):
         """
         Performs a forecast simulation using the nonlinear XRO model.
@@ -1424,7 +1437,16 @@ class XRO(object):
             noise = noise_ds[:, i, :] * apply_noise_factor(X)
             tmp_X = np.zeros_like(X)  # Initialize with zeros
             X, tmp_X = self._integration_core(
-                X, m_Lac, b, c, nro_T, nro_H, noise, dt, nstep
+                X,
+                m_Lac,
+                b,
+                c,
+                nro_T,
+                nro_H,
+                noise,
+                dt,
+                nstep,
+                noise_scale=noise_scale,
             )
             YY[:, i + 1, :] = tmp_X
         coords = {"ranky": fit_ds.ranky, "lead": tim, "member": members}
@@ -1444,6 +1466,7 @@ class XRO(object):
         is_xi_stdac=True,
         xi_B=None,
         is_heaviside=False,
+        noise_scale=1.0,
     ):
         """
         Generates a reforecast using the nonlinear XRO model.
@@ -1486,6 +1509,7 @@ class XRO(object):
                 is_xi_stdac=is_xi_stdac,
                 xi_B=xi_B,
                 is_heaviside=is_heaviside,
+                noise_scale=noise_scale,
             )
             tmp_fcst = tmp_fcst.assign_coords({"time": t0})
             if i == 0:
