@@ -2188,9 +2188,14 @@ def get_ddt(ds, is_forward=True):
     return ds
 
 
-def get_THF(bar, prime):
+def get_THF(bar, prime, flux_form=False):
     """thermocline feedback"""
-    return get_wdTdz(w=bar["w"], T=prime["T"])
+    if flux_form:
+        wT = bar["w"] * prime["T"]
+        return wT.differentiate("z_t")
+
+    else:
+        return get_wdTdz(w=bar["w"], T=prime["T"])
 
 
 def get_THF_bulk(bar, prime):
@@ -2239,7 +2244,7 @@ def get_ZAF(bar, prime, u_var="u", T_var="T"):
     return -get_udTdx(T=bar[T_var], u=prime[u_var])
 
 
-def get_DD(bar, prime, u_var="u", T_var="T"):
+def get_DD(bar, prime, u_var="u", T_var="T", flux_form=False):
     """dynamical damping"""
     return -get_udTdx(T=prime[T_var], u=bar[u_var])
 
@@ -2256,7 +2261,7 @@ def get_DDM(bar, prime, v_var="v", T_var="T"):
     return -get_vdTdy(T=prime[T_var], v=bar[v_var])
 
 
-def get_feedbacks(bar, prime, use_bulk=False):
+def get_feedbacks(bar, prime, use_bulk=False, flux_form=False):
     """
     Given bar and prime for {u,w,T}, compute following feedbacks:
         - thermocline
@@ -2275,12 +2280,12 @@ def get_feedbacks(bar, prime, use_bulk=False):
         feedbacks["NDH_z"] = get_THF_bulk(prime, prime)
 
     else:
-        feedbacks["THF"] = get_THF(bar, prime)
+        feedbacks["THF"] = get_THF(bar, prime, flux_form=flux_form)
         feedbacks["EKM"] = get_EKM(bar, prime)
         feedbacks["NDH_z"] = get_THF(prime, prime)
 
     feedbacks["ZAF"] = get_ZAF(bar, prime)
-    feedbacks["DD"] = get_DD(bar, prime)
+    feedbacks["DD"] = get_DD(bar, prime, flux_form=flux_form)
     feedbacks["NDH_x"] = get_ZAF(prime, prime)
     feedbacks["ADV"] = (
         feedbacks["THF"]
@@ -2351,6 +2356,7 @@ def decompose_feedback_changes(
     bar_late,
     prime_early,
     prime_late,
+    flux_form=False,
 ):
     """
     Wrapper function to decompose feedback changes into:
@@ -2361,7 +2367,7 @@ def decompose_feedback_changes(
 
     ## specify feedback names and functions
     names = ["THF", "EKM", "ZAF", "DD"]
-    fns = [get_THF, get_EKM, get_ZAF, get_DD]
+    fns = [lambda b, p: get_THF(b, p, flux_form=flux_form), get_EKM, get_ZAF, get_DD]
 
     ## shared args
     kwargs = dict(
