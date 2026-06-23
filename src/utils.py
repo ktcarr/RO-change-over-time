@@ -3358,3 +3358,26 @@ def add_vticks(axs, xticks, xlines=None):
                 ax.axvline(x0, **ax_kwargs)
 
     return
+
+
+def add_hticks(axs, yticks, ylines=None):
+    """add vertical lines to axs"""
+
+    ## specify line style
+    ax_kwargs = dict(ls="--", c="gray", lw=0.8)
+
+    ## loop thru axs
+    for ax in axs:
+        ax.set_yticks(yticks)
+        if ylines is not None:
+            for y0 in ylines:
+                ax.axhline(y0, **ax_kwargs)
+
+    return
+
+
+def add_axes(axs):
+    """plot visible axes"""
+    add_vticks(axs, xticks=[], xlines=[0])
+    add_hticks(axs, yticks=[], ylines=[0])
+    return
