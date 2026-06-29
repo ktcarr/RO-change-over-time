@@ -5,6 +5,8 @@ data
 scripts/jupyter.sh
 results/fits*
 results/figs
+results/june-updates
+forced_component
 results/egu_poster_figs
 results/pre-egu-updates
 results/2025*
