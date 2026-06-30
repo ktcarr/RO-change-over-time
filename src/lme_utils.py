@@ -30,3 +30,32 @@ def load_volc_forcing(cutoff=25):
         volc_forcing[f"{v}_norm"] = volc_forcing[v] / volc_forcing["Global"].max()
 
     return volc_forcing.sel(year=slice(850, None))
+
+
+def get_eli_helper(exceeds_thresh):
+    """compute ELI from mask of threshold exceedance"""
+
+    ## sum and count longitudes exceeding thresh
+    lon = exceeds_thresh.longitude
+    longitude_sum = (exceeds_thresh * lon).sum(["longitude", "latitude"])
+    longitude_count = exceeds_thresh.sum(["longitude", "latitude"])
+
+    ## eli is average longitude
+    eli = longitude_sum / longitude_count
+
+    return eli
+
+
+def get_eli(rsst, rsst_thresh=0, max_lat=15):
+    """compute ELI from tropical SST data"""
+
+    ## get equatorial Pac. SST
+    rsst_pac = rsst.sel(longitude=slice(120, 280), latitude=slice(-max_lat, max_lat))
+
+    ## get boolean array where SST exceeds thresh
+    exceeds_thresh0 = rsst_pac >= rsst_thresh
+
+    ## compute initial ELI estimate
+    eli0 = get_eli_helper(exceeds_thresh0)
+
+    return eli0
