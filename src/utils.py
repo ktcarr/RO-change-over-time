@@ -2887,6 +2887,19 @@ def load_flux_data():
     return forced, anom
 
 
+def load_cloud_data():
+    """utilitiy func to load cloud fraction data. Note POP/CAM times already aligned"""
+
+    ## directory with data
+    CONS_DIR = pathlib.Path(os.environ["DATA_FP"], "cesm", "consolidated")
+
+    ## open data and align pop times
+    forced = xr.open_dataset(CONS_DIR / "cldfrac_forced.nc")
+    anom = xr.open_dataset(CONS_DIR / "cldfrac_anom.nc")
+
+    return forced, anom
+
+
 def load_h_data(max_grad=False, use_wide=True):
     """utilitiy func to load surface flux data. Note POP/CAM times already aligned"""
 
