@@ -486,8 +486,8 @@ class XRO(object):
                 "Lcomp": xr_Lcomp,
                 "Lcoef": xr_Lcoef,
                 "X": xr_X,
-                "Y": xr_Yraw.drop("cycle_idx"),
-                "Yfit": xr_Yfit.drop("cycle_idx"),
+                "Y": xr_Yraw.drop_vars("cycle_idx"),
+                "Yfit": xr_Yfit.drop_vars("cycle_idx"),
                 "corr": xr_corr,
                 "xi_std": xi_std,
                 "xi_stdac": xr_stdac,
@@ -695,18 +695,18 @@ class XRO(object):
         Notes:
             - Avoid duplicating T² and T³ in both `maskb` and `maskNT`.
             make sure that first two states in X are : ENSO T & H
-            maskNT: ['T2', 'TH', 'T3', 'T2H', 'TH2'] in ENSO T tendency equation
-            maskNH: ['T2', 'TH', 'T3', 'T2H', 'TH2'] in ENSO H tendency equation
+            maskNT: ['T2', 'TH', 'T3', 'T2H', 'H2'] in ENSO T tendency equation
+            maskNH: ['T2', 'TH', 'T3', 'T2H', 'H2'] in ENSO H tendency equation
 
         Returns:
             xarray.Dataset: A dataset containing:
                 - Linear fit outputs
                 - Nonlinear fit parameters (`NLb`) for X**2 terms
                 - Nonlinear fit parameters (`NLc`) for X**3 terms
-                - Nonlinear fit parameters NROT for [T^2, T*H, T^3, T^2*H, T*H^2]
-                - Nonlinear fit parameters NROH for [T^2, T*H, T^3, T^2*H, T*H^2]
+                - Nonlinear fit parameters NROT for [T^2, T*H, T^3, T^2*H, H^2]
+                - Nonlinear fit parameters NROH for [T^2, T*H, T^3, T^2*H, H^2]
         """
-        NRO_forms = ["T2", "TH", "T3", "T2H", "TH2"]
+        NRO_forms = ["T2", "TH", "T3", "T2H", "H2"]
 
         NL_return_vars = ["Lac", "Lcoef", "Lcomp"]
         xr_var_names = self._get_var_names(X, var_names=var_names)
@@ -732,9 +732,9 @@ class XRO(object):
         RO_TH = XN[1, :] * XN[1, :]  # [ntime]
         RO_T3 = XN[0, :] * XN[0, :] * XN[0, :]  # [ntime]
         RO_T2H = XN[0, :] * XN[0, :] * XN[1, :]  # [ntime]
-        RO_TH2 = XN[0, :] * XN[1, :] * XN[1, :]  # [ntime]
+        RO_H2 = XN[1, :] * XN[1, :]  # [ntime]
 
-        X_RON = np.stack([RO_T2, RO_TH, RO_T3, RO_T2H, RO_TH2], axis=0)
+        X_RON = np.stack([RO_T2, RO_TH, RO_T3, RO_T2H, RO_H2], axis=0)
         # print(XN.shape, YN.shape, XN2.shape, XN3.shape, X_RON.shape)
 
         n_var = XN.shape[0]
@@ -837,25 +837,25 @@ class XRO(object):
                 var_resNLb = (
                     var_res.sel(rankx=n_var + 1)
                     .assign_coords(ranky=[i + 1])[NL_return_vars]
-                    .drop("rankx")
+                    .drop_vars("rankx")
                 )
                 var_resNLc = (
                     var_res.sel(rankx=n_var + 2)
                     .assign_coords(ranky=[i + 1])[NL_return_vars]
-                    .drop("rankx")
+                    .drop_vars("rankx")
                 )
                 n_bc = 2
             elif mask_b[i] == 1 and mask_c[i] == 0:
                 var_resNLb = (
                     var_res.sel(rankx=n_var + 1)
                     .assign_coords(ranky=[i + 1])[NL_return_vars]
-                    .drop("rankx")
+                    .drop_vars("rankx")
                 )
                 var_resNLc = (
                     var_resL[NL_return_vars]
                     .sel(rankx=1)
                     .assign_coords(ranky=[i + 1])
-                    .drop("rankx")
+                    .drop_vars("rankx")
                     * 0.0
                 )
                 n_bc = 1
@@ -864,13 +864,13 @@ class XRO(object):
                     var_resL[NL_return_vars]
                     .sel(rankx=1)
                     .assign_coords(ranky=[i + 1])
-                    .drop("rankx")
+                    .drop_vars("rankx")
                     * 0.0
                 )
                 var_resNLc = (
                     var_res.sel(rankx=n_var + 1)
                     .assign_coords(ranky=[i + 1])[NL_return_vars]
-                    .drop("rankx")
+                    .drop_vars("rankx")
                 )
                 n_bc = 1
             else:
@@ -878,14 +878,14 @@ class XRO(object):
                     var_resL[NL_return_vars]
                     .sel(rankx=1)
                     .assign_coords(ranky=[i + 1])
-                    .drop("rankx")
+                    .drop_vars("rankx")
                     * 0.0
                 )
                 var_resNLc = (
                     var_resL[NL_return_vars]
                     .sel(rankx=1)
                     .assign_coords(ranky=[i + 1])
-                    .drop("rankx")
+                    .drop_vars("rankx")
                     * 0.0
                 )
                 n_bc = 0
@@ -916,7 +916,7 @@ class XRO(object):
                         var_res[NL_return_vars]
                         .sel(rankx=slice(n_var + n_bc + 1, n_var + n_bc + n_NT))
                         .isel(ranky=0)
-                        .drop("ranky")
+                        .drop_vars("ranky")
                     )
                     var_resNT_active = var_resNT_active.rename(
                         {"rankx": "nro_form"}
@@ -953,7 +953,7 @@ class XRO(object):
                         var_res[NL_return_vars]
                         .sel(rankx=slice(n_var + n_bc + 1, n_var + n_bc + n_NH))
                         .isel(ranky=0)
-                        .drop("ranky")
+                        .drop_vars("ranky")
                     )
                     var_resNH_active = var_resNH_active.rename(
                         {"rankx": "nro_form"}
@@ -976,7 +976,7 @@ class XRO(object):
                 res_NLc = xr.concat([res_NLc, var_resNLc], dim="ranky")
 
         #
-        fit_X = res_L["X"].sel(ranky=1).drop("ranky")
+        fit_X = res_L["X"].sel(ranky=1).drop_vars("ranky")
         res_L["X"] = fit_X
 
         #### Compute noise covariance
@@ -1174,8 +1174,12 @@ class XRO(object):
         """
         Lac_da = fit_ds["Lac"]
         Noise_ds = fit_ds[["xi_stdac", "xi_std", "xi_a1", "xi_cov", "xi_covac"]]
-        NLb_da = fit_ds.get("NLb_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop("rankx")))
-        NLc_da = fit_ds.get("NLc_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop("rankx")))
+        NLb_da = fit_ds.get(
+            "NLb_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop_vars("rankx"))
+        )
+        NLc_da = fit_ds.get(
+            "NLc_Lac", xr.zeros_like(Lac_da.sel(rankx=1).drop_vars("rankx"))
+        )
         #
         try:
             NROT = fit_ds.get("NROT_Lac").values
@@ -1205,7 +1209,9 @@ class XRO(object):
     # XRO solving part
     # --------------------------------------------------------------------------
     @staticmethod
-    def _integration_core(X, m_Lac, b, c, nro_T, nro_H, noise, dt, nstep):
+    def _integration_core(
+        X, m_Lac, b, c, nro_T, nro_H, noise, dt, nstep, noise_scale=1.0
+    ):
         """
         Core numerical integration routine for time evolution of the system.
 
@@ -1235,7 +1241,7 @@ class XRO(object):
                 + _NRO_tend(X, nro_T, rank=0)
                 + _NRO_tend(X, nro_H, rank=1)
             )
-            dX = (np.dot(m_Lac, X) + nl_terms + noise) * dt
+            dX = (np.dot(m_Lac, X) + nl_terms + noise_scale * noise) * dt
             X += dX
             tmp_X += X / nstep
         return X, tmp_X
@@ -1255,6 +1261,7 @@ class XRO(object):
         xi_B=None,
         is_heaviside=False,
         use_noise_cov=False,
+        noise_scale=1.0,
     ):
         """
         Simulates the time evolution of the system using the fitted model parameters.
@@ -1320,7 +1327,16 @@ class XRO(object):
                 b, c, nro_T, nro_H = NLb[:, j], NLc[:, j], NROT[:, j], NROH[:, j]
                 noise = noise_ds[:, i * ncycle + j, :].values * apply_noise_factor(X)
                 X, tmp_X = self._integration_core(
-                    X, m_Lac, b, c, nro_T, nro_H, noise, dt, nstep
+                    X,
+                    m_Lac,
+                    b,
+                    c,
+                    nro_T,
+                    nro_H,
+                    noise,
+                    dt,
+                    nstep,
+                    noise_scale=noise_scale,
                 )
                 YY[:, i * ncycle + j, :] = tmp_X
         coords = {
@@ -1349,6 +1365,7 @@ class XRO(object):
         is_xi_stdac=True,
         xi_B=None,
         is_heaviside=False,
+        noise_scale=1.0,
     ):
         """
         Performs a forecast simulation using the nonlinear XRO model.
@@ -1420,7 +1437,16 @@ class XRO(object):
             noise = noise_ds[:, i, :] * apply_noise_factor(X)
             tmp_X = np.zeros_like(X)  # Initialize with zeros
             X, tmp_X = self._integration_core(
-                X, m_Lac, b, c, nro_T, nro_H, noise, dt, nstep
+                X,
+                m_Lac,
+                b,
+                c,
+                nro_T,
+                nro_H,
+                noise,
+                dt,
+                nstep,
+                noise_scale=noise_scale,
             )
             YY[:, i + 1, :] = tmp_X
         coords = {"ranky": fit_ds.ranky, "lead": tim, "member": members}
@@ -1440,6 +1466,7 @@ class XRO(object):
         is_xi_stdac=True,
         xi_B=None,
         is_heaviside=False,
+        noise_scale=1.0,
     ):
         """
         Generates a reforecast using the nonlinear XRO model.
@@ -1482,6 +1509,7 @@ class XRO(object):
                 is_xi_stdac=is_xi_stdac,
                 xi_B=xi_B,
                 is_heaviside=is_heaviside,
+                noise_scale=noise_scale,
             )
             tmp_fcst = tmp_fcst.assign_coords({"time": t0})
             if i == 0:
@@ -1601,8 +1629,8 @@ def _NRO_tend(X, NRO, rank=0):
         RO_TH = X[0,] * X[1,]
         RO_T3 = X[0,] * X[0,] * X[0,]
         RO_T2H = X[0,] * X[0,] * X[1,]
-        RO_TH2 = X[0,] * X[1,] * X[1,]
-        X_NRO = np.stack([RO_T2, RO_TH, RO_T3, RO_T2H, RO_TH2], axis=0)
+        RO_H2 = X[1,] * X[1,]
+        X_NRO = np.stack([RO_T2, RO_TH, RO_T3, RO_T2H, RO_H2], axis=0)
         tend_nro[rank] = NRO @ X_NRO
     return tend_nro
 
@@ -1888,7 +1916,10 @@ def gen_noise(
         raise ValueError("Invalid noise_type. Must be 'white' or 'red'.")
 
     if ncycle == 12:
-        time = xr.cftime_range("0001-01", periods=nyear * ncycle, freq="MS")
+        # time = xr.cftime_range("0001-01", periods=nyear * ncycle, freq="MS")
+        time = xr.date_range(
+            start="0001-01", periods=nyear * ncycle, freq="MS", use_cftime=True
+        )
     else:
         time = tim
     members = np.arange(0, ncopy, step=1).astype(np.int32)
@@ -1923,7 +1954,7 @@ def variable_model_to_xarray(model_X, var_names):
     model variable to individual components
     """
     for k, var in enumerate(var_names):
-        tmp_var = model_X.sel(ranky=k + 1).drop("ranky")
+        tmp_var = model_X.sel(ranky=k + 1).drop_vars("ranky")
         if k == 0:
             model_ds = xr.Dataset({var: tmp_var})
         else:

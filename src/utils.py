@@ -753,7 +753,9 @@ def get_rolling_fn(x, fn, n=0, reduce_ensemble_dim=True, min_periods=None):
     size (2n+1), centered at each datapoint."""
 
     ## get rolling object
-    x_rolling = x.rolling({"time": 2 * n + 1}, center=True, min_periods=min_periods).construct("window")
+    x_rolling = x.rolling(
+        {"time": 2 * n + 1}, center=True, min_periods=min_periods
+    ).construct("window")
 
     if reduce_ensemble_dim:
 
@@ -771,7 +773,7 @@ def get_rolling_fn(x, fn, n=0, reduce_ensemble_dim=True, min_periods=None):
     )
 
     ## trim if necessary
-    if ((n > 0) & (min_periods is None)):
+    if (n > 0) & (min_periods is None):
         fn_rolling = fn_rolling.isel(time=slice(n, -n))
 
     return fn_rolling
@@ -781,7 +783,9 @@ def get_rolling_fn_bymonth(x, fn, n=0, reduce_ensemble_dim=True, min_periods=Non
     """apply function to rolling set of data by month. 'n' has units of years"""
 
     ## apply function to data grouped by month
-    kwargs = dict(fn=fn, n=n, reduce_ensemble_dim=reduce_ensemble_dim, min_periods=min_periods)
+    kwargs = dict(
+        fn=fn, n=n, reduce_ensemble_dim=reduce_ensemble_dim, min_periods=min_periods
+    )
     return x.groupby("time.month").map(lambda z: get_rolling_fn(z, **kwargs))
 
 
@@ -1883,6 +1887,21 @@ def load_cesm_indices(load_z20=False, load_h_cust=False, max_grad=False):
     return Th
 
 
+def load_cesm_indices_3d(mld=50):
+    """Load cesm indices computed with 3D data"""
+    data_fp = pathlib.Path(os.environ["DATA_FP"], "cesm", f"Th_{mld}.nc")
+
+    return xr.open_dataset(data_fp)
+
+
+def load_cesm_3d():
+    """load 3d data along equator"""
+
+    data_fp = pathlib.Path(os.environ["DATA_FP"], "cesm", f"Th_3D.nc")
+
+    return xr.open_dataset(data_fp)
+
+
 def regress_core(Y, X, dim="time"):
     """compute regression for Y onto X"""
 
@@ -2169,9 +2188,14 @@ def get_ddt(ds, is_forward=True):
     return ds
 
 
-def get_THF(bar, prime):
+def get_THF(bar, prime, flux_form=False):
     """thermocline feedback"""
-    return get_wdTdz(w=bar["w"], T=prime["T"])
+    if flux_form:
+        wT = bar["w"] * prime["T"]
+        return wT.differentiate("z_t")
+
+    else:
+        return get_wdTdz(w=bar["w"], T=prime["T"])
 
 
 def get_THF_bulk(bar, prime):
@@ -2220,7 +2244,7 @@ def get_ZAF(bar, prime, u_var="u", T_var="T"):
     return -get_udTdx(T=bar[T_var], u=prime[u_var])
 
 
-def get_DD(bar, prime, u_var="u", T_var="T"):
+def get_DD(bar, prime, u_var="u", T_var="T", flux_form=False):
     """dynamical damping"""
     return -get_udTdx(T=prime[T_var], u=bar[u_var])
 
@@ -2237,7 +2261,7 @@ def get_DDM(bar, prime, v_var="v", T_var="T"):
     return -get_vdTdy(T=prime[T_var], v=bar[v_var])
 
 
-def get_feedbacks(bar, prime, use_bulk=False):
+def get_feedbacks(bar, prime, use_bulk=False, flux_form=False):
     """
     Given bar and prime for {u,w,T}, compute following feedbacks:
         - thermocline
@@ -2256,12 +2280,12 @@ def get_feedbacks(bar, prime, use_bulk=False):
         feedbacks["NDH_z"] = get_THF_bulk(prime, prime)
 
     else:
-        feedbacks["THF"] = get_THF(bar, prime)
+        feedbacks["THF"] = get_THF(bar, prime, flux_form=flux_form)
         feedbacks["EKM"] = get_EKM(bar, prime)
         feedbacks["NDH_z"] = get_THF(prime, prime)
 
     feedbacks["ZAF"] = get_ZAF(bar, prime)
-    feedbacks["DD"] = get_DD(bar, prime)
+    feedbacks["DD"] = get_DD(bar, prime, flux_form=flux_form)
     feedbacks["NDH_x"] = get_ZAF(prime, prime)
     feedbacks["ADV"] = (
         feedbacks["THF"]
@@ -2332,6 +2356,7 @@ def decompose_feedback_changes(
     bar_late,
     prime_early,
     prime_late,
+    flux_form=False,
 ):
     """
     Wrapper function to decompose feedback changes into:
@@ -2342,7 +2367,7 @@ def decompose_feedback_changes(
 
     ## specify feedback names and functions
     names = ["THF", "EKM", "ZAF", "DD"]
-    fns = [get_THF, get_EKM, get_ZAF, get_DD]
+    fns = [lambda b, p: get_THF(b, p, flux_form=flux_form), get_EKM, get_ZAF, get_DD]
 
     ## shared args
     kwargs = dict(
@@ -2592,6 +2617,15 @@ def split_components(data):
     components = components.rename({c: c[:-5] for c in comp_vars})
 
     return components, other
+
+
+def combine_components(components, scores):
+    """reverse split_components func"""
+
+    ## rename components before merge
+    components = components.rename({c: f"{c}_comp" for c in list(components)})
+
+    return xr.merge([components, scores])
 
 
 def format_subsurf_axs(axs):
@@ -3323,4 +3357,27 @@ def add_vticks(axs, xticks, xlines=None):
             for x0 in xlines:
                 ax.axvline(x0, **ax_kwargs)
 
+    return
+
+
+def add_hticks(axs, yticks, ylines=None):
+    """add vertical lines to axs"""
+
+    ## specify line style
+    ax_kwargs = dict(ls="--", c="gray", lw=0.8)
+
+    ## loop thru axs
+    for ax in axs:
+        ax.set_yticks(yticks)
+        if ylines is not None:
+            for y0 in ylines:
+                ax.axhline(y0, **ax_kwargs)
+
+    return
+
+
+def add_axes(axs):
+    """plot visible axes"""
+    add_vticks(axs, xticks=[], xlines=[0])
+    add_hticks(axs, yticks=[], ylines=[0])
     return
