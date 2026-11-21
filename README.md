@@ -30,65 +30,71 @@ How do recharge oscillator parameters change over time in a large ensemble? What
 Listed in the order they should be run. Paths are relative to ```scripts/cesm2```.
 ```DATA_FP``` and ```SAVE_FP``` are environment variables (see Set-up).
 
+### Running the scripts
+The key scripts below are [marimo](https://marimo.io) notebooks, saved as plain ```.py``` files. (The exploratory notebooks in ```explore/``` and the other ```scripts/``` folders are still Jupyter ```.ipynb``` files.)
+- Interactive: ```marimo edit <script>.py``` (run from ```scripts/cesm2```)
+- Headless: ```MPLBACKEND=Agg python <script>.py``` runs every cell top to bottom
+
 ### 1. Preprocessing (writes intermediate data)
-- ```preprocess/preprocess_cesm.ipynb```
+- ```preprocess/preprocess_cesm.py```
   - What it does: computes $T$, $h$ indices and anomalies (ensemble mean removed) from raw CESM2-LENS output
   - Main outputs: ```DATA_FP/cesm/{Th,Th_anom,cvdp_anom,trop_sst,eli}.nc```, per-member flux files
-- ```preprocess/preprocess_ocean.ipynb```
+- ```preprocess/preprocess_ocean.py```
   - What it does: extracts per-member ocean budget variables (velocities, temperature, tendency)
   - Main outputs: per-member ocean budget files (used by ```consolidate```)
-- ```preprocess/consolidate.ipynb```
+- ```preprocess/consolidate.py```
   - What it does: compresses spatial fields with EOFs; splits them into forced and anomaly components
   - Main outputs: ```DATA_FP/cesm/consolidated/{forced,anom,budg_*,flux_*_with_clearsky}.nc```
-- ```preprocess/compute_h.ipynb```
+- ```preprocess/compute_h.py```
   - What it does: estimates thermocline depth
   - Main outputs: ```results/h_ests/```
-- ```preprocess/get_T_ml.ipynb```
+- ```preprocess/get_T_ml.py```
   - What it does: computes mixed-layer temperature for each member
   - Main outputs: ```DATA_FP/cesm/Th_3D/```
-- ```preprocess/merge_Th_3D.ipynb```
+- ```preprocess/merge_Th_3D.py```
   - What it does: merges the output of ```get_T_ml```
   - Main outputs: ```DATA_FP/cesm/{Th_3D,Th_50,Th_80}.nc```
-- ```scale.ipynb```
+- ```scale.py```
   - What it does: computes background-state scaling quantities (zonal SST gradient, $\bar{H}$, $\alpha$)
   - Main outputs: ```results/cesm_{dTdx_Tw_v3,Hbar_scale_v2,alpha_scale}.nc```
 
 ### 2. Figures
 Figure labels refer to ```paper-outline.tex``` in the ch3 Overleaf project.
-- ```CESM_climate-change_fig.ipynb```
+- ```CESM_climate-change_fig.py```
   - What it does: plots the mean state and its change under SSP3-7.0 (maps, depth sections)
   - Paper figures: ```fig:cesm2-meanstate``` (a–c)
-- ```timeseries.ipynb```
+- ```timeseries.py```
   - What it does: plots mean-state timeseries and El Niño / La Niña contributions to variance
   - Paper figures: ```fig:cesm2-meanstate``` (d–g), ```fig:variance-changes``` (b, c)
-- ```stats-changes.ipynb```
+- ```stats-changes.py```
   - What it does: computes ENSO statistics over time and heat flux vs. relative SST
   - Paper figures: ```fig:variance-changes``` (a), ```fig:nhf_scatter```, ```fig:nhf-scatter```
-- ```composite-over-time.ipynb```
+- ```composite-over-time.py```
   - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux
   - Paper figures: ```fig:composite-nino``` (spatial), ```fig:ddt-hov```, ```fig:nhf-hov```
-- ```spaghetti_updated.ipynb```
+- ```spaghetti_updated.py```
   - What it does: plots event timeseries and the warm/cold growth rate and heat-flux feedback over time
   - Paper figures: ```fig:composite-nino``` (scalar), ```fig:seasonal-ann_comp```
-- ```RO-change-over-time_NL.ipynb```
+- ```RO-change-over-time_NL.py```
   - What it does: fits the nonlinear RO over time; validation, growth rate, and parameter perturbation experiments
   - Paper figures: ```fig:RO-validation```, ```fig:gr-over-time```, ```fig:RO-experiments*```, ```fig:RO-experiments_param_hov```
-- ```nhf_validation.ipynb```
+- ```nhf_validation.py```
   - What it does: compares the heat flux feedback in ERA5 and CESM2
   - Paper figures: ```fig:Q-comp```, ```fig:Q-structure_era5```, ```fig:Q-structure_cesm2```
 
 ### 3. Supporting analyses (not in the current outline)
-- ```physics-bjerknes_asym_precompute.ipynb```
+- ```physics-bjerknes_asym_precompute.py```
   - What it does: precomputes data for ```physics-bjerknes_asym```
   - Main outputs: ```DATA_FP/bjerknes_ML_80/```
-- ```physics-bjerknes_asym.ipynb```
+- ```physics-bjerknes_asym.py```
   - What it does: decomposes the asymmetric (warm vs. cold) growth rate and heat flux
-- ```alpha-over-time.ipynb```
+- ```alpha-over-time.py```
   - What it does: estimates heat flux damping $\alpha$ over time from surface flux components and cloud fraction
 
 ### Known issues (to fix when restructuring scripts)
 - Figure-saving calls are set to ```do_save=False```; paper figures were copied into the Overleaf project by hand.
-- ```spaghetti_updated.ipynb``` (and ```explore/eli-change-over-time.ipynb```, ```explore/powerTransform.ipynb```) read ```results/cesm_dTdx_Tw.nc```, which no longer exists; ```scale.ipynb``` now writes ```results/cesm_dTdx_Tw_v3.nc```.
+- ```spaghetti_updated.py``` (and ```explore/eli-change-over-time.ipynb```, ```explore/powerTransform.ipynb```) read ```results/cesm_dTdx_Tw.nc```, which no longer exists; ```scale.py``` now writes ```results/cesm_dTdx_Tw_v3.nc```.
+- The marimo scripts were auto-converted from Jupyter. When a name was reused across cells, the converter numbered the copies (e.g., ```COMP_1```, ```kwargs_2```). Some cells also modify objects created in earlier cells (e.g., ```Th["x"] = ...```), which marimo doesn't track. Headless runs are unaffected because cells run top to bottom, but re-running a single cell in ```marimo edit``` may not update the cells downstream of it.
 
 ## Casper login
 1. Go to jupyterhub.hpc.ucar.edu
