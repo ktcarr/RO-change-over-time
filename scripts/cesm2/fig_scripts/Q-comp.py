@@ -34,7 +34,7 @@ def _(mo):
 
     **Output:** `SAVE_FP/figures/Q-comp.pdf`
 
-    Before this script, the figure came from the "Make plot" cell of `nhf_validation.py`
+    Before this script, the figure came from the "Make plot" cell of `explore/nhf_validation.py`
     (saved as `Q-validation`). Changes:
 
     - CESM2's longwave flux is now positive into the ocean, like ERA5's and the other
@@ -133,7 +133,7 @@ def _(CESM_YEARS, FLUXES, SEASON_START, src, xr):
         obs[_title] = src.utils.get_nino3(_flux_era5[_v_era5])
 
     ## ERSST over the ERA5 period
-    obs["sst"] = src.utils.get_nino3(src.data.load_ersst_anom()).sel(time=obs.time)
+    obs["sst"] = src.utils.get_nino3(src.data.load_ersst("ssta")).sel(time=obs.time)
 
     ## CESM2: anomalies over Niño 3 (positive into the ocean), dims (member, time)
     cesm = xr.Dataset()

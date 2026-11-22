@@ -221,3 +221,41 @@ def get_lag_growth_rate(T, lag=1, month=None, by_month=False):
     R = 12 / lag * np.log(S)
 
     return R
+
+
+def get_extremes(data, index, n, largest=True, dim="time"):
+    """
+    Samples where an index is most extreme: the n largest (e.g. El Niño) or
+    smallest (La Niña) values of the index.
+
+    Args:
+        - data (xr.DataArray or xr.Dataset): data with dimension dim
+        - index (xr.DataArray): 1-D index along dim, used to rank the samples;
+          must not contain NaN (argsort would rank NaN as the largest value)
+        - n (int): number of samples to keep
+        - largest (bool): keep the largest values if True, else the smallest
+        - dim (str): sample dimension of data and index
+
+    Returns:
+        - extremes (xr.DataArray or xr.Dataset): data at the n chosen samples
+          (in order of increasing index)
+    """
+
+    ## NaN would be ranked as the largest value, so refuse it
+    if bool(index.isnull().any()):
+        raise ValueError("index contains NaN")
+    else:
+
+        ## positions of the samples, from the smallest index value to the largest
+        order = index.argsort().values
+
+        ## the n largest or the n smallest
+        if largest:
+            chosen = order[-n:]
+        else:
+            chosen = order[:n]
+
+        ## data at those samples
+        extremes = data.isel({dim: chosen})
+
+    return extremes

@@ -137,6 +137,46 @@ def load_Q34(H=50, varname="nhf"):
     return Q34
 
 
+def load_eofs(varnames):
+    """
+    CESM2 consolidated (EOF-compressed) fields: the ensemble mean ("forced") and
+    the anomalies from it, for the chosen variables.
+
+    Args:
+        - varnames (list of str): variables in consolidated/{forced,anom}.nc
+          (e.g. "sst", "pr", "nhf") or in
+          consolidated/flux_{forced,anom}_with_clearsky.nc ("fsns", "flns",
+          "lhflx", "fsnsc"); CESM's units and sign conventions (see load_F)
+
+    Returns:
+        - forced (xr.Dataset): for each name, the scores (time, mode) and the
+          patterns "<name>_comp" (mode, latitude, longitude)
+        - anom (xr.Dataset): same, with scores (member, time, mode)
+    """
+
+    ## surface flux components are in their own files
+    forced_main, anom_main = src.utils.load_consolidated()
+    forced_flux, anom_flux = src.utils.load_flux_data()
+
+    ## each variable's scores and patterns, from the file that has it
+    forced_list = []
+    anom_list = []
+    for varname in varnames:
+        names = [varname, f"{varname}_comp"]
+        if varname in ["fsns", "flns", "lhflx", "fsnsc"]:
+            forced_list.append(forced_flux[names])
+            anom_list.append(anom_flux[names])
+        else:
+            forced_list.append(forced_main[names])
+            anom_list.append(anom_main[names])
+
+    ## one dataset for each
+    forced = xr.merge(forced_list)
+    anom = xr.merge(anom_list)
+
+    return forced, anom
+
+
 def load_region_avg(varname, region="34"):
     """
     CESM2 anomaly (ensemble mean removed) averaged over a Niño region,
@@ -152,11 +192,8 @@ def load_region_avg(varname, region="34"):
         - x (xr.DataArray): region average, dims (member, time)
     """
 
-    ## EOF scores and patterns: surface fluxes are in their own file
-    if varname in ["fsns", "flns", "lhflx", "fsnsc"]:
-        _, anom = src.utils.load_flux_data()
-    else:
-        _, anom = src.utils.load_consolidated()
+    ## EOF scores and patterns of the anomalies
+    _, anom = load_eofs([varname])
 
     ## function that averages a field over the region
     if region == "3":
@@ -442,19 +479,40 @@ def load_era5_flux():
     return flux
 
 
-def load_ersst_anom():
+def load_ersst(varname="ssta"):
     """
-    ERSSTv5 monthly SST anomalies (as provided by CVDP-OBS), 1854-2024.
+    ERSSTv5 monthly SST (as provided by CVDP-OBS), 1854-2024.
+
+    Args:
+        - varname (str): "ssta" (anomaly from CVDP's monthly climatology) or
+          "sst" (total)
 
     Returns:
-        - ssta (xr.DataArray): SST anomaly (K), dims (time, latitude, longitude)
+        - sst (xr.DataArray): SST (anomaly in K, or total in °C), dims (time,
+          latitude, longitude)
     """
 
     ## open and use this project's coordinate names
-    ssta = xr.open_dataset(CVDP_OBS_FP / "ersstv5.185401-202412.nc")["ssta"]
-    ssta = ssta.rename({"lon": "longitude", "lat": "latitude"})
+    sst = xr.open_dataset(CVDP_OBS_FP / "ersstv5.185401-202412.nc")[varname]
+    sst = sst.rename({"lon": "longitude", "lat": "latitude"})
 
     ## monthly times at the start of each month (to match the other datasets)
-    ssta["time"] = xr.date_range(start="1854-01", end="2024-12", freq="MS")
+    sst["time"] = xr.date_range(start="1854-01", end="2024-12", freq="MS")
 
-    return ssta
+    return sst
+
+
+def load_gpcp():
+    """
+    GPCP monthly precipitation (as provided by CVDP-OBS), Jan 1979 - Mar 2024.
+
+    Returns:
+        - pr (xr.DataArray): precipitation (mm day^-1), dims (time, latitude,
+          longitude)
+    """
+
+    ## open, using this project's names for the coordinates and the variable
+    pr = xr.open_dataset(CVDP_OBS_FP / "gpcp.mon.mean.197901-202403.nc")["precip"]
+    pr = pr.rename({"lon": "longitude", "lat": "latitude"}).rename("pr")
+
+    return pr

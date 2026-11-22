@@ -52,3 +52,18 @@ def test_eq_avg_uses_equatorial_band():
 
     ## the average over any longitude range is 1
     np.testing.assert_allclose(src.indices.get_eq_avg(field, [150, 250]), 1)
+
+
+def test_eq_profile():
+    """The equatorial profile keeps longitude and ignores values outside 5S-5N."""
+
+    ## field equal to longitude inside the band and -999 outside it
+    field = make_linear_field()
+    field = field.where(np.abs(field.latitude) <= 5, -999)
+
+    ## profile over 130-280E equals the longitude at each point
+    profile = src.indices.get_eq_profile(field, lons=(130, 280))
+    np.testing.assert_allclose(profile, profile.longitude)
+
+    ## and covers exactly that range
+    np.testing.assert_allclose(profile.longitude[[0, -1]], [130, 280])

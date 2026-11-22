@@ -283,3 +283,71 @@ def plot_amplitudes(ax, amp):
     ax.axhline(0, ls="--", c="k", lw=0.8)
 
     return
+
+
+def plot_zonal_composites(clim, warm, cold, panels, flux_vars, lon_lines=(210, 270)):
+    """
+    Equatorial profiles of El Niño and La Niña composites, as in the
+    Q-structure figures: totals (top row) and anomalies (bottom row), one
+    column per variable.
+
+    Top row: climatology (black), climatology plus the El Niño (red) and La Niña
+    (blue) anomalies. Bottom row: the anomalies, with La Niña's sign reversed so
+    the two can be compared. The flux anomaly panels share their y-limits, with
+    the y-axis pointing down (so heat loss by the ocean is up).
+
+    Args:
+        - clim (xr.Dataset): climatological profiles, dims (longitude,)
+        - warm (xr.Dataset): El Niño composite anomalies, dims (longitude,)
+        - cold (xr.Dataset): La Niña composite anomalies, dims (longitude,)
+        - panels (dict): variable name -> column title, in column order
+        - flux_vars (list of str): variables in panels that are surface fluxes
+        - lon_lines (tuple of float): longitudes marked with vertical lines
+
+    Returns:
+        - fig (matplotlib.figure.Figure): the figure
+        - axs (np.ndarray of Axes): axes, shape (2, len(panels))
+    """
+
+    ## one column per variable
+    fig, axs = plt.subplots(2, len(panels), figsize=(12, 4.5), layout="constrained")
+
+    for j, (varname, title) in enumerate(panels.items()):
+
+        ## top row: climatology
+        axs[0, j].plot(clim.longitude, clim[varname], c="k")
+
+        ## top row: climatology plus each composite anomaly
+        axs[0, j].plot(clim.longitude, clim[varname] + warm[varname], c="r")
+        axs[0, j].plot(clim.longitude, clim[varname] + cold[varname], c="b")
+        axs[0, j].set_title(title)
+
+        ## bottom row: anomalies (La Niña's sign reversed), with a zero line
+        axs[1, j].plot(warm.longitude, warm[varname], c="r")
+        axs[1, j].plot(cold.longitude, -cold[varname], c="b")
+        axs[1, j].axhline(0, c="k", ls="--", lw=0.8, zorder=0.5)
+
+    ## row labels to the right
+    for ax, label in zip(axs[:, -1], ["Total", "Anom."]):
+        ax.text(s=label, x=1.1, y=0.5, transform=ax.transAxes)
+
+    ## longitude ticks and lines
+    lon_ticks = [130, *lon_lines]
+    src.utils.add_vticks(axs.flatten(), xticks=lon_ticks, xlines=lon_lines)
+
+    ## tick labels on the bottom row only
+    for ax in axs[0]:
+        ax.set_xticks([])
+    for ax in axs[1]:
+        ax.set_xlabel("Longitude")
+
+    ## flux anomaly panels: same limits
+    is_flux = np.isin(list(panels), flux_vars)
+    flux_axs = axs[1, is_flux]
+    src.utils.set_lims(flux_axs)
+
+    ## flux anomaly panels: y-axis pointing down
+    for ax in flux_axs:
+        ax.set_ylim(ax.get_ylim()[::-1])
+
+    return fig, axs

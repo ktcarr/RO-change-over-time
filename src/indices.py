@@ -61,3 +61,24 @@ def get_dx(data):
         - dx (xr.DataArray or xr.Dataset): eastern-box minus western-box average
     """
     return get_e(data) - get_w(data)
+
+
+def get_eq_profile(data, lons=(130, 280)):
+    """
+    Zonal profile along the equator: the average over the equatorial band
+    (LATS_EQ) at each longitude in a range.
+
+    Args:
+        - data (xr.DataArray or xr.Dataset): data with "longitude" and "latitude"
+        - lons (tuple of float): (west, east) longitude bounds (degrees east)
+
+    Returns:
+        - profile (xr.DataArray or xr.Dataset): data averaged over latitude,
+          with a "longitude" dimension
+    """
+
+    ## select the band, then average over latitude only
+    band = data.sel(longitude=slice(*lons), latitude=slice(*src.constants.LATS_EQ))
+    profile = band.mean("latitude")
+
+    return profile

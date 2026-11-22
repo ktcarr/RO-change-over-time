@@ -3,6 +3,7 @@ Known-answer tests for src/stats.py.
 """
 
 import numpy as np
+import pytest
 import xarray as xr
 
 import src.stats
@@ -131,3 +132,30 @@ def test_get_lag_growth_rate():
     ## over 3 months the slope is a^3, so the rate is the same
     R3 = src.stats.get_lag_growth_rate(make_windowed(values), lag=3, month=11)
     np.testing.assert_allclose(R3["all"], 12 * np.log(a), atol=0.1)
+
+
+def test_get_extremes():
+    """The n largest or smallest values of the index pick the samples."""
+
+    ## index and data along "time"; data = 10 * index
+    index = xr.DataArray([3.0, 1.0, 4.0, 1.5, 5.0, 9.0, 2.0, 6.0], dims="time")
+    data = 10 * index
+
+    ## two largest and two smallest samples
+    warm = src.stats.get_extremes(data, index, n=2, largest=True)
+    cold = src.stats.get_extremes(data, index, n=2, largest=False)
+
+    ## largest: 6 and 9; smallest: 1 and 1.5 (in increasing order of the index)
+    np.testing.assert_allclose(warm, [60, 90])
+    np.testing.assert_allclose(cold, [10, 15])
+
+
+def test_get_extremes_rejects_nan():
+    """NaN in the index raises (argsort would rank it as the largest value)."""
+
+    ## index with a missing value
+    index = xr.DataArray([3.0, np.nan, 4.0], dims="time")
+
+    ## asking for extremes fails
+    with pytest.raises(ValueError):
+        src.stats.get_extremes(index, index, n=1)
