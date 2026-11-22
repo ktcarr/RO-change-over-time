@@ -107,7 +107,9 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/Q-comp.py``` | ```fig:Q-comp``` | ```explore/nhf_validation.py``` (```Q-validation```, cell under "Make plot") |
 | ```fig_scripts/Q-structure_era5.py``` | ```fig:Q-structure_era5``` | ```explore/nhf_validation.py``` (ERA5 cells under "composites") |
 | ```fig_scripts/Q-structure_cesm2.py``` | ```fig:Q-structure_cesm2``` | ```explore/nhf_validation.py``` (CESM2 cells under "composites") |
-| ```fig_scripts/thesis_mean-state_change.py``` | thesis ```fig:mean-state_change``` (a–f) | ```mean-state-changes.py``` (```mean-state-pattern_change_labeled```, a, b; ```subsurface-change```, c, d; ```mean-state_timeseries```, e; ```nino-indices_overtime```, f) |
+| ```fig_scripts/thesis_mean-state_change.py``` | thesis ```fig:mean-state_change``` (a–f) | ```explore/mean-state-changes.py``` (```mean-state-pattern_change_labeled```, a, b; ```subsurface-change```, c, d; ```mean-state_timeseries```, e; ```nino-indices_overtime```, f) |
+| ```fig_scripts/thesis_sigma-over-time.py``` | thesis ```fig:sigma-over-time``` (a–d) | ```explore/mean-state-changes.py``` (```sigma-over-time_hov_simple```, cell under "Variance over time") |
+| ```fig_scripts/thesis_sigma-by-season.py``` | thesis ```fig:sigma-by-season``` (a–c) | ```explore/mean-state-changes.py``` (```sigma-cycle-change```, cell under "Variance over time (v2)") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -125,9 +127,6 @@ The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.te
 - ```CESM-ORAS_validation_v2.py```
   - What it does: validates CESM2 ENSO against ERSSTv5 (relative SST, El Niño / La Niña composites, Niño 3.4 vs. zonal gradient, PDFs, power spectrum, event timeseries)
   - Thesis figures (introduction): ```spatial-valid```, ```spatial-asym-scatter```, ```psd_spaghetti```
-- ```mean-state-changes.py```
-  - What it does: plots the mean-state change and its timeseries, Niño indices over time, and ENSO variance by month over time
-  - Thesis figures: ```sigma-over-time_hov_simple```, ```sigma-cycle-change``` (```fig:mean-state_change```, from ```mean-state-pattern_change_labeled```, ```subsurface-change```, ```mean-state_timeseries```, and ```nino-indices_overtime```, is now in ```fig_scripts/thesis_mean-state_change.py```)
 - ```CESM_climate-change.py```
   - What it does: broad exploration of CESM2 changes under warming (seasonal cycle, variance and skewness by month, ELI, background state)
   - Thesis figures: ```seasonal-clim```

@@ -78,7 +78,24 @@ def get_eq_profile(data, lons=(130, 280)):
     """
 
     ## select the band, then average over latitude only
-    band = data.sel(longitude=slice(*lons), latitude=slice(*src.constants.LATS_EQ))
-    profile = band.mean("latitude")
+    profile = get_eq_band(data, lons).mean("latitude")
 
     return profile
+
+
+def get_eq_band(data, lons=(130, 280)):
+    """
+    The equatorial band (LATS_EQ) over a range of longitudes, without averaging.
+
+    Args:
+        - data (xr.DataArray or xr.Dataset): data with "longitude" and "latitude"
+        - lons (tuple of float): (west, east) longitude bounds (degrees east)
+
+    Returns:
+        - band (xr.DataArray or xr.Dataset): data at the grid points in the band
+    """
+
+    ## select latitudes within LATS_EQ and the chosen longitudes
+    band = data.sel(longitude=slice(*lons), latitude=slice(*src.constants.LATS_EQ))
+
+    return band

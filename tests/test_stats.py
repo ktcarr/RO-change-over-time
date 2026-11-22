@@ -4,6 +4,7 @@ Known-answer tests for src/stats.py.
 
 import numpy as np
 import pytest
+import scipy.stats
 import xarray as xr
 
 import src.stats
@@ -159,3 +160,59 @@ def test_get_extremes_rejects_nan():
     ## asking for extremes fails
     with pytest.raises(ValueError):
         src.stats.get_extremes(index, index, n=1)
+
+
+def make_eof_field(scores):
+    """
+    One-mode EOF field equal to (score * longitude / 100) at every grid point.
+
+    Args:
+        - scores (xr.DataArray): the mode's scores, dims (member, time)
+
+    Returns:
+        - comp (xr.DataArray): pattern (mode, latitude, longitude), including the
+          coslat weights that reconstruction divides by
+        - scores (xr.DataArray): scores with a mode dim, dims (member, time, mode)
+    """
+
+    ## grid covering the equatorial Pacific
+    lat = np.arange(-10, 11, 2.0)
+    lon = np.arange(140, 281, 10.0)
+
+    ## pattern = coslat weights times longitude / 100
+    coslat = np.sqrt(np.cos(np.deg2rad(lat)))
+    values = coslat[:, None] * lon[None, :] / 100
+    comp = xr.DataArray(
+        values[None], coords=dict(mode=[0], latitude=lat, longitude=lon)
+    )
+
+    return comp, scores.expand_dims(mode=[0], axis=-1)
+
+
+def test_get_eq_sigma_and_skew():
+    """
+    For a one-mode field, each season's standard deviation is the scores' standard
+    deviation times the pattern, and its skewness is the scores' skewness.
+    """
+
+    ## skewed (exponential) monthly scores for 3 members, 1850-1859
+    rng = np.random.default_rng(1)
+    time = xr.date_range("1850-01-01", periods=120, freq="MS", use_cftime=True)
+    raw = xr.DataArray(
+        rng.exponential(size=(3, 120)), coords=dict(member=[0, 1, 2], time=time)
+    )
+
+    ## the one-mode field built from them
+    comp, scores = make_eof_field(raw)
+
+    ## statistics by season over all longitudes of the grid
+    sigma = src.stats.get_eq_sigma(comp, scores, "season", lons=(130, 290))
+    skew = src.stats.get_eq_skew(comp, scores, "season", lons=(130, 290))
+
+    ## known answers for DJF, pooling members and times
+    djf = raw.where(raw.time.dt.season == "DJF", drop=True).values.ravel()
+    sigma_djf = djf.std() * sigma.longitude / 100
+    np.testing.assert_allclose(sigma.sel(season="DJF"), sigma_djf)
+
+    ## skewness doesn't depend on the (positive) pattern
+    np.testing.assert_allclose(skew.sel(season="DJF"), scipy.stats.skew(djf))

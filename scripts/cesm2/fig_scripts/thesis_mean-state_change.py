@@ -49,7 +49,7 @@ def _(mo):
     **Output:** `SAVE_FP/figures/thesis_mean-state_change.pdf`
 
     Before this script, the thesis figure was put together in LaTeX from four PDFs made
-    by `mean-state-changes.py` (cells under "Figs"): `mean-state-pattern_change_labeled`
+    by `explore/mean-state-changes.py` (cells under "Figs"): `mean-state-pattern_change_labeled`
     (a, b), `subsurface-change` (c, d), `mean-state_timeseries` (e), and
     `nino-indices_overtime` (f). Changes:
 

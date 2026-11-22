@@ -6,6 +6,7 @@ import os
 import pathlib
 
 import cartopy.crs as ccrs
+import cartopy.util
 import cmocean  # noqa: F401  (registers the "cmo.*" colormaps)
 import matplotlib.pyplot as plt
 import numpy as np
@@ -351,3 +352,23 @@ def plot_zonal_composites(clim, warm, cold, panels, flux_vars, lon_lines=(210, 2
         ax.set_ylim(ax.get_ylim()[::-1])
 
     return fig, axs
+
+
+def add_cyclic_month(data):
+    """
+    Repeat January after December, so a month-by-longitude Hovmöller plot
+    covers the whole annual cycle (month 13 is the next January).
+
+    Args:
+        - data (xr.DataArray): data with dims (month, longitude), months 1-12
+
+    Returns:
+        - values (np.ndarray): data with the extra month, shape (13, n_longitude)
+        - months (np.ndarray): months 1-13
+    """
+
+    ## month first, then append the first month's values at month 13
+    data = data.transpose("month", "longitude")
+    values, months = cartopy.util.add_cyclic_point(data, data.month, axis=0)
+
+    return values, months

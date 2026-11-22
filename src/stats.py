@@ -2,11 +2,16 @@
 Statistics: changes over time, composites, and regressions.
 """
 
+import functools
+
 import numpy as np
+import pandas as pd
+import scipy.stats
 import xarray as xr
 
 import src.constants
 import src.data
+import src.indices
 import src.utils
 
 
@@ -259,3 +264,81 @@ def get_extremes(data, index, n, largest=True, dim="time"):
         extremes = data.isel({dim: chosen})
 
     return extremes
+
+
+def get_eq_sigma(components, scores, group, lons=(130, 290)):
+    """
+    Standard deviation of an EOF-compressed field along the equator, by season or
+    month: the standard deviation at each grid point in the equatorial band
+    (LATS_EQ), pooling members and times, then averaged over latitude.
+
+    Args:
+        - components (xr.DataArray): EOF patterns (mode, latitude, longitude)
+        - scores (xr.DataArray): EOF scores (member, time, mode), e.g. anomalies
+          from the ensemble mean in one 40-year window
+        - group (str): "season" or "month" (an attribute of time.dt)
+        - lons (tuple of float): (west, east) longitude bounds (degrees east)
+
+    Returns:
+        - sigma (xr.DataArray): standard deviation, dims (group, longitude)
+    """
+
+    ## restrict the patterns to the equatorial band before reconstructing
+    get_band = functools.partial(src.indices.get_eq_band, lons=lons)
+
+    ## each group's variance at each grid point, from the scores' covariance
+    sigma_list = []
+    labels = []
+    for label, scores_group in scores.groupby(f"time.{group}"):
+        var = src.utils.reconstruct_var(scores_group, components, fn=get_band)
+
+        ## standard deviation, averaged over the band's latitudes
+        sigma_list.append(np.sqrt(var).mean("latitude"))
+        labels.append(label)
+
+    ## one array with a season (or month) dimension
+    sigma = xr.concat(sigma_list, dim=pd.Index(labels, name=group))
+
+    return sigma
+
+
+def get_eq_skew(components, scores, group, lons=(130, 290)):
+    """
+    Skewness of an EOF-compressed field's equatorial profile (the average over
+    LATS_EQ), by season or month, pooling members and times.
+
+    Args:
+        - components (xr.DataArray): EOF patterns (mode, latitude, longitude)
+        - scores (xr.DataArray): EOF scores (member, time, mode)
+        - group (str): "season" or "month" (an attribute of time.dt)
+        - lons (tuple of float): (west, east) longitude bounds (degrees east)
+
+    Returns:
+        - skew (xr.DataArray): sample skewness (biased estimator), dims
+          (group, longitude)
+    """
+
+    ## equatorial profiles of every sample; dims (member, time, longitude)
+    get_profile = functools.partial(src.indices.get_eq_profile, lons=lons)
+    profile = src.utils.reconstruct_fn(components, scores, fn=get_profile)
+
+    ## each group's skewness, pooling members and times
+    skew_list = []
+    labels = []
+    for label, profile_group in profile.groupby(f"time.{group}"):
+        samples = profile_group.stack(sample=["time", "member"])
+
+        ## skewness along the sample dimension
+        skew_group = xr.apply_ufunc(
+            scipy.stats.skew,
+            samples,
+            input_core_dims=[["sample"]],
+            kwargs=dict(axis=-1),
+        )
+        skew_list.append(skew_group)
+        labels.append(label)
+
+    ## one array with a season (or month) dimension
+    skew = xr.concat(skew_list, dim=pd.Index(labels, name=group))
+
+    return skew
