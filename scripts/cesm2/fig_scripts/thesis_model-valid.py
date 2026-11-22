@@ -25,8 +25,9 @@ def _(mo):
     - **(b)** CESM2 minus ERSST relative SST (CESM2: ensemble mean, relative to its
       15°S-15°N mean)
     - **(c-f)** NDJ SST composites of strong El Niños (c, d) and La Niñas (e, f): NDJ
-      Niño 3 above its 90th percentile or below its 10th. CESM2 (d, f) is scaled so its
-      El Niño Niño 3 anomaly matches ERSST's (the scale factor is printed below)
+      Niño 3.4 above its 90th percentile or below its 10th. CESM2 (d, f) is scaled so
+      its El Niño Niño 3.4 anomaly matches ERSST's (the scale factor, 0.76, is printed
+      below). `MAP_INDEX` selects the index used for both
     - **(g, h)** El Niño plus La Niña composites (spatial asymmetry)
     - **(i, j)** NDJ Niño 3.4 against the zonal SST difference $T_e - T_w$ (gray
       boxes in a-h), for ERSST and CESM2 (scaled)
@@ -48,19 +49,28 @@ def _(mo):
 
     Before this script, the figure was three PDFs stacked in the thesis
     (`spatial-valid`, a-h; `spatial-asym-scatter`, i-k; `psd_spaghetti`, l-n), made by
-    `explore/CESM-ORAS_validation_v2.py`. Now it is one figure; the computations
-    are unchanged. Differences from the thesis caption:
+    `explore/CESM-ORAS_validation_v2.py`. Now it is one figure. Changes:
 
-    - (c-f): events are picked with NDJ Niño 3 (the caption says Niño 3.4), and for
-      CESM2 the percentiles are computed for each member.
+    - (c-j, n): the thesis figure picked the (c-h) events, and scaled CESM2, with NDJ
+      Niño 3 (its caption says Niño 3.4). The default here is Niño 3.4 for both
+      (`MAP_INDEX = "nino34"`), as the caption says; `"nino3"` reproduces the thesis
+      figure exactly. The patterns barely change (pattern correlations of at least
+      0.98): one ERSST event of each sign swaps (El Niño: 1991 for 2009; La Niña:
+      1970 for 1998). But the scale factor drops from 0.85 (the caption's value) to
+      0.76, since CESM2's El Niño is relatively stronger in Niño 3.4 than in Niño 3,
+      so every scaled CESM2 panel (d, f, h, j, n) is about 10% weaker than in the
+      thesis.
+    - The empty white box used to hide the band labels at the top of (l) is replaced
+      by not drawing those labels.
+
+    Other differences from the thesis caption:
+
+    - (c-f): for CESM2, the percentiles are computed for each member.
     - (i, j): CESM2 is scaled by the same factor as (d, f); the caption doesn't say so.
     - (k): the 3-month means don't overlap (NDJ, FMA, MJJ, ASO); the caption says a
       running mean. CESM2 is not scaled here.
-    - (m, n): events are picked with December monthly Niño 3.4, not the NDJ Niño 3
-      events of (c, e) as the caption says.
-
-    Code changes: the empty white box used to hide the band labels at the top of (l)
-    is replaced by not drawing those labels.
+    - (m, n): events are picked with December monthly Niño 3.4, not the NDJ events
+      of (c, e) as the caption says.
     """
     )
     return
@@ -128,8 +138,12 @@ def _(np):
     ## NDJ: 3-month means labeled by their first month, November
     NDJ_START = 11
 
-    ## (c-h) composites: NDJ Niño 3 beyond this percentile (or 1 minus it)
+    ## (c-h) composites: NDJ index beyond this percentile (or 1 minus it)
     Q_MAP = 0.9
+
+    ## index used to pick the (c-h) events and to scale CESM2: "nino34" (as the
+    ## thesis caption says), or "nino3" (what the thesis figure used)
+    MAP_INDEX = "nino34"
 
     ## (m, n) events: December Niño 3.4 beyond this percentile (or 1 minus it)
     Q_EVENT = 0.9
@@ -152,6 +166,7 @@ def _(np):
         PSD_KWARGS,
         Q_EVENT,
         Q_MAP,
+        MAP_INDEX,
     )
 
 
@@ -257,21 +272,27 @@ def _(mo):
         r"""
     ## (c-h) Composites
 
-    NDJ SST averaged over the years when NDJ Niño 3 is beyond its 90th or 10th
-    percentile (for CESM2, in each member, then averaged over members). CESM2 is then
-    scaled so its El Niño Niño 3 anomaly matches ERSST's.
+    NDJ SST averaged over the years when the NDJ index (`MAP_INDEX`) is beyond its 90th
+    or 10th percentile (for CESM2, in each member, then averaged over members). CESM2 is
+    then scaled so its El Niño index anomaly matches ERSST's.
     """
     )
     return
 
 
 @app.cell
-def _(Q_MAP, anom, cesm_ndj, ersst_ndj, np, src):
-    ## NDJ Niño 3 (CESM2 reconstructed from the EOFs)
-    _idx_ersst = src.utils.get_nino3(ersst_ndj)
-    _idx_cesm = src.utils.reconstruct_fn(
-        anom["sst_comp"], cesm_ndj, src.utils.get_nino3
-    )
+def _(MAP_INDEX, Q_MAP, anom, cesm_ndj, ersst_ndj, np, src):
+    ## index function: Niño 3.4 or Niño 3 (box average)
+    if MAP_INDEX == "nino34":
+        _idx_fn = src.utils.get_nino34
+    elif MAP_INDEX == "nino3":
+        _idx_fn = src.utils.get_nino3
+    else:
+        raise ValueError(f"MAP_INDEX must be 'nino34' or 'nino3', not {MAP_INDEX!r}")
+
+    ## NDJ index (CESM2 reconstructed from the EOFs)
+    _idx_ersst = _idx_fn(ersst_ndj)
+    _idx_cesm = src.utils.reconstruct_fn(anom["sst_comp"], cesm_ndj, _idx_fn)
 
     ## ERSST composites
     comps_ersst = src.stats.get_quantile_composites(ersst_ndj, _idx_ersst, q=Q_MAP)
@@ -287,9 +308,9 @@ def _(Q_MAP, anom, cesm_ndj, ersst_ndj, np, src):
             anom["sst_comp"], _comps[_n], lambda x: x
         )
 
-    ## scale factor: ratio of the El Niño Niño 3 anomalies (ERSST / CESM2)
-    _nino3_warm = lambda c: np.abs(src.utils.get_nino3(c["warm"]))  # noqa: E731
-    scale = (_nino3_warm(comps_ersst) / _nino3_warm(comps_cesm)).item()
+    ## scale factor: ratio of the El Niño index anomalies (ERSST / CESM2)
+    _idx_warm = lambda c: np.abs(_idx_fn(c["warm"]))  # noqa: E731
+    scale = (_idx_warm(comps_ersst) / _idx_warm(comps_cesm)).item()
     print(f"CESM2 scale factor: {scale:.3f}")
 
     ## scaled CESM2 composites
