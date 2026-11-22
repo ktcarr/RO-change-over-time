@@ -368,11 +368,6 @@ def load_Q34(H=50, varname="nhf"):
           (member, time)
     """
 
-    ## seawater density (kg m^-3), specific heat (J kg^-1 K^-1), seconds per year
-    rho = 1.02e3
-    cp = 4.2e3
-    sec_per_yr = 12 * 30 * 8.64e4
-
     ## EOF scores and patterns of the flux anomaly
     if varname == "nhf":
         _, anom = src.utils.load_consolidated()
@@ -394,9 +389,34 @@ def load_Q34(H=50, varname="nhf"):
     )[varname]
 
     ## convert to a temperature tendency (K/yr), positive into the ocean
-    Q34 = sign * F_34 * sec_per_yr / (rho * cp * H)
+    Q34 = flux_to_tendency(sign * F_34, H=H)
 
     return Q34
+
+
+def flux_to_tendency(F, H=50):
+    """
+    Convert a surface heat flux to the warming rate it gives a mixed layer.
+
+    Q = F / (rho * Cp * H), in K/yr (with 30-day months, as in the old scripts).
+
+    Args:
+        - F (xr.DataArray or float): heat flux (W m^-2)
+        - H (float): mixed-layer depth (m)
+
+    Returns:
+        - Q (xr.DataArray or float): temperature tendency (K/yr)
+    """
+
+    ## seawater density (kg m^-3), specific heat (J kg^-1 K^-1), seconds per year
+    rho = 1.02e3
+    cp = 4.2e3
+    sec_per_yr = 12 * 30 * 8.64e4
+
+    ## W m^-2 -> K/s, then K/yr
+    Q = F * sec_per_yr / (rho * cp * H)
+
+    return Q
 
 
 def load_T34_windowed(index="sst", window_size=480, stride=60):
@@ -505,3 +525,203 @@ def get_window_month(data, year, month, window_size=480):
     x_month = window.sel(time=window.time.dt.month == month)
 
     return x_month.transpose("member", "time")
+
+
+def get_composite_hov(
+    anom,
+    T34,
+    varnames,
+    years,
+    window_size=480,
+    peak_month=12,
+    q=0.95,
+    is_warm=True,
+    event_type=None,
+):
+    """
+    Equatorial (LATS_EQ) composites of strong ENSO events in each window.
+
+    In each window, events are the months `peak_month` when T34 is beyond its q
+    (El Niño) or 1 - q (La Niña) quantile over that calendar month; each event's
+    sample runs from lag -12 to +12 months. The composite is the mean over events.
+
+    Args:
+        - anom (xr.Dataset): EOF-compressed anomalies (ensemble mean removed): for
+          each name in varnames, the scores (member, time, mode) and the patterns
+          in "<name>_comp"
+        - T34 (xr.DataArray): Niño 3.4 anomalies (member, time), used to pick events
+        - varnames (list of str): fields to composite
+        - years (list of int): window centers (see get_window)
+        - window_size (int): window length (months)
+        - peak_month (int): calendar month of the event peak (lag 0)
+        - q (float): quantile defining a strong event
+        - is_warm (bool): True for El Niño, False for La Niña
+        - event_type (int or None): None keeps all events; 1, 2, or 3 keeps only
+          single-, double-, or triple-year events (consecutive peaks beyond the
+          cutoff; see src.utils.sort_peak_idx). For a multi-year event, the
+          composite uses its first peak
+
+    Returns:
+        - comp (xr.Dataset): dims (year, lag, longitude) for each field in varnames
+          (meridional mean over LATS_EQ), plus the composite "T_34" (year, lag)
+    """
+
+    ## warm events are above the q quantile; cold events below the 1 - q quantile
+    if is_warm:
+        q_cut = q
+        check_cutoff = lambda x, cut: x > cut  # noqa: E731
+    else:
+        q_cut = 1 - q
+        check_cutoff = lambda x, cut: x < cut  # noqa: E731
+
+    ## scores of the fields, plus the index used to pick the events
+    scores = xr.merge([anom[varnames], T34.rename("T_34")])
+
+    ## meridional mean, applied to the EOF patterns before reconstructing
+    def eq_mean(x):
+        """
+        Mean over the equatorial band.
+
+        Args:
+            - x (xr.DataArray): field with a "latitude" dimension
+
+        Returns:
+            - x_eq (xr.DataArray): mean over LATS_EQ
+        """
+        return x.sel(latitude=slice(*LATS_EQ)).mean("latitude")
+
+    ## composite for each window
+    comps = []
+    for year in years:
+
+        ## this window's months
+        window = get_window(scores, year, window_size)
+
+        ## mean over the events in this window, dims (lag, ...)
+        comp_scores = src.utils.make_composite(
+            idx=window["T_34"],
+            data=window,
+            peak_month=peak_month,
+            q=q_cut,
+            check_cutoff=check_cutoff,
+            event_type=event_type,
+        )
+
+        ## equatorial fields from the composite scores
+        comp = xr.Dataset({"T_34": comp_scores["T_34"]})
+        for varname in varnames:
+            comp[varname] = src.utils.reconstruct_fn(
+                components=anom[f"{varname}_comp"],
+                scores=comp_scores[varname],
+                fn=eq_mean,
+            )
+        comps.append(comp)
+
+    ## stack the windows along a "year" dimension
+    comp = xr.concat(comps, dim=xr.DataArray(years, dims="year", name="year"))
+
+    return comp.transpose("year", "lag", ...)
+
+
+def plot_hov_grid(warm, cold, rows, figsize, nino34_lons=(190, 240), year_line=2010):
+    """
+    Year-longitude plots of El Niño and La Niña composites: the values over
+    time (left), and their difference from the first window (right).
+
+    Args:
+        - warm (xr.Dataset): El Niño composites, dims (year, longitude)
+        - cold (xr.Dataset): La Niña composites, same variables and dims
+        - rows (list of dict): one per row, with keys "var" (variable name),
+          "label" (row label), "units" (colorbar label), "amp" (colorbar limit
+          for the values; the differences use amp / 2), and optionally "cmap"
+          (default "cmo.balance")
+        - figsize (tuple): figure size (inches)
+        - nino34_lons (tuple): longitudes of the dashed vertical lines (the
+          Niño 3.4 region by default)
+        - year_line (int): year of the dashed horizontal line
+
+    Returns:
+        - fig (matplotlib.figure.Figure): the figure
+    """
+
+    ## imported here so the data helpers above don't need matplotlib
+    import matplotlib.pyplot as plt
+    import cmocean  # noqa: F401  (registers the "cmo.*" colormaps)
+
+    ## left: values over time; right: difference from the first window
+    fig = plt.figure(figsize=figsize, layout="constrained")
+    ## (the left half is wider, since it also holds the row labels)
+    subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.25, 1])
+
+    ## titles of the two halves
+    year0 = warm.year.values[0]
+    subfigs[0].suptitle("Anomaly over time", size=14)
+    subfigs[1].suptitle(f"Difference from {year0}", size=14)
+
+    ## one row per variable, El Niño and La Niña side by side
+    nrows = len(rows)
+    for subfig, is_diff in zip(subfigs, [False, True]):
+        axs = subfig.subplots(nrows, 2, squeeze=False)
+
+        for i, row in enumerate(rows):
+
+            ## colorbar limit (smaller for the differences) and levels
+            if is_diff:
+                amp = row["amp"] / 2
+            else:
+                amp = row["amp"]
+            levels = src.utils.make_cb_range(amp, amp / 10)
+
+            for j, comp in enumerate([warm, cold]):
+
+                ## values, or difference from the first window
+                if is_diff:
+                    x = comp[row["var"]] - comp[row["var"]].isel(year=0)
+                else:
+                    x = comp[row["var"]]
+
+                ## filled contours, longitude on the x axis
+                cp = axs[i, j].contourf(
+                    comp.longitude,
+                    comp.year,
+                    x.transpose("year", "longitude"),
+                    levels=levels,
+                    cmap=row.get("cmap", "cmo.balance"),
+                    extend="both",
+                )
+
+            ## one colorbar per row, next to the La Niña panel
+            subfig.colorbar(cp, ax=axs[i, :], label=row["units"], ticks=[-amp, 0, amp])
+
+        ## reference lines; ticks only on the outer panels (set below)
+        for ax in axs.flatten():
+            for lon in nino34_lons:
+                ax.axvline(lon, ls="--", c="w", lw=0.8)
+            ax.axhline(year_line, ls="--", c="w", lw=0.8)
+
+            ## same longitude range everywhere; clear the ticks
+            ax.set_xlim([140, 280])
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        ## column titles
+        axs[0, 0].set_title("El Niño")
+        axs[0, 1].set_title("La Niña")
+
+        ## longitude ticks on the bottom row
+        for ax in axs[-1]:
+            ax.set_xticks([145, 190, 240, 275])
+            ax.set_xlabel("Longitude")
+
+        ## year ticks on the left column of each half
+        for ax in axs[:, 0]:
+            ax.set_yticks([1880, 2010, 2080])
+
+        ## row labels, left of the first half only
+        if not is_diff:
+            for ax, row in zip(axs[:, 0], rows):
+                ax.set_ylabel(
+                    row["label"], rotation=0, ha="right", va="center", size=12
+                )
+
+    return fig

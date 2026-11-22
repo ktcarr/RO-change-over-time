@@ -73,6 +73,8 @@ Run one from ```scripts/cesm2```, e.g. ```MPLBACKEND=Agg python fig_scripts/cesm
 
 ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc``` where the total is needed, as for relative SST), the one the RO fits use. The setting ```T34_INDEX``` at the top of a script switches to the mixed-layer index (```"ml50"``` or ```"ml80"```, from ```Th_50.nc```/```Th_80.nc```). With ```"ml80"```, the scripts reproduce the older notebooks exactly, except for the PDFs in ```fig:variance-changes``` (a), which now drop each window's partial first and last DJF seasons, as (b, c) do, and the ```fig:nhf_scatter``` fits, which change by less than 1e-5 K/yr after an unused fit parameter was dropped.
 
+```fig:ddt-hov``` and ```fig:nhf-hov``` divide by the composite Niño 3.4 index in K; the old figures divided by the standardized index (standard deviation 1.26 K), so their normalized panels were larger by that factor. Both keep the paper's single-year events (```EVENT_TYPE = 1```), drop the 2090 window (which ran past 2100), and are each drawn as one figure where the halves used to be joined by hand.
+
 ```fig:composite-nino``` now uses the same windows (2010, 2080) and events in all panels; (d, e) show percentiles of the difference between a random 2080 event and a random 2010 event, computed from all pairs of events in place of one arbitrary pairing (see the script's first cell).
 
 | Script | Paper figure | Replaces |
@@ -82,6 +84,8 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/composite-nino.py``` | ```fig:composite-nino``` (a–e) | ```composite-over-time.py``` (```spatial_comp```, a, b), ```spaghetti_updated.py``` (```scalar_comp```, c–e) |
 | ```fig_scripts/nhf_scatter.py``` | ```fig:nhf_scatter``` (a–c); also thesis ```nhf_rel-sst_triple``` | ```stats-changes.py``` (```nhf_rel-sst_triple```) |
 | ```fig_scripts/nhf_scatter_by_component.py``` | ```fig:nhf_scatter_by_component``` (formerly ```fig:nhf-scatter```) | ```stats-changes.py``` (cell "Similar but for NHF components") |
+| ```fig_scripts/ddt-hov.py``` | ```fig:ddt-hov``` | ```composite-over-time.py``` (cell under "Clean up fig.") |
+| ```fig_scripts/nhf-hov.py``` | ```fig:nhf-hov``` | ```composite-over-time.py``` (cell under "Heat flux") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -91,7 +95,7 @@ Once all of a script's figures have moved to ```fig_scripts/```, the script move
   - Thesis figures: see "Thesis figures" below
 - ```composite-over-time.py```
   - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux
-  - Paper figures: ```fig:ddt-hov```, ```fig:nhf-hov``` (its ```fig:composite-nino``` panels are now in ```fig_scripts/composite-nino.py```)
+  - Paper figures: none left (```fig:composite-nino``` (a, b), ```fig:ddt-hov```, and ```fig:nhf-hov``` are now in ```fig_scripts/```); it stays here until its thesis figures are extracted
   - Thesis figures: see "Thesis figures" below
 - ```spaghetti_updated.py```
   - What it does: plots event timeseries and the warm/cold growth rate and heat-flux feedback over time

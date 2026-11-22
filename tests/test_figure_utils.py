@@ -169,3 +169,58 @@ def test_get_window_month_keeps_one_month():
     ## the first is in 1880, and all values are December's
     assert x_dec.time.dt.year.values[0] == 1880
     assert (x_dec == 12).all()
+
+
+def test_flux_to_tendency():
+    """100 W/m^2 into a 50 m layer warms it by about 15 K/yr."""
+
+    ## 100 W/m^2 * (360 days * 86400 s) / (1020 kg/m^3 * 4200 J/kg/K * 50 m)
+    expected = 100 * 360 * 8.64e4 / (1.02e3 * 4.2e3 * 50)
+    assert np.isclose(fu.flux_to_tendency(100.0, H=50), expected)
+
+    ## halving the depth doubles the tendency
+    assert np.isclose(fu.flux_to_tendency(100.0, H=25), 2 * expected)
+
+
+def test_get_composite_hov():
+    """
+    A field equal to 2 * T34 composites to 2 * (the T34 composite); El Niño
+    composites peak above zero and La Niña composites below.
+    """
+
+    ## random monthly T34 for 3 members, 1850-1909
+    rng = np.random.default_rng(0)
+    time = xr.date_range("1850-01-01", periods=720, freq="MS", use_cftime=True)
+    T34 = xr.DataArray(
+        rng.standard_normal((3, 720)), coords=dict(member=[0, 1, 2], time=time)
+    )
+
+    ## one EOF mode whose pattern is 1 everywhere once the coslat weights that
+    ## reconstruct_fn divides by are applied
+    lat = np.arange(-10, 11, 2.0)
+    lon = np.arange(140, 281, 10.0)
+
+    ## pattern = the coslat weights, constant in longitude
+    coslat = np.sqrt(np.cos(np.deg2rad(lat)))
+    comp = xr.DataArray(
+        np.tile(coslat[:, None], (1, len(lon)))[None],
+        coords=dict(mode=[0], latitude=lat, longitude=lon),
+    )
+
+    ## scores of the field "x": 2 * T34
+    anom = xr.Dataset({"x": (2 * T34).expand_dims(mode=[0], axis=-1), "x_comp": comp})
+
+    ## composites in two 20-year windows
+    kwargs = dict(
+        anom=anom, T34=T34, varnames=["x"], years=[1870, 1890], window_size=240
+    )
+    warm = fu.get_composite_hov(is_warm=True, **kwargs)
+    cold = fu.get_composite_hov(is_warm=False, **kwargs)
+
+    ## dims, and the field is twice the index at every longitude
+    assert warm["x"].dims == ("year", "lag", "longitude")
+    xr.testing.assert_allclose(warm["x"], 2 * warm["T_34"].broadcast_like(warm["x"]))
+
+    ## at the peak, El Niño composites are positive and La Niña ones negative
+    assert (warm["T_34"].sel(lag=0) > 1).all()
+    assert (cold["T_34"].sel(lag=0) < -1).all()
