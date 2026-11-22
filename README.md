@@ -70,7 +70,7 @@ The key scripts below are [marimo](https://marimo.io) notebooks, saved as plain 
 Figure labels refer to ```paper-outline.tex``` in the ch3 Overleaf project.
 
 #### Figure scripts (```fig_scripts/```)
-The scripts are being split up so that each figure comes from one script in ```fig_scripts/```, named after its LaTeX label. Thesis-only figures will be ```fig_scripts/thesis_<pdf-name>.py```. Every figure script:
+The scripts are being split up so that each figure comes from one script in ```fig_scripts/```, named after its LaTeX label. Thesis-only figures are ```fig_scripts/thesis_<label>.py```, named after the label in the thesis LaTeX (they save to ```SAVE_FP/figures/thesis_<label>.pdf```). Every figure script:
 - states the figure, its panels, its inputs, and its output in the first cell;
 - loads the data, computes each plotted quantity in its own cell, and draws one figure;
 - saves the figure to ```SAVE_FP/figures/<label>.pdf``` (saving is on by default);
@@ -88,7 +88,7 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 
 ```fig:composite-nino``` now uses the same windows (2010, 2080) and events in all panels; (d, e) show percentiles of the difference between a random 2080 event and a random 2010 event, computed from all pairs of events in place of one arbitrary pairing (see the script's first cell).
 
-| Script | Paper figure | Replaces |
+| Script | Figure | Replaces |
 | --- | --- | --- |
 | ```fig_scripts/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```explore/timeseries.py``` (d–g) |
 | ```fig_scripts/variance-changes.py``` | ```fig:variance-changes``` (a–c) | ```stats-changes.py``` (a), ```explore/timeseries.py``` (b, c) |
@@ -107,6 +107,7 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/Q-comp.py``` | ```fig:Q-comp``` | ```explore/nhf_validation.py``` (```Q-validation```, cell under "Make plot") |
 | ```fig_scripts/Q-structure_era5.py``` | ```fig:Q-structure_era5``` | ```explore/nhf_validation.py``` (ERA5 cells under "composites") |
 | ```fig_scripts/Q-structure_cesm2.py``` | ```fig:Q-structure_cesm2``` | ```explore/nhf_validation.py``` (CESM2 cells under "composites") |
+| ```fig_scripts/thesis_mean-state_change.py``` | thesis ```fig:mean-state_change``` (a–f) | ```mean-state-changes.py``` (```mean-state-pattern_change_labeled```, a, b; ```subsurface-change```, c, d; ```mean-state_timeseries```, e; ```nino-indices_overtime```, f) |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -126,7 +127,7 @@ The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.te
   - Thesis figures (introduction): ```spatial-valid```, ```spatial-asym-scatter```, ```psd_spaghetti```
 - ```mean-state-changes.py```
   - What it does: plots the mean-state change and its timeseries, Niño indices over time, and ENSO variance by month over time
-  - Thesis figures: ```mean-state-pattern_change_labeled```, ```subsurface-change```, ```mean-state_timeseries```, ```nino-indices_overtime```, ```sigma-over-time_hov_simple```, ```sigma-cycle-change```
+  - Thesis figures: ```sigma-over-time_hov_simple```, ```sigma-cycle-change``` (```fig:mean-state_change```, from ```mean-state-pattern_change_labeled```, ```subsurface-change```, ```mean-state_timeseries```, and ```nino-indices_overtime```, is now in ```fig_scripts/thesis_mean-state_change.py```)
 - ```CESM_climate-change.py```
   - What it does: broad exploration of CESM2 changes under warming (seasonal cycle, variance and skewness by month, ELI, background state)
   - Thesis figures: ```seasonal-clim```
