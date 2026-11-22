@@ -32,8 +32,8 @@ def _(mo):
     - **(c) Stochastic forcing amplitude**: fractional change in the standard deviation
       of the noise in the $T$ and $h$ equations, relative to the 1880 window
 
-    The fitting step is shared with the other RO figures (`src/ro.py`) and uses the old
-    RO code in `src/XRO.py`.
+    The fitting step is shared with the other RO figures (`src/ro.py`) and uses the
+    RO model from `~/ro_tools` (`ro_tools.xro.XRO`).
 
     **Inputs** (under `DATA_FP/cesm`): `Th_anom.nc` (Niño 3 index and thermocline
     depth).

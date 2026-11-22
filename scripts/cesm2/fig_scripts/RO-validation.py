@@ -31,7 +31,7 @@ def _(mo):
       distribution)
 
     The fitting and simulation steps are shared with the other RO figures
-    (`src/ro.py`) and use the old RO code in `src/XRO.py`.
+    (`src/ro.py`) and use the RO model from `~/ro_tools` (`ro_tools.xro.XRO`).
 
     **Inputs** (under `DATA_FP/cesm`): `Th_anom.nc` (Niño 3 index and thermocline
     depth).

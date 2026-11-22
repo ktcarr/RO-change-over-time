@@ -5,6 +5,9 @@ Known-answer tests for src/ro.py (shared steps of the RO figures).
 import numpy as np
 import xarray as xr
 
+## the RO model class that get_model should return
+import ro_tools.xro
+
 import src.ro
 
 
@@ -275,3 +278,24 @@ def test_remove_change_in_R():
     ## part that is the same in every window: nothing changes
     fixed = src.ro.remove_change_in_R(fits, xr.ones_like(R), ref_year=1870)
     xr.testing.assert_identical(fixed, fits)
+
+
+def test_get_model_settings():
+    """
+    get_model returns ro_tools' XRO with the paper's settings: 12 steps per year,
+    3 harmonics, centered differences and lag 1 for each harmonic's covariance.
+    """
+
+    ## build the model used by all RO figures
+    model = src.ro.get_model()
+
+    ## it's the ro_tools model, not the old src/XRO.py copy
+    assert isinstance(model, ro_tools.xro.XRO)
+
+    ## settings: monthly cycle, 3 harmonics, centered differences
+    assert model.ncycle == 12
+    assert model.ac_order == 3
+    assert not model.is_forward
+
+    ## XRO's default lag for centered differences: 1 for each of the 4 terms
+    assert list(model.taus) == [1, 1, 1, 1]

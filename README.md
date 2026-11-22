@@ -7,6 +7,7 @@ How do recharge oscillator parameters change over time in a large ensemble? What
 3. Activate virtual environment (```mamba activate ...```)
 4. Install packages listed in ```env.yml``` file to virtual environment (```mamba env update --file env.yml```)
 5. Install custom module to virtual environment (run ```pip install -e .``` in project's home directory)
+6. Install the RO package [ro_tools](https://github.com/ktcarr/ro_tools) the same way, without dependencies (they come from ```env.yml```): ```pip install --no-deps -e <path to ro_tools>```
 6. Download ORAS5 and MPI data from Google Drive folder (contact for access to shared folder)
 7. Set filepaths for data and results, ```DATA_FP``` and ```SAVE_FP``` (```mamba env config vars set DATA_FP=...```)
 
@@ -29,7 +30,7 @@ How do recharge oscillator parameters change over time in a large ensemble? What
   - ```indices.py```: averages over the paper's regions
   - ```stats.py```: changes over time, composites, and regressions
   - ```plot.py```: saving figures, maps, region boxes, and Hovmöller grids
-  - ```ro.py```: the recharge oscillator (RO) fitting and simulation steps shared by the RO figures; uses the old RO code in ```XRO.py``` so that the figures reproduce the paper drafts (the switch to ```~/ro_tools``` comes after the restructuring)
+  - ```ro.py```: the recharge oscillator (RO) fitting and simulation steps shared by the RO figures; uses the RO model from ```ro_tools``` (```ro_tools.xro.XRO```), which with these settings reproduces the old copy in ```XRO.py``` to roundoff (```XRO.py``` stays for the scripts in ```explore/``` and ```src/utils.py```)
   - ```utils.py```: older general utilities, used by the scripts not yet split up (to be moved into the modules above)
 - ```results```: figures and intermediate results (e.g., model parameters)
 - ```tests```: check that certain functions work as expected (e.g., EOF reconstructions)

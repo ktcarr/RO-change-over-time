@@ -4,9 +4,10 @@ The recharge oscillator (RO) steps shared by the RO figures.
 The RO figures (fig:RO-validation, fig:gr-over-time, fig:RO-experiments*) all fit
 the same nonlinear RO in 40-year windows of CESM2 output and simulate it with the
 fitted parameters. These functions do that once, the same way for every figure.
-They follow the "Load data" to "validate" cells of explore/RO-change-over-time_NL.py,
-and use the old RO implementation in src/XRO.py so that the figures match the
-paper drafts; the plan is to switch to ~/ro_tools later.
+They follow the "Load data" to "validate" cells of explore/RO-change-over-time_NL.py.
+The RO model is ro_tools.xro.XRO from ~/ro_tools (installed editable in envs/);
+with these settings it gives the same fits and simulations as the old copy in
+src/XRO.py (to roundoff), so the figures match the paper drafts.
 
 The RO's variables are non-dimensional: T is divided by the standard deviation
 of the Niño 3 index (all members and times) and h by that of the western
@@ -18,9 +19,11 @@ import warnings
 import numpy as np
 import xarray as xr
 
+## the RO model (Sen Zhao's XRO, modified), from ~/ro_tools
+import ro_tools.xro
+
 import src.data
 import src.utils
-import src.XRO
 
 
 ## windows: 40 years long, centered every 10 years; the window centered on 2090
@@ -63,14 +66,16 @@ SIM_KWARGS = dict(
 def get_model():
     """
     The RO model used for all fits: seasonal cycle with 12 steps per year and 3
-    harmonics, fitted with a backward time difference.
+    harmonics, fitted with centered time differences. The covariances in the fit
+    use XRO's default lag for centered differences (taus=1 for each harmonic).
 
     Returns:
-        - model (src.XRO.XRO): model object (fits and simulates)
+        - model (ro_tools.xro.XRO): model object (fits and simulates)
     """
 
-    ## monthly steps, annual + semi-annual + 4-month harmonics
-    model = src.XRO.XRO(ncycle=12, ac_order=3, is_forward=False)
+    ## monthly steps, annual + semi-annual + 4-month harmonics; is_forward=False
+    ## means centered differences
+    model = ro_tools.xro.XRO(ncycle=12, ac_order=3, is_forward=False)
 
     return model
 
@@ -141,7 +146,7 @@ def fit_over_time(data, model, fit_kwargs=FIT_KWARGS):
     Args:
         - data (xr.Dataset): RO variables, dims (member, year, time), as from
           load_ro_data
-        - model (src.XRO.XRO): model to fit (from get_model)
+        - model (ro_tools.xro.XRO): model to fit (from get_model)
         - fit_kwargs (dict): passed to model.fit_matrix
 
     Returns:
@@ -330,7 +335,7 @@ def simulate_over_time(model, fits, X0, sim_kwargs=SIM_KWARGS):
     Simulate the RO with each window's fitted parameters.
 
     Args:
-        - model (src.XRO.XRO): model used for the fits
+        - model (ro_tools.xro.XRO): model used for the fits
         - fits (xr.Dataset): fitted parameters with a "year" dimension (from
           fit_over_time)
         - X0 (xr.Dataset): initial condition (one value of each RO variable)
