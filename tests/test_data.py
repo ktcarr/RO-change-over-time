@@ -95,3 +95,24 @@ def test_get_djf_keeps_full_seasons():
     ## the rest follow every 12 months; the last is Dec 1888 to Feb 1889
     np.testing.assert_allclose(np.diff(x_djf.values), 12)
     assert x_djf.time.dt.year.values[-1] == 1888
+
+
+def test_get_season_keeps_full_seasons():
+    """
+    Seasonal means for the chosen season only, dropping partial seasons at the
+    ends of the data.
+    """
+
+    ## three years of monthly data whose value is the month number
+    time = xr.date_range("1850-01-01", periods=36, freq="MS")
+    x = xr.DataArray(time.month.astype(float), coords=dict(time=time))
+
+    ## Sep-Oct-Nov: every year is complete; mean of 9, 10, 11 is 10
+    son = src.data.get_season(x, start_month=9)
+    np.testing.assert_array_equal(son.time.dt.year, [1850, 1851, 1852])
+    np.testing.assert_allclose(son.values, 10.0)
+
+    ## Nov-Dec-Jan: the first (Jan only) and last (Nov-Dec) are partial
+    ndj = src.data.get_season(x, start_month=11)
+    np.testing.assert_array_equal(ndj.time.dt.year, [1850, 1851])
+    np.testing.assert_allclose(ndj.values, (11 + 12 + 1) / 3)

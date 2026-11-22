@@ -104,6 +104,7 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/RO-experiments_Ro.py``` | ```fig:RO-experiments_Ro``` (a–d) | ```explore/RO-change-over-time_NL.py``` (```exp-comparison_Ro```, cell under "Check linearity of subset") |
 | ```fig_scripts/RO-experiments_alpha.py``` | ```fig:RO-experiments_alpha``` (a–e) | ```explore/RO-change-over-time_NL.py``` (```exp-comparison_alpha```, second cell under "Check linearity of subset") |
 | ```fig_scripts/RO-experiments_param_hov.py``` | ```fig:RO-experiments_param_hov``` (a–d) | ```explore/RO-change-over-time_NL.py``` (```param-hov```, cell under "Cleaned up plot") |
+| ```fig_scripts/Q-comp.py``` | ```fig:Q-comp``` | ```nhf_validation.py``` (```Q-validation```, cell under "Make plot") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -117,7 +118,7 @@ Once all of a script's figures have moved to ```fig_scripts/```, the script move
   - Thesis figures: see "Thesis figures" below
 - ```nhf_validation.py```
   - What it does: compares the heat flux feedback in ERA5 and CESM2
-  - Paper figures: ```fig:Q-comp```, ```fig:Q-structure_era5```, ```fig:Q-structure_cesm2```
+  - Paper figures: ```fig:Q-structure_era5```, ```fig:Q-structure_cesm2``` (```fig:Q-comp``` is now in ```fig_scripts/```)
 
 ### 3. Thesis figures
 The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.tex```) used figures from these scripts. File names are the PDFs under ```thesis/figs/```.

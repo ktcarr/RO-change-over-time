@@ -3,6 +3,7 @@ Loading and preparing data: indices and fields from DATA_FP, unit conversions,
 windows, and seasonal means.
 """
 
+import calendar
 import os
 import pathlib
 
@@ -10,6 +11,9 @@ import xarray as xr
 
 import src.constants
 import src.utils
+
+## observational datasets from the CESM Climate Variability Diagnostics Package
+CVDP_OBS_FP = pathlib.Path("/glade/campaign/cgd/cas/asphilli/CVDP-OBS")
 
 
 def load_total(varnames):
@@ -133,6 +137,74 @@ def load_Q34(H=50, varname="nhf"):
     return Q34
 
 
+def load_region_avg(varname, region="34"):
+    """
+    CESM2 anomaly (ensemble mean removed) averaged over a Niño region,
+    reconstructed from the consolidated (EOF-compressed) fields.
+
+    Args:
+        - varname (str): a variable in consolidated/anom.nc (e.g. "sst", "nhf")
+          or in consolidated/flux_anom_with_clearsky.nc ("fsns", "flns",
+          "lhflx", "fsnsc"); fluxes keep CESM's sign conventions (see load_F)
+        - region (str): "3" (Niño 3), "34" (Niño 3.4), or "4" (Niño 4)
+
+    Returns:
+        - x (xr.DataArray): region average, dims (member, time)
+    """
+
+    ## EOF scores and patterns: surface fluxes are in their own file
+    if varname in ["fsns", "flns", "lhflx", "fsnsc"]:
+        _, anom = src.utils.load_flux_data()
+    else:
+        _, anom = src.utils.load_consolidated()
+
+    ## function that averages a field over the region
+    if region == "3":
+        region_fn = src.utils.get_nino3
+    elif region == "34":
+        region_fn = src.utils.get_nino34
+    elif region == "4":
+        region_fn = src.utils.get_nino4
+    else:
+        raise ValueError(f"region must be '3', '34', or '4', not {region!r}")
+
+    ## region average, from the EOF scores
+    x = src.utils.reconstruct_wrapper(anom[[varname, f"{varname}_comp"]], fn=region_fn)
+    x = x[varname]
+
+    return x
+
+
+def load_F(varname="nhf", region="34"):
+    """
+    Surface heat flux anomaly (ensemble mean removed) averaged over a Niño
+    region, positive into the ocean.
+
+    Args:
+        - varname (str): "nhf" (net surface heat flux, from consolidated/anom.nc),
+          or one of its components from consolidated/flux_anom_with_clearsky.nc:
+          "fsns" (net shortwave), "flns" (net longwave), "lhflx" (latent heat)
+        - region (str): "3", "34", or "4" (see load_region_avg)
+
+    Returns:
+        - F (xr.DataArray): anomalies, W m^-2, dims (member, time)
+    """
+
+    ## sign that makes the flux positive into the ocean: CESM's FLNS and LHFLX
+    ## are positive upward (nhf = fsns - flns - lhflx - shflx)
+    if varname in ["nhf", "fsns"]:
+        sign = 1
+    elif varname in ["flns", "lhflx"]:
+        sign = -1
+    else:
+        raise ValueError(f"unknown flux varname: {varname}")
+
+    ## flux anomaly averaged over the region, positive into the ocean
+    F = sign * load_region_avg(varname, region=region)
+
+    return F
+
+
 def load_Q(H=50, varname="nhf", region="34"):
     """
     Surface heat flux anomaly averaged over a Niño region, as a temperature
@@ -143,46 +215,19 @@ def load_Q(H=50, varname="nhf", region="34"):
 
     Args:
         - H (float): mixed-layer depth (m)
-        - varname (str): "nhf" (net surface heat flux, from consolidated/anom.nc),
-          or one of its components from consolidated/flux_anom_with_clearsky.nc:
-          "fsns" (net shortwave), "flns" (net longwave), "lhflx" (latent heat)
-        - region (str): "3" (Niño 3) or "34" (Niño 3.4)
+        - varname (str): "nhf", "fsns", "flns", or "lhflx" (see load_F)
+        - region (str): "3", "34", or "4" (see load_region_avg)
 
     Returns:
         - Q (xr.DataArray): anomalies (ensemble mean removed), K/yr, dims
           (member, time)
     """
 
-    ## EOF scores and patterns of the flux anomaly
-    if varname == "nhf":
-        _, anom = src.utils.load_consolidated()
-        sign = 1
-    elif varname in ["fsns", "flns", "lhflx"]:
-        _, anom = src.utils.load_flux_data()
+    ## flux anomaly (W m^-2), positive into the ocean
+    F = load_F(varname=varname, region=region)
 
-        ## CESM's FLNS and LHFLX are positive upward: flip them to positive into the ocean
-        if varname == "fsns":
-            sign = 1
-        else:
-            sign = -1
-    else:
-        raise ValueError(f"unknown flux varname: {varname}")
-
-    ## function that averages a field over the region
-    if region == "3":
-        region_fn = src.utils.get_nino3
-    elif region == "34":
-        region_fn = src.utils.get_nino34
-    else:
-        raise ValueError(f"region must be '3' or '34', not {region!r}")
-
-    ## flux anomaly (W m^-2) averaged over the region, from the EOF scores
-    F = src.utils.reconstruct_wrapper(anom[[varname, f"{varname}_comp"]], fn=region_fn)[
-        varname
-    ]
-
-    ## convert to a temperature tendency (K/yr), positive into the ocean
-    Q = flux_to_tendency(sign * F, H=H)
+    ## convert to a temperature tendency (K/yr)
+    Q = flux_to_tendency(F, H=H)
 
     return Q
 
@@ -339,3 +384,77 @@ def get_djf(x):
     x_djf = x_seasonal.isel(time=slice(4, -4, 4))
 
     return x_djf
+
+
+def get_season(x, start_month):
+    """
+    Three-month seasonal means of monthly data for one season each year (e.g.
+    Sep-Oct-Nov for start_month=9), full seasons only.
+
+    Args:
+        - x (xr.Dataset or xr.DataArray): monthly data with a "time" dimension
+        - start_month (int): first month of the season (1-12)
+
+    Returns:
+        - x_season (xr.Dataset or xr.DataArray): one value per full season,
+          labeled by its first month
+    """
+
+    ## three-month means, with seasons starting in start_month
+    rule = f"QS-{calendar.month_abbr[start_month].upper()}"
+    x_seasonal = x.resample({"time": rule}).mean()
+
+    ## number of months in each season (partial at the start and end of the data)
+    n_months = x["time"].resample({"time": rule}).count()
+
+    ## keep the chosen season, full seasons only
+    is_kept = (x_seasonal.time.dt.month == start_month) & (n_months == 3)
+    x_season = x_seasonal.sel(time=is_kept.values)
+
+    return x_season
+
+
+def load_era5_flux():
+    """
+    ERA5 monthly surface heat fluxes (DATA_FP/era5_nhf_glade.nc), 1950-2022.
+
+    Returns:
+        - flux (xr.Dataset): net shortwave "sw", net longwave "lw", latent "lhf",
+          sensible "shf", and their sum "nhf" (W m^-2, positive into the ocean,
+          ECMWF's convention), dims (time, latitude, longitude), latitude
+          ascending
+    """
+
+    ## open, dropping the unused date variable
+    fp = pathlib.Path(os.environ["DATA_FP"], "era5_nhf_glade.nc")
+    flux = xr.open_dataset(fp).drop_vars("utc_date")
+
+    ## latitude ascending (as the Niño-region functions expect)
+    flux = flux.reindex(latitude=flux.latitude[::-1])
+
+    ## short names for the fluxes (mean surface net/latent/sensible fluxes)
+    names = dict(MSNSWRF="sw", MSNLWRF="lw", MSLHF="lhf", MSSHF="shf")
+    flux = flux[list(names)].rename(names)
+
+    ## net surface heat flux
+    flux["nhf"] = flux["sw"] + flux["lw"] + flux["lhf"] + flux["shf"]
+
+    return flux
+
+
+def load_ersst_anom():
+    """
+    ERSSTv5 monthly SST anomalies (as provided by CVDP-OBS), 1854-2024.
+
+    Returns:
+        - ssta (xr.DataArray): SST anomaly (K), dims (time, latitude, longitude)
+    """
+
+    ## open and use this project's coordinate names
+    ssta = xr.open_dataset(CVDP_OBS_FP / "ersstv5.185401-202412.nc")["ssta"]
+    ssta = ssta.rename({"lon": "longitude", "lat": "latitude"})
+
+    ## monthly times at the start of each month (to match the other datasets)
+    ssta["time"] = xr.date_range(start="1854-01", end="2024-12", freq="MS")
+
+    return ssta
