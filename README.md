@@ -102,6 +102,7 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/gr-over-time.py``` | ```fig:gr-over-time``` (a–c) | ```RO-change-over-time_NL.py``` (```gr-over-time_ann```, cells under "Plot params over time") |
 | ```fig_scripts/RO-experiments.py``` | ```fig:RO-experiments``` (a–f) | ```RO-change-over-time_NL.py``` (```exp-comparison_general```, cell under "Check linearity") |
 | ```fig_scripts/RO-experiments_Ro.py``` | ```fig:RO-experiments_Ro``` (a–d) | ```RO-change-over-time_NL.py``` (```exp-comparison_Ro```, cell under "Check linearity of subset") |
+| ```fig_scripts/RO-experiments_alpha.py``` | ```fig:RO-experiments_alpha``` (a–e) | ```RO-change-over-time_NL.py``` (```exp-comparison_alpha```, second cell under "Check linearity of subset") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -115,7 +116,7 @@ Once all of a script's figures have moved to ```fig_scripts/```, the script move
   - Thesis figures: see "Thesis figures" below
 - ```RO-change-over-time_NL.py```
   - What it does: fits the nonlinear RO over time; validation, growth rate, and parameter perturbation experiments
-  - Paper figures: ```fig:RO-experiments_alpha```, ```fig:RO-experiments_param_hov``` (```fig:RO-validation```, ```fig:gr-over-time```, ```fig:RO-experiments```, and ```fig:RO-experiments_Ro``` are now in ```fig_scripts/```)
+  - Paper figures: ```fig:RO-experiments_param_hov``` (```fig:RO-validation```, ```fig:gr-over-time```, ```fig:RO-experiments```, ```fig:RO-experiments_Ro```, and ```fig:RO-experiments_alpha``` are now in ```fig_scripts/```)
 - ```nhf_validation.py```
   - What it does: compares the heat flux feedback in ERA5 and CESM2
   - Paper figures: ```fig:Q-comp```, ```fig:Q-structure_era5```, ```fig:Q-structure_cesm2```

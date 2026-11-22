@@ -1,0 +1,272 @@
+import marimo
+
+__generated_with = "0.25.2"
+app = marimo.App()
+
+
+@app.cell
+def _():
+    import marimo as mo
+
+    return (mo,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    # RO perturbation experiments: components of the heat flux feedback
+
+    Paper figure `fig:RO-experiments_alpha` (`paper-outline.tex` in the ch3 Overleaf
+    project). Same as `fig:RO-experiments_Ro` (`RO-experiments_Ro.py`), but splitting the
+    surface heat flux feedback $\alpha$ (part of the SST growth rate $R = R_o - \alpha$)
+    into the feedbacks of its components: net shortwave, latent heat, and net longwave
+    flux. Each feedback comes from a cubic fit of that flux over Niño 3 (as a warming rate
+    of a 50 m mixed layer) to $T$, in each window and calendar month.
+
+    Each experiment fixes one component's feedback to its value in the first window
+    (1870), while the rest of $R$ still changes. Each panel shows the change in the
+    amplitude of El Niño (red; 95th percentile of monthly DJF $T$), La Niña (blue; minus
+    the 5th percentile), and their average (black):
+
+    - **(a)-(c) Effect of** the shortwave, latent, and longwave feedbacks: control minus
+      the experiment
+    - **(d) Sum** of (a)-(c)
+    - **(e) Effect of $\alpha$**: control minus the experiment with the net heat flux
+      feedback fixed (panel (b) of `fig:RO-experiments_Ro`). The net flux also includes
+      the sensible heat flux, so (d) need not match (e).
+
+    **Inputs** (under `DATA_FP/cesm`): `Th_anom.nc` (Niño 3 index and thermocline
+    depth), `consolidated/anom.nc` (net surface heat flux),
+    `consolidated/flux_anom_with_clearsky.nc` (shortwave, longwave, and latent heat
+    fluxes).
+
+    **Output:** `SAVE_FP/figures/RO-experiments_alpha.pdf`
+
+    Before this script, the figure came from the cell after "Check linearity of subset"
+    in `RO-change-over-time_NL.py` (saved as `exp-comparison_alpha-...`). Changes:
+
+    - Amplitudes are in K (the RO's non-dimensional $T$ times the standard deviation of
+      the Niño 3 index); before, the non-dimensional values were plotted with a
+      $^{\circ}$C label.
+    - Panels share one y-axis and are labeled (a)-(e). Titles name the feedback whose
+      effect is shown ("Shortwave" was "Effect of shortwave"; "Net ($\alpha$)" was
+      "Control (effect of $\alpha$)").
+    """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## Imports
+    """
+    )
+    return
+
+
+@app.cell
+def _():
+    ## plotting and plotting style
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    ## this project's modules: plotting, RO fits and simulations
+    import src.plot
+    import src.ro
+
+    ## older general utilities (to be split into the modules above)
+    import src.utils
+
+    ## plotting style used for all paper figures; color_codes (on by default) makes
+    ## "r" and "b" the colorblind palette's red and blue
+    sns.set(rc={"axes.facecolor": "white", "axes.grid": False}, palette="colorblind")
+    return plt, src
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## Settings
+    """
+    )
+    return
+
+
+@app.cell
+def _():
+    ## window that the experiments fix parameters to (the first window)
+    REF_YEAR = 1870
+
+    ## mixed-layer depth (m) for converting the heat flux to a warming rate
+    H_ML = 50
+
+    ## years marked on the time axis, and the year marked with a line
+    XTICKS = [1870, 2010, 2080]
+    XLINES = [2010]
+    return H_ML, REF_YEAR, XLINES, XTICKS
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## Fit the RO and the heat flux feedback
+
+    `src.ro.FIT_KWARGS` holds the fit settings shared by all RO figures.
+    """
+    )
+    return
+
+
+@app.cell
+def _(H_ML, src):
+    ## windowed, non-dimensional T (Niño 3) and h_hat, dims (member, year, time)
+    data, T_scale = src.ro.load_ro_data(t_var="T_3")
+
+    ## fit the RO in each window
+    model = src.ro.get_model()
+    fits = src.ro.fit_over_time(data[src.ro.VARNAMES], model)
+
+    ## surface heat fluxes over Niño 3 (net, shortwave, latent, longwave) in the
+    ## same units and windows as dT/dt
+    Q = src.ro.load_ro_flux_data(T_scale, flux_types=src.ro.FLUX_TYPES, H=H_ML)
+
+    ## feedback of each flux: alpha_1, alpha_2, alpha_3, dims (year, cycle, param)
+    alpha = dict()
+    for _flux_type in src.ro.FLUX_TYPES:
+        alpha[_flux_type] = src.ro.fit_alpha(
+            data["T_3"], Q[_flux_type], cycle=fits["cycle"]
+        )
+    return T_scale, alpha, data, fits, model
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## Perturbed parameters
+
+    $R = R_o - \alpha$, so a flux's feedback contributes $-\alpha_\text{flux}$ to $R$. Each
+    experiment keeps one feedback at its value in the reference window (the rest of $R$,
+    including the other feedbacks, still changes).
+    """
+    )
+    return
+
+
+@app.cell
+def _(REF_YEAR, alpha, fits, src):
+    ## parameters for each experiment: one feedback fixed ("nhf" is the net flux)
+    fits_fixed = dict()
+    for _flux_type, _alpha in alpha.items():
+        fits_fixed[_flux_type] = src.ro.remove_change_in_R(
+            fits, -_alpha, ref_year=REF_YEAR
+        )
+    return (fits_fixed,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## Simulate
+
+    `src.ro.SIM_KWARGS` holds the simulation settings shared by all RO figures (500
+    copies of 40 years for each window, with the same seed in every experiment).
+    """
+    )
+    return
+
+
+@app.cell
+def _(T_scale, data, fits, fits_fixed, model, src):
+    ## initial condition: the first month of the first window in one member
+    X0 = data[src.ro.VARNAMES].isel(year=0, member=0, time=0)
+
+    ## control: simulate with each window's fitted parameters
+    _sims = src.ro.simulate_over_time(model, fits, X0)
+    amp_ctrl = src.ro.get_amplitudes(_sims, T_scale)
+
+    ## experiments: simulate with the perturbed parameters
+    amp_fixed = dict()
+    for _name, _fits in fits_fixed.items():
+        _sims = src.ro.simulate_over_time(model, _fits, X0)
+        amp_fixed[_name] = src.ro.get_amplitudes(_sims, T_scale)
+    return amp_ctrl, amp_fixed
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## Effects
+
+    Amplitudes (K) of El Niño and La Niña, dims (year,).
+    """
+    )
+    return
+
+
+@app.cell
+def _(amp_ctrl, amp_fixed):
+    ## effect of each part's changes: control minus the experiment without them
+    effect = dict()
+    for _name, _amp in amp_fixed.items():
+        effect[_name] = amp_ctrl - _amp
+
+    ## sum of the effects of the shortwave, latent, and longwave feedbacks
+    effect_sum = effect["fsns"] + effect["lhflx"] + effect["flns"]
+    return effect, effect_sum
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(
+        r"""
+    ## Figure
+    """
+    )
+    return
+
+
+@app.cell
+def _(XLINES, XTICKS, effect, effect_sum, plt, src):
+    ## effect of each component's feedback, their sum, and the effect of the net
+    ## flux's feedback (titles name the feedback)
+    _panels = [
+        (effect["fsns"], "a) Shortwave"),
+        (effect["lhflx"], "b) Latent"),
+        (effect["flns"], "c) Longwave"),
+        (effect_sum, "d) Sum"),
+        (effect["nhf"], r"e) Net ($\alpha$)"),
+    ]
+
+    ## same y-axis for all panels
+    fig, axs = plt.subplots(1, 5, figsize=(10, 2), layout="constrained", sharey=True)
+
+    ## amplitude changes of El Niño, La Niña, and their average
+    for _ax, (_amp, _title) in zip(axs, _panels):
+        src.plot.plot_amplitudes(_ax, _amp)
+        _ax.set_title(_title, loc="left")
+
+    ## units, y-ticks, and legend
+    axs[0].set_ylabel(r"$\Delta$ amplitude ($^{\circ}$C)")
+    axs[0].set_yticks([-0.8, -0.4, 0, 0.4])
+    axs[0].legend(prop=dict(size=8), loc="lower left")
+
+    ## time axis: ticks at the marked years, line at 2010
+    src.utils.add_vticks(axs, xticks=XTICKS, xlines=XLINES)
+
+    ## save to SAVE_FP/figures
+    src.plot.save_fig(fig, "RO-experiments_alpha")
+
+    fig
+    return
+
+
+if __name__ == "__main__":
+    app.run()
