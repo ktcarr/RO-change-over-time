@@ -164,30 +164,13 @@ def _(mo):
 
 @app.cell
 def _(MONTH, PDF_YEARS, Q34, T34_rel, WINDOW_SIZE, fu):
-    def get_month(x, year):
-        """
-        Values in one calendar month (MONTH) within one window.
-
-        Args:
-            - x (xr.DataArray): monthly data, dims (member, time)
-            - year (int): window center
-
-        Returns:
-            - x_month (xr.DataArray): dims (member, time), one value per year
-        """
-
-        ## cut out the window, then keep one calendar month
-        window = fu.get_window(x, year, WINDOW_SIZE)
-        x_month = window.sel(time=window.time.dt.month == MONTH)
-
-        return x_month.transpose("member", "time")
-
-    ## December values for each window shown (PDF_YEARS includes SCATTER_YEARS)
+    ## December values for each window shown (PDF_YEARS includes SCATTER_YEARS),
+    ## dims (member, time)
     T_dec = {}
     Q_dec = {}
     for _year in PDF_YEARS:
-        T_dec[_year] = get_month(T34_rel, _year)
-        Q_dec[_year] = get_month(Q34, _year)
+        T_dec[_year] = fu.get_window_month(T34_rel, _year, MONTH, WINDOW_SIZE)
+        Q_dec[_year] = fu.get_window_month(Q34, _year, MONTH, WINDOW_SIZE)
     return Q_dec, T_dec
 
 

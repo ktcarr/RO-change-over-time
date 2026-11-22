@@ -81,12 +81,13 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/variance-changes.py``` | ```fig:variance-changes``` (a–c) | ```stats-changes.py``` (a), ```explore/timeseries.py``` (b, c) |
 | ```fig_scripts/composite-nino.py``` | ```fig:composite-nino``` (a–e) | ```composite-over-time.py``` (```spatial_comp```, a, b), ```spaghetti_updated.py``` (```scalar_comp```, c–e) |
 | ```fig_scripts/nhf_scatter.py``` | ```fig:nhf_scatter``` (a–c); also thesis ```nhf_rel-sst_triple``` | ```stats-changes.py``` (```nhf_rel-sst_triple```) |
+| ```fig_scripts/nhf_scatter_by_component.py``` | ```fig:nhf_scatter_by_component``` (formerly ```fig:nhf-scatter```) | ```stats-changes.py``` (cell "Similar but for NHF components") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
 - ```stats-changes.py```
   - What it does: computes ENSO statistics over time and heat flux vs. relative SST
-  - Paper figures: ```fig:nhf-scatter``` (cell "Similar but for NHF components"; it has no save call) (its ```fig:variance-changes``` (a) panel and ```fig:nhf_scatter``` are now in ```fig_scripts/```)
+  - Paper figures: none left (its ```fig:variance-changes``` (a) panel, ```fig:nhf_scatter```, and ```fig:nhf_scatter_by_component``` are now in ```fig_scripts/```); it stays here until its thesis figures are extracted
   - Thesis figures: see "Thesis figures" below
 - ```composite-over-time.py```
   - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux

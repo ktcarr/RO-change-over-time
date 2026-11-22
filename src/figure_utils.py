@@ -350,15 +350,18 @@ def load_T34_total(index="sst"):
     return T34
 
 
-def load_Q34(H=50):
+def load_Q34(H=50, varname="nhf"):
     """
-    Net surface heat flux anomaly over Niño 3.4, as a temperature tendency.
+    Surface heat flux anomaly over Niño 3.4, as a temperature tendency.
 
-    Q_34 = NHF_34 / (rho * Cp * H): the warming rate the heat flux would give a
-    mixed layer of depth H.
+    Q_34 = F_34 / (rho * Cp * H): the warming rate the heat flux F would give a
+    mixed layer of depth H. All fluxes are positive into the ocean.
 
     Args:
         - H (float): mixed-layer depth (m)
+        - varname (str): "nhf" (net surface heat flux, from consolidated/anom.nc),
+          or one of its components from consolidated/flux_anom_with_clearsky.nc:
+          "fsns" (net shortwave), "flns" (net longwave), "lhflx" (latent heat)
 
     Returns:
         - Q34 (xr.DataArray): anomalies (ensemble mean removed), K/yr, dims
@@ -370,14 +373,28 @@ def load_Q34(H=50):
     cp = 4.2e3
     sec_per_yr = 12 * 30 * 8.64e4
 
-    ## net heat flux anomaly (W m^-2) averaged over Niño 3.4, from the EOF scores
-    _, anom = src.utils.load_consolidated()
-    nhf_34 = src.utils.reconstruct_wrapper(
-        anom[["nhf", "nhf_comp"]], fn=src.utils.get_nino34
-    )["nhf"]
+    ## EOF scores and patterns of the flux anomaly
+    if varname == "nhf":
+        _, anom = src.utils.load_consolidated()
+        sign = 1
+    elif varname in ["fsns", "flns", "lhflx"]:
+        _, anom = src.utils.load_flux_data()
 
-    ## convert to a temperature tendency (K/yr)
-    Q34 = nhf_34 * sec_per_yr / (rho * cp * H)
+        ## CESM's FLNS and LHFLX are positive upward: flip them to positive into the ocean
+        if varname == "fsns":
+            sign = 1
+        else:
+            sign = -1
+    else:
+        raise ValueError(f"unknown flux varname: {varname}")
+
+    ## flux anomaly (W m^-2) averaged over Niño 3.4, from the EOF scores
+    F_34 = src.utils.reconstruct_wrapper(
+        anom[[varname, f"{varname}_comp"]], fn=src.utils.get_nino34
+    )[varname]
+
+    ## convert to a temperature tendency (K/yr), positive into the ocean
+    Q34 = sign * F_34 * sec_per_yr / (rho * cp * H)
 
     return Q34
 
@@ -466,3 +483,25 @@ def get_window(data, year, window_size=480):
     window = data.sel(time=slice(f"{year - half}-01-01", f"{year + half - 1}-12-31"))
 
     return window
+
+
+def get_window_month(data, year, month, window_size=480):
+    """
+    Values in one calendar month within one window (see get_window).
+
+    Args:
+        - data (xr.DataArray or xr.Dataset): monthly data, dims (member, time)
+        - year (int): window center
+        - month (int): calendar month (1-12)
+        - window_size (int): window length (months); a multiple of 24
+
+    Returns:
+        - x_month (xr.DataArray or xr.Dataset): dims (member, time), one value
+          per year in the window
+    """
+
+    ## cut out the window, then keep one calendar month
+    window = get_window(data, year, window_size)
+    x_month = window.sel(time=window.time.dt.month == month)
+
+    return x_month.transpose("member", "time")

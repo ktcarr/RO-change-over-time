@@ -147,3 +147,25 @@ def test_load_T34_total_rejects_unknown_index():
     ## "SST" (capitalized) is not a valid name
     with pytest.raises(ValueError):
         fu.load_T34_total(index="SST")
+
+
+def test_get_window_month_keeps_one_month():
+    """get_window_month keeps one value per year: the chosen month in the window."""
+
+    ## monthly data, 1850-1949, whose value is the month number
+    time = xr.date_range("1850-01-01", periods=1200, freq="MS", use_cftime=True)
+    x = xr.DataArray(
+        np.tile(time.month, (2, 1)).astype(float),
+        coords=dict(member=[0, 1], time=time),
+    )
+
+    ## December in the window centered on 1900 (1880-1919)
+    x_dec = fu.get_window_month(x, 1900, month=12, window_size=480)
+
+    ## dims (member, time), with 40 Decembers per member
+    assert x_dec.dims == ("member", "time")
+    assert x_dec.sizes["time"] == 40
+
+    ## the first is in 1880, and all values are December's
+    assert x_dec.time.dt.year.values[0] == 1880
+    assert (x_dec == 12).all()
