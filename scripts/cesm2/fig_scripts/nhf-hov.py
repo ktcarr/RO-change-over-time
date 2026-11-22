@@ -73,13 +73,17 @@ def _():
     import seaborn as sns
     import xarray as xr
 
-    ## this project's modules (shared figure helpers, general utilities)
-    import src.figure_utils as fu
+    ## this project's modules: loading data, plotting, statistics
+    import src.data
+    import src.plot
+    import src.stats
+
+    ## older general utilities (to be split into the modules above)
     import src.utils
 
     ## plotting style used for all paper figures
     sns.set(rc={"axes.facecolor": "white", "axes.grid": False}, palette="colorblind")
-    return fu, np, src, xr
+    return np, src, xr
 
 
 @app.cell(hide_code=True)
@@ -131,9 +135,9 @@ def _(mo):
 
 
 @app.cell
-def _(T34_INDEX, fu, src):
+def _(T34_INDEX, src):
     ## Niño 3.4 anomalies (ensemble mean removed), K, dims (member, time)
-    T34 = fu.load_T34_anom(index=T34_INDEX)
+    T34 = src.data.load_T34_anom(index=T34_INDEX)
 
     ## EOF scores and patterns of the fluxes shown (ensemble mean removed); loaded into
     ## memory, since every window reads them
@@ -156,7 +160,7 @@ def _(mo):
 
 
 @app.cell
-def _(EVENT_TYPE, PEAK_MONTH, Q_EVENT, T34, WINDOW_SIZE, YEARS, anom, fu):
+def _(EVENT_TYPE, PEAK_MONTH, Q_EVENT, T34, WINDOW_SIZE, YEARS, anom, src):
     ## settings shared by the El Niño and La Niña composites
     _kwargs = dict(
         anom=anom,
@@ -170,8 +174,8 @@ def _(EVENT_TYPE, PEAK_MONTH, Q_EVENT, T34, WINDOW_SIZE, YEARS, anom, fu):
     )
 
     ## composites, dims (year, lag, longitude)
-    comp_warm = fu.get_composite_hov(is_warm=True, **_kwargs)
-    comp_cold = fu.get_composite_hov(is_warm=False, **_kwargs)
+    comp_warm = src.stats.get_composite_hov(is_warm=True, **_kwargs)
+    comp_cold = src.stats.get_composite_hov(is_warm=False, **_kwargs)
     return comp_cold, comp_warm
 
 
@@ -189,7 +193,7 @@ def _(mo):
 
 
 @app.cell
-def _(H_ML, LAGS, comp_cold, comp_warm, fu, xr):
+def _(H_ML, LAGS, comp_cold, comp_warm, src, xr):
     def get_rows(comp):
         """
         October-December means of the quantities in each row of the figure.
@@ -204,8 +208,8 @@ def _(H_ML, LAGS, comp_cold, comp_warm, fu, xr):
         """
 
         ## fluxes as temperature tendencies (K/yr), positive into the ocean
-        Q_sw = fu.flux_to_tendency(comp["fsns"], H=H_ML)
-        Q_lhf = fu.flux_to_tendency(-comp["lhflx"], H=H_ML)
+        Q_sw = src.data.flux_to_tendency(comp["fsns"], H=H_ML)
+        Q_lhf = src.data.flux_to_tendency(-comp["lhflx"], H=H_ML)
 
         ## normalize by T34 at each lag
         rows = xr.Dataset({"Q_sw": Q_sw / comp["T_34"], "Q_lhf": Q_lhf / comp["T_34"]})
@@ -232,7 +236,7 @@ def _(mo):
 
 
 @app.cell
-def _(fu, rows_cold, rows_warm):
+def _(rows_cold, rows_warm, src):
     ## variable, label, units, and colorbar limit of each row (differences use half)
     rows = [
         dict(var="Q_sw", label=r"SW / $T_{34}$", units=r"yr$^{-1}$", amp=3),
@@ -240,10 +244,10 @@ def _(fu, rows_cold, rows_warm):
     ]
 
     ## values over time (left) and differences from the first window (right)
-    fig = fu.plot_hov_grid(rows_warm, rows_cold, rows, figsize=(11, 4.5))
+    fig = src.plot.plot_hov_grid(rows_warm, rows_cold, rows, figsize=(11, 4.5))
 
     ## save to SAVE_FP/figures
-    fu.save_fig(fig, "nhf-hov")
+    src.plot.save_fig(fig, "nhf-hov")
 
     fig
     return

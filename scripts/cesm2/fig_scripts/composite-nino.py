@@ -80,13 +80,17 @@ def _():
     import pathlib
     import xarray as xr
 
-    ## this project's modules (shared figure helpers, general utilities)
-    import src.figure_utils as fu
+    ## this project's modules: region boundaries, loading data, plotting
+    import src.constants
+    import src.data
+    import src.plot
+
+    ## older general utilities (to be split into the modules above)
     import src.utils
 
     ## plotting style used for all paper figures
     sns.set(rc={"axes.facecolor": "white", "axes.grid": False}, palette="colorblind")
-    return fu, np, os, pathlib, plt, sns, src, xr
+    return np, os, pathlib, plt, sns, src, xr
 
 
 @app.cell(hide_code=True)
@@ -132,9 +136,9 @@ def _(mo):
 
 
 @app.cell
-def _(T34_INDEX, fu, os, pathlib, src, xr):
+def _(T34_INDEX, os, pathlib, src, xr):
     ## Niño 3.4 anomalies (ensemble mean removed), dims (member, time)
-    T34 = fu.load_T34_anom(index=T34_INDEX)
+    T34 = src.data.load_T34_anom(index=T34_INDEX)
 
     ## EOF-compressed anomalies (ensemble mean removed): SST and net heat flux
     _, anom = src.utils.load_consolidated()
@@ -161,9 +165,9 @@ def _(mo):
 
 
 @app.cell
-def _(H_ML, fu):
+def _(H_ML, src):
     ## Q34 anomalies (K/yr), dims (member, time)
-    Q34 = fu.load_Q34(H=H_ML)
+    Q34 = src.data.load_Q34(H=H_ML)
     return (Q34,)
 
 
@@ -226,7 +230,6 @@ def _(
     anom,
     eli_anom,
     eli_forced,
-    fu,
     get_events,
     np,
     src,
@@ -244,9 +247,9 @@ def _(
             - x (xr.DataArray): field with a "latitude" dimension
 
         Returns:
-            - avg (xr.DataArray): mean over fu.LATS_EQ
+            - avg (xr.DataArray): mean over src.constants.LATS_EQ
         """
-        return x.sel(latitude=slice(*fu.LATS_EQ)).mean("latitude")
+        return x.sel(latitude=slice(*src.constants.LATS_EQ)).mean("latitude")
 
     ## composite SST and ELI for each window
     sst_comp = []
@@ -254,7 +257,7 @@ def _(
     for _year in YEARS:
 
         ## events in this window, then the mean over events
-        _comp = get_events(fu.get_window(spatial_data, _year, WINDOW_SIZE))
+        _comp = get_events(src.data.get_window(spatial_data, _year, WINDOW_SIZE))
         _comp = _comp.mean("sample")
 
         ## SST field from the composite scores, then the equatorial average
@@ -264,7 +267,7 @@ def _(
         sst_comp.append(eq_avg(_sst))
 
         ## forced ELI for the month at each lag (lag 0 is PEAK_MONTH)
-        _eli_clim = fu.get_window(eli_forced, _year, WINDOW_SIZE)
+        _eli_clim = src.data.get_window(eli_forced, _year, WINDOW_SIZE)
         _eli_clim = _eli_clim.groupby("time.month").mean()
 
         ## calendar month of each lag, then the climatology at those months
@@ -294,7 +297,7 @@ def _(mo):
 
 
 @app.cell
-def _(Q34, T34, WINDOW_SIZE, YEARS, fu, get_events, xr):
+def _(Q34, T34, WINDOW_SIZE, YEARS, get_events, src, xr):
     ## data for the scalar panels
     scalar_data = xr.merge([T34, Q34.rename("Q")])
 
@@ -303,7 +306,7 @@ def _(Q34, T34, WINDOW_SIZE, YEARS, fu, get_events, xr):
     for _year in YEARS:
 
         ## measure from the median of each calendar month in the window
-        _window = fu.get_window(scalar_data, _year, WINDOW_SIZE)
+        _window = src.data.get_window(scalar_data, _year, WINDOW_SIZE)
         _window = _window.groupby("time.month") - _window.groupby("time.month").median()
 
         ## samples around each event
@@ -367,7 +370,7 @@ def _(mo):
 
 
 @app.cell
-def _(fu, src):
+def _(src):
     def plot_hov(ax, sst, eli, eli_ls, title):
         """
         Panel (a) or (b): SST composite as a function of longitude and lag.
@@ -399,7 +402,7 @@ def _(fu, src):
         ## reference lines: peak (lag 0) and the edges of the Niño 3.4 region
         ref_kwargs = dict(ls="--", c="w", lw=0.75, alpha=0.75)
         ax.axhline(0, **ref_kwargs)
-        for lon in fu.LONS_W[1:] + fu.LONS_E[:1]:
+        for lon in src.constants.LONS_W[1:] + src.constants.LONS_E[:1]:
             ax.axvline(lon, **ref_kwargs)
 
         ## axes: longitude ticks at the Niño 3.4 edges (190E = 170W, 240E = 120W)
@@ -467,15 +470,15 @@ def _(mo):
 @app.cell
 def _(
     YEARS,
+    diff_quantiles,
     eli_comp,
     format_scalar_ax,
-    fu,
     plot_hov,
     plt,
-    diff_quantiles,
     quantiles,
     shade_decrease,
     sns,
+    src,
     sst_comp,
 ):
     ## two rows: SST composites (a, b) on top, scalar panels (c-e) below
@@ -577,7 +580,7 @@ def _(
         format_scalar_ax(ax)
 
     ## save to SAVE_FP/figures
-    fu.save_fig(fig, "composite-nino")
+    src.plot.save_fig(fig, "composite-nino")
 
     fig
     return

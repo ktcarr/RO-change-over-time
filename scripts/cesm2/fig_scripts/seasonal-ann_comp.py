@@ -73,14 +73,18 @@ def _():
     import numpy as np
     import seaborn as sns
 
-    ## this project's modules (shared figure helpers, general utilities)
-    import src.figure_utils as fu
+    ## this project's modules: loading data, plotting, statistics
+    import src.data
+    import src.plot
+    import src.stats
+
+    ## older general utilities (to be split into the modules above)
     import src.utils
 
     ## plotting style used for all paper figures; color_codes makes "r" and "b"
     ## the colorblind palette's red and blue
     sns.set(rc={"axes.facecolor": "white", "axes.grid": False}, palette="colorblind")
-    return fu, np, plt, src
+    return np, plt, src
 
 
 @app.cell(hide_code=True)
@@ -136,12 +140,12 @@ def _(mo):
 
 
 @app.cell
-def _(H_ML, STRIDE, T34_INDEX, WINDOW_SIZE, YEARS, fu, src):
+def _(H_ML, STRIDE, T34_INDEX, WINDOW_SIZE, YEARS, src):
     ## Niño 3.4 anomalies (ensemble mean removed), K, dims (member, time)
-    T34 = fu.load_T34_anom(index=T34_INDEX)
+    T34 = src.data.load_T34_anom(index=T34_INDEX)
 
     ## net heat flux over Niño 3.4 as a temperature tendency (K/yr), on T34's months
-    Q34 = fu.load_Q34(H=H_ML).sel(time=T34.time)
+    Q34 = src.data.load_Q34(H=H_ML).sel(time=T34.time)
 
     ## cut both into windows, dims (member, year, time); keep full windows only
     _kwargs = dict(window_size=WINDOW_SIZE, stride=STRIDE)
@@ -164,20 +168,14 @@ def _(mo):
 
 
 @app.cell
-def _(
-    LAG_R_WINTER,
-    MONTHS_Q_WINTER,
-    MONTH_R_WINTER,
-    Q34_win,
-    T34_win,
-    fu,
-    src,
-):
+def _(LAG_R_WINTER, MONTHS_Q_WINTER, MONTH_R_WINTER, Q34_win, T34_win, src):
     ## winter growth rate: November to February
-    R_winter = fu.get_lag_growth_rate(T34_win, lag=LAG_R_WINTER, month=MONTH_R_WINTER)
+    R_winter = src.stats.get_lag_growth_rate(
+        T34_win, lag=LAG_R_WINTER, month=MONTH_R_WINTER
+    )
 
     ## winter heat flux contribution: one regression over November-January
-    Q_winter = fu.regress_by_sign(
+    Q_winter = src.stats.regress_by_sign(
         src.utils.sel_month(T34_win, months=MONTHS_Q_WINTER),
         src.utils.sel_month(Q34_win, months=MONTHS_Q_WINTER),
     )
@@ -185,12 +183,14 @@ def _(
 
 
 @app.cell
-def _(Q34_win, T34_win, fu):
+def _(Q34_win, T34_win, src):
     ## all months: month-to-month growth rate for each starting month, averaged
-    R_annual = fu.get_lag_growth_rate(T34_win, lag=1, by_month=True).mean("month")
+    R_annual = src.stats.get_lag_growth_rate(T34_win, lag=1, by_month=True).mean(
+        "month"
+    )
 
     ## heat flux contribution for each calendar month, averaged
-    Q_annual = fu.regress_by_sign(T34_win, Q34_win, by_month=True).mean("month")
+    Q_annual = src.stats.regress_by_sign(T34_win, Q34_win, by_month=True).mean("month")
     return Q_annual, R_annual
 
 
@@ -248,7 +248,7 @@ def _():
 
 
 @app.cell
-def _(Q_annual, Q_winter, R_annual, R_winter, fu, np, plot_by_sign, plt):
+def _(Q_annual, Q_winter, R_annual, R_winter, np, plot_by_sign, plt, src):
     ## one row per season: growth rate, heat flux contribution, residual
     fig, axs = plt.subplots(2, 3, figsize=(8.5, 5.5), layout="constrained")
 
@@ -293,7 +293,7 @@ def _(Q_annual, Q_winter, R_annual, R_winter, fu, np, plot_by_sign, plt):
     axs[0, 0].legend(frameon=False, prop=dict(size=10), loc=(-0.03, 0.12))
 
     ## save to SAVE_FP/figures
-    fu.save_fig(fig, "seasonal-ann_comp")
+    src.plot.save_fig(fig, "seasonal-ann_comp")
 
     fig
     return

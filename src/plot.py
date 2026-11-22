@@ -1,0 +1,260 @@
+"""
+Plotting: saving figures, maps, region boxes, contour levels, and Hovmöller grids.
+"""
+
+import os
+import pathlib
+
+import cartopy.crs as ccrs
+import cmocean  # noqa: F401  (registers the "cmo.*" colormaps)
+import matplotlib.pyplot as plt
+import numpy as np
+
+import src.constants
+import src.utils
+
+
+def save_fig(fig, name, subdir="figures", dpi=800):
+    """
+    Save a figure as a PDF under SAVE_FP/<subdir>.
+
+    Args:
+        - fig (matplotlib.figure.Figure): figure to save
+        - name (str): file name without extension (use the figure's LaTeX label)
+        - subdir (str): folder under SAVE_FP to save into
+        - dpi (int): resolution for rasterized elements (e.g., filled contours)
+
+    Returns:
+        - fp (pathlib.Path): path of the saved file
+    """
+
+    ## build the output folder from the SAVE_FP environment variable, and create
+    ## it if this is the first figure saved there
+    save_dir = pathlib.Path(os.environ["SAVE_FP"], subdir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    ## save as PDF (the format used in the Overleaf project)
+    fp = save_dir / f"{name}.pdf"
+    fig.savefig(fp, dpi=dpi, format="pdf")
+
+    return fp
+
+
+def plot_wbox(ax, **kwargs):
+    """
+    Outline the western equatorial box on a map.
+
+    Args:
+        - ax (cartopy GeoAxes): map to draw on
+        - kwargs: passed to ax.plot (e.g., c, lw, ls)
+
+    Returns:
+        - None
+    """
+    src.utils.plot_box(
+        ax, lons=src.constants.LONS_W, lats=src.constants.LATS_EQ, **kwargs
+    )
+    return
+
+
+def plot_ebox(ax, **kwargs):
+    """
+    Outline the eastern equatorial box on a map.
+
+    Args:
+        - ax (cartopy GeoAxes): map to draw on
+        - kwargs: passed to ax.plot (e.g., c, lw, ls)
+
+    Returns:
+        - None
+    """
+    src.utils.plot_box(
+        ax, lons=src.constants.LONS_E, lats=src.constants.LATS_EQ, **kwargs
+    )
+    return
+
+
+def make_centered_levels(dx, nlevs):
+    """
+    Contour levels symmetric about zero, with a band centered on zero.
+
+    For example, dx=1 and nlevs=2 gives [-1.5, -0.5, 0.5, 1.5]: the middle band
+    (-0.5 to 0.5) is centered on zero, so near-zero values get the neutral color.
+
+    Args:
+        - dx (float): spacing between levels
+        - nlevs (int): number of levels on each side of zero
+
+    Returns:
+        - levels (np.ndarray): 2 * nlevs levels, increasing
+    """
+
+    ## positive levels: dx/2, 3dx/2, ..., up to (nlevs - 1/2) * dx
+    amp = dx * nlevs - dx / 2
+    lev_pos = np.arange(0, amp + dx / 2, dx) + dx / 2
+
+    ## negative levels mirror the positive ones
+    lev_neg = -lev_pos[::-1]
+    levels = np.concatenate([lev_neg, lev_pos])
+
+    return levels
+
+
+def plot_sst_map(ax, data, dx=0.2, nlev=5):
+    """
+    Filled contours of a lat/lon field on a map, with a diverging colormap.
+
+    Args:
+        - ax (cartopy GeoAxes): map to draw on
+        - data (xr.DataArray): field with "longitude" and "latitude"
+        - dx (float): contour interval
+        - nlev (int): number of contour levels on each side of zero
+
+    Returns:
+        - cp (QuadContourSet): contour set (pass to fig.colorbar)
+    """
+
+    ## filled contours; data are on a regular lat/lon grid (PlateCarree)
+    cp = ax.contourf(
+        data.longitude,
+        data.latitude,
+        data,
+        cmap="cmo.balance",
+        levels=make_centered_levels(dx, nlev),
+        transform=ccrs.PlateCarree(),
+        extend="both",
+    )
+
+    return cp
+
+
+def add_lat_labels(axs, ylocs=(-20, 0, 20)):
+    """
+    Label latitudes on the left of a column of maps.
+
+    Args:
+        - axs (np.ndarray of GeoAxes): maps, shape (nrows, ncols); only the first
+          column is labeled
+        - ylocs (tuple of float): latitudes to label
+
+    Returns:
+        - None
+    """
+
+    ## invisible gridlines (alpha=0) used only for their labels; no longitude labels
+    for ax in axs[:, 0]:
+        gl = ax.gridlines(
+            crs=ccrs.PlateCarree(),
+            draw_labels=True,
+            linewidth=1,
+            alpha=0,
+            xlocs=[],
+            ylocs=list(ylocs),
+        )
+
+        ## labels on the left only
+        gl.top_labels = False
+        gl.right_labels = False
+        gl.bottom_labels = False
+
+    return
+
+
+def plot_hov_grid(warm, cold, rows, figsize, nino34_lons=(190, 240), year_line=2010):
+    """
+    Year-longitude plots of El Niño and La Niña composites: the values over
+    time (left), and their difference from the first window (right).
+
+    Args:
+        - warm (xr.Dataset): El Niño composites, dims (year, longitude)
+        - cold (xr.Dataset): La Niña composites, same variables and dims
+        - rows (list of dict): one per row, with keys "var" (variable name),
+          "label" (row label), "units" (colorbar label), "amp" (colorbar limit
+          for the values; the differences use amp / 2), and optionally "cmap"
+          (default "cmo.balance")
+        - figsize (tuple): figure size (inches)
+        - nino34_lons (tuple): longitudes of the dashed vertical lines (the
+          Niño 3.4 region by default)
+        - year_line (int): year of the dashed horizontal line
+
+    Returns:
+        - fig (matplotlib.figure.Figure): the figure
+    """
+
+    ## left: values over time; right: difference from the first window
+    fig = plt.figure(figsize=figsize, layout="constrained")
+    ## (the left half is wider, since it also holds the row labels)
+    subfigs = fig.subfigures(1, 2, wspace=0.05, width_ratios=[1.25, 1])
+
+    ## titles of the two halves
+    year0 = warm.year.values[0]
+    subfigs[0].suptitle("Anomaly over time", size=14)
+    subfigs[1].suptitle(f"Difference from {year0}", size=14)
+
+    ## one row per variable, El Niño and La Niña side by side
+    nrows = len(rows)
+    for subfig, is_diff in zip(subfigs, [False, True]):
+        axs = subfig.subplots(nrows, 2, squeeze=False)
+
+        for i, row in enumerate(rows):
+
+            ## colorbar limit (smaller for the differences) and levels
+            if is_diff:
+                amp = row["amp"] / 2
+            else:
+                amp = row["amp"]
+            levels = src.utils.make_cb_range(amp, amp / 10)
+
+            for j, comp in enumerate([warm, cold]):
+
+                ## values, or difference from the first window
+                if is_diff:
+                    x = comp[row["var"]] - comp[row["var"]].isel(year=0)
+                else:
+                    x = comp[row["var"]]
+
+                ## filled contours, longitude on the x axis
+                cp = axs[i, j].contourf(
+                    comp.longitude,
+                    comp.year,
+                    x.transpose("year", "longitude"),
+                    levels=levels,
+                    cmap=row.get("cmap", "cmo.balance"),
+                    extend="both",
+                )
+
+            ## one colorbar per row, next to the La Niña panel
+            subfig.colorbar(cp, ax=axs[i, :], label=row["units"], ticks=[-amp, 0, amp])
+
+        ## reference lines; ticks only on the outer panels (set below)
+        for ax in axs.flatten():
+            for lon in nino34_lons:
+                ax.axvline(lon, ls="--", c="w", lw=0.8)
+            ax.axhline(year_line, ls="--", c="w", lw=0.8)
+
+            ## same longitude range everywhere; clear the ticks
+            ax.set_xlim([140, 280])
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        ## column titles
+        axs[0, 0].set_title("El Niño")
+        axs[0, 1].set_title("La Niña")
+
+        ## longitude ticks on the bottom row
+        for ax in axs[-1]:
+            ax.set_xticks([145, 190, 240, 275])
+            ax.set_xlabel("Longitude")
+
+        ## year ticks on the left column of each half
+        for ax in axs[:, 0]:
+            ax.set_yticks([1880, 2010, 2080])
+
+        ## row labels, left of the first half only
+        if not is_diff:
+            for ax, row in zip(axs[:, 0], rows):
+                ax.set_ylabel(
+                    row["label"], rotation=0, ha="right", va="center", size=12
+                )
+
+    return fig

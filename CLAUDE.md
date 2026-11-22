@@ -17,10 +17,13 @@ the layout and the key scripts, in the order they run.
 
 - `scripts/cesm2/`: key CESM2 scripts (marimo notebooks saved as `.py`); `preprocess/` builds
   the indices and consolidated fields; `fig_scripts/` has one script per paper or thesis figure
-  (being split out of the big scripts; shared helpers in `src/figure_utils.py`); `explore/`
+  (being split out of the big scripts); `explore/`
   holds exploratory Jupyter notebooks not needed to reproduce the paper or thesis.
-- `src/`: the project's module (installed editable); `src/XRO.py` is the old RO implementation,
-  to be replaced by `~/ro_tools`.
+- `src/`: the project's module (installed editable), organized by topic: `constants.py`,
+  `data.py`, `indices.py`, `stats.py`, `plot.py`, and `ro.py` (shared RO fit/simulation steps).
+  Put new reusable code in the matching module, not in per-figure or per-script helper files.
+  `utils.py` holds older general utilities (to be moved into the topic modules); `XRO.py` is
+  the old RO implementation, to be replaced by `~/ro_tools` after the restructuring.
 - `tests/`: checks on known answers. `results/`: figures and intermediate results.
 - Related: the paper's Overleaf project is `~/ch3` (live docs `paper-outline.tex`, `draft2.tex`);
   the improved RO package is `~/ro_tools`.
@@ -54,6 +57,8 @@ the layout and the key scripts, in the order they run.
 - Prefer explicit loops to comprehensions that need a line break. No early `return` inside
   an `if` without an `else`: use `if`/`else` and return once. Write `if x is None: ... else: ...`,
   not `if x is not None`.
+- Put all imports at the top of the file, never inside functions (in marimo scripts, in the
+  imports cell). Side-effect imports (e.g. `import cmocean` for its colormaps) get a comment.
 - Format with `envs/bin/black`.
 - marimo: end a figure cell with `plt.gca()` (or `fig`), not `plt.show()`; one figure per cell.
 - Converting notebooks: never use `marimo convert` as-is. Its fix for variables defined in

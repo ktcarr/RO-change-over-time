@@ -31,7 +31,7 @@ def _(mo):
       distribution)
 
     The fitting and simulation steps are shared with the other RO figures
-    (`src/ro_figure_utils.py`) and use the old RO code in `src/XRO.py`.
+    (`src/ro.py`) and use the old RO code in `src/XRO.py`.
 
     **Inputs** (under `DATA_FP/cesm`): `Th_anom.nc` (Niño 3 index and thermocline
     depth).
@@ -72,14 +72,17 @@ def _():
     import scipy.stats
     import xarray as xr
 
-    ## this project's modules (shared figure helpers, RO steps, general utilities)
-    import src.figure_utils as fu
-    import src.ro_figure_utils as rfu
+    ## this project's modules: loading data, plotting, RO fits and simulations
+    import src.data
+    import src.plot
+    import src.ro
+
+    ## older general utilities (to be split into the modules above)
     import src.utils
 
     ## plotting style used for all paper figures
     sns.set(rc={"axes.facecolor": "white", "axes.grid": False}, palette="colorblind")
-    return fu, plt, rfu, scipy, sns, src, xr
+    return plt, scipy, sns, src, xr
 
 
 @app.cell(hide_code=True)
@@ -88,7 +91,7 @@ def _(mo):
         r"""
     ## Fit and simulate the RO
 
-    `rfu.FIT_KWARGS` and `rfu.SIM_KWARGS` hold the fit and simulation settings
+    `src.ro.FIT_KWARGS` and `src.ro.SIM_KWARGS` hold the fit and simulation settings
     shared by all RO figures.
     """
     )
@@ -96,18 +99,18 @@ def _(mo):
 
 
 @app.cell
-def _(rfu):
+def _(src):
     ## windowed, non-dimensional T (Niño 3) and h_hat, dims (member, year, time);
     ## T_scale (K) converts T back to K
-    data, T_scale = rfu.load_ro_data(t_var="T_3")
+    data, T_scale = src.ro.load_ro_data(t_var="T_3")
 
     ## fit the RO in each window
-    model = rfu.get_model()
-    fits = rfu.fit_over_time(data[rfu.VARNAMES], model)
+    model = src.ro.get_model()
+    fits = src.ro.fit_over_time(data[src.ro.VARNAMES], model)
 
     ## simulate each window, starting from the first CESM2 value
-    X0 = data[rfu.VARNAMES].isel(year=0, member=0, time=0)
-    sims = rfu.simulate_over_time(model, fits, X0)
+    X0 = data[src.ro.VARNAMES].isel(year=0, member=0, time=0)
+    sims = src.ro.simulate_over_time(model, fits, X0)
     return T_scale, data, sims
 
 
@@ -124,11 +127,11 @@ def _(mo):
 
 
 @app.cell
-def _(T_scale, data, rfu, sims):
+def _(T_scale, data, sims, src):
     ## DJF means of T in K: CESM2 (dims member, year, time) and RO (member = copy)
     T_djf = dict(
-        CESM2=T_scale * rfu.get_djf(data["T_3"]),
-        RO=T_scale * rfu.get_djf(sims["T_3"]),
+        CESM2=T_scale * src.data.get_djf(data["T_3"]),
+        RO=T_scale * src.data.get_djf(sims["T_3"]),
     )
     return (T_djf,)
 
@@ -187,7 +190,7 @@ def _(mo):
 
 
 @app.cell
-def _(fu, plt, sns, src, stats):
+def _(plt, sns, src, stats):
     ## left: standard deviation and skewness; right: tails in CESM2 and the RO
     fig = plt.figure(figsize=(12.5, 3), layout="constrained")
     subfigs = fig.subfigures(1, 2, wspace=0.05)
@@ -246,7 +249,7 @@ def _(fu, plt, sns, src, stats):
         src.utils.add_vticks(_axs, xticks=[1870, 2010, 2080], xlines=[2010])
 
     ## save to SAVE_FP/figures
-    fu.save_fig(fig, "RO-validation")
+    src.plot.save_fig(fig, "RO-validation")
 
     fig
     return

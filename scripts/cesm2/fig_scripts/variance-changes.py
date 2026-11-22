@@ -61,13 +61,16 @@ def _():
     import numpy as np
     import seaborn as sns
 
-    ## this project's modules (shared figure helpers, general utilities)
-    import src.figure_utils as fu
+    ## this project's modules: loading data, plotting
+    import src.data
+    import src.plot
+
+    ## older general utilities (to be split into the modules above)
     import src.utils
 
     ## plotting style used for all paper figures
     sns.set(rc={"axes.facecolor": "white", "axes.grid": False}, palette="colorblind")
-    return fu, np, plt, src
+    return np, plt, src
 
 
 @app.cell(hide_code=True)
@@ -113,14 +116,14 @@ def _(mo):
 
 
 @app.cell
-def _(STRIDE, T34_INDEX, WINDOW_SIZE, fu):
+def _(STRIDE, T34_INDEX, WINDOW_SIZE, src):
     ## Niño 3.4 anomalies (ensemble mean removed), cut into windows
-    T34_windowed = fu.load_T34_windowed(
+    T34_windowed = src.data.load_T34_windowed(
         index=T34_INDEX, window_size=WINDOW_SIZE, stride=STRIDE
     )
 
     ## DJF means, measured from the median of each window (used in all panels)
-    T = fu.get_djf_anom(T34_windowed)
+    T = src.data.get_djf_anom(T34_windowed)
     return (T,)
 
 
@@ -283,17 +286,7 @@ def _(mo):
 
 
 @app.cell
-def _(
-    fu,
-    pdfs,
-    plot_contribution,
-    plot_pdfs,
-    plt,
-    src,
-    var_cold,
-    var_total,
-    var_warm,
-):
+def _(pdfs, plot_contribution, plot_pdfs, plt, src, var_cold, var_total, var_warm):
     ## three panels in a row
     fig, axs = plt.subplots(1, 3, figsize=(9, 2.9), layout="constrained")
 
@@ -324,7 +317,7 @@ def _(
     axs[2].tick_params(axis="y", which="both", length=0)
 
     ## save to SAVE_FP/figures
-    fu.save_fig(fig, "variance-changes")
+    src.plot.save_fig(fig, "variance-changes")
 
     fig
     return

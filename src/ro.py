@@ -1,13 +1,12 @@
 """
-Shared steps for the recharge oscillator (RO) figure scripts in
-scripts/cesm2/fig_scripts.
+The recharge oscillator (RO) steps shared by the RO figures.
 
 The RO figures (fig:RO-validation, fig:gr-over-time, fig:RO-experiments*) all fit
 the same nonlinear RO in 40-year windows of CESM2 output and simulate it with the
 fitted parameters. These functions do that once, the same way for every figure.
-They follow the "Load data" to "validate" cells of RO-change-over-time_NL.py
-(now in explore/), and use the old RO implementation in src/XRO.py so that the
-figures match the paper drafts; the plan is to switch to ~/ro_tools later.
+They follow the "Load data" to "validate" cells of RO-change-over-time_NL.py,
+and use the old RO implementation in src/XRO.py so that the figures match the
+paper drafts; the plan is to switch to ~/ro_tools later.
 
 The RO's variables are non-dimensional: T is divided by the standard deviation
 of the Niño 3 index (all members and times) and h by that of the western
@@ -21,19 +20,27 @@ import xarray as xr
 import src.utils
 import src.XRO
 
+
 ## windows: 40 years long, centered every 10 years; the window centered on 2090
 ## runs past the end of the simulation, so 2080 is the last one kept
 WINDOW_SIZE = 480
+
+
 STRIDE = 120
+
+
 LAST_YEAR = 2080
+
 
 ## RO variables: Niño 3 SST index and thermocline depth with its linear
 ## dependence on T removed ("h_hat")
 VARNAMES = ["T_3", "h_hat"]
 
+
 ## which nonlinear terms to fit: T^2 and T^3 in the T equation, T^2 in the h
 ## equation; ac_mask_idx=None lets every term vary with the seasonal cycle
 FIT_KWARGS = dict(ac_mask_idx=None, maskNT=["T2", "T3"], maskNH=["T2"])
+
 
 ## simulations: 500 copies of 40 years for each window, with white noise whose
 ## covariance and seasonal amplitude come from the fit residuals. The noise is
@@ -177,28 +184,3 @@ def simulate_over_time(model, fits, X0, sim_kwargs=SIM_KWARGS):
     sims = xr.concat(sims, dim=fits.year)
 
     return sims
-
-
-def get_djf(x):
-    """
-    DJF means of windowed (or simulated) monthly data, full seasons only.
-
-    The windows run January to December, so the first DJF (January-February only)
-    and the last (December only) are partial and are dropped; 39 remain.
-
-    Args:
-        - x (xr.Dataset or xr.DataArray): monthly data with a "time" dimension
-          starting in January
-
-    Returns:
-        - x_djf (xr.Dataset or xr.DataArray): one value per full DJF season
-    """
-
-    ## seasonal means, with seasons starting in December (DJF, MAM, JJA, SON)
-    x_seasonal = x.resample({"time": "QS-DEC"}).mean()
-
-    ## every 4th season starting from the first full DJF (index 4); the last 4
-    ## seasons hold the partial final DJF
-    x_djf = x_seasonal.isel(time=slice(4, -4, 4))
-
-    return x_djf

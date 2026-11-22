@@ -72,13 +72,16 @@ def _():
     ## labeled arrays
     import xarray as xr
 
-    ## this project's modules (shared figure helpers, general utilities)
-    import src.figure_utils as fu
+    ## this project's modules: loading data, plotting
+    import src.data
+    import src.plot
+
+    ## older general utilities (to be split into the modules above)
     import src.utils
 
     ## plotting style used for all paper figures
     sns.set(rc={"axes.facecolor": "white", "axes.grid": False}, palette="colorblind")
-    return fu, np, os, pathlib, plt, sns, src, xr
+    return np, os, pathlib, plt, sns, src, xr
 
 
 @app.cell(hide_code=True)
@@ -138,9 +141,9 @@ def _(mo):
 
 
 @app.cell
-def _(H_ML, T34_INDEX, TROP_SST, fu, os, pathlib, xr):
+def _(H_ML, T34_INDEX, TROP_SST, os, pathlib, src, xr):
     ## total Niño 3.4 index and tropical-mean SST, dims (member, time)
-    T34 = fu.load_T34_total(index=T34_INDEX)
+    T34 = src.data.load_T34_total(index=T34_INDEX)
     trop_sst_fp = pathlib.Path(os.environ["DATA_FP"], "cesm", "trop_sst.nc")
     trop_sst = xr.open_dataset(trop_sst_fp)[TROP_SST]
 
@@ -151,7 +154,7 @@ def _(H_ML, T34_INDEX, TROP_SST, fu, os, pathlib, xr):
     ## to the T34 tendency (anomalies, K/yr, positive into the ocean)
     Q34 = xr.Dataset()
     for _varname in ["nhf", "fsns", "lhflx"]:
-        Q34[_varname] = fu.load_Q34(H=H_ML, varname=_varname)
+        Q34[_varname] = src.data.load_Q34(H=H_ML, varname=_varname)
 
     ## shortwave plus latent heat flux (the two largest feedbacks)
     Q34["sw_lhf"] = Q34["fsns"] + Q34["lhflx"]
@@ -169,13 +172,13 @@ def _(mo):
 
 
 @app.cell
-def _(MONTH, Q34, T34_rel, WINDOW_SIZE, YEARS, fu):
+def _(MONTH, Q34, T34_rel, WINDOW_SIZE, YEARS, src):
     ## December values for each window, dims (member, time)
     T_dec = {}
     Q_dec = {}
     for _year in YEARS:
-        T_dec[_year] = fu.get_window_month(T34_rel, _year, MONTH, WINDOW_SIZE)
-        Q_dec[_year] = fu.get_window_month(Q34, _year, MONTH, WINDOW_SIZE)
+        T_dec[_year] = src.data.get_window_month(T34_rel, _year, MONTH, WINDOW_SIZE)
+        Q_dec[_year] = src.data.get_window_month(Q34, _year, MONTH, WINDOW_SIZE)
     return Q_dec, T_dec
 
 
@@ -216,7 +219,7 @@ def _(mo):
 
 
 @app.cell
-def _(FLUX_TITLES, Q_dec, T_dec, YEARS, fit_coefs, fu, np, plt, sns, src):
+def _(FLUX_TITLES, Q_dec, T_dec, YEARS, fit_coefs, np, plt, sns, src):
     ## one row per window, one column per heat flux
     fig, axs = plt.subplots(2, 4, figsize=(9, 4.5), layout="constrained")
 
@@ -286,7 +289,7 @@ def _(FLUX_TITLES, Q_dec, T_dec, YEARS, fit_coefs, fu, np, plt, sns, src):
         ax.set_ylabel(f"{year}\n" + r"$Q_{34}$ (K yr$^{-1}$)")
 
     ## save to SAVE_FP/figures
-    fu.save_fig(fig, "nhf_scatter_by_component")
+    src.plot.save_fig(fig, "nhf_scatter_by_component")
 
     fig
     return

@@ -23,7 +23,14 @@ How do recharge oscillator parameters change over time in a large ensemble? What
   - ```lme```: analysis of the last millennium ensemble (separate side project)
   - ```scratch```: old experiments
 - ```data```: raw and preprocessed data (*contact for access*)
-- ```src```: custom module containing functions used in ```scripts```
+- ```src```: custom module containing functions used in ```scripts```, organized by topic:
+  - ```constants.py```: region boundaries and physical constants
+  - ```data.py```: loading data, unit conversions, windows, and seasonal means
+  - ```indices.py```: averages over the paper's regions
+  - ```stats.py```: changes over time, composites, and regressions
+  - ```plot.py```: saving figures, maps, region boxes, and Hovmöller grids
+  - ```ro.py```: the recharge oscillator (RO) fitting and simulation steps shared by the RO figures; uses the old RO code in ```XRO.py``` so that the figures reproduce the paper drafts (the switch to ```~/ro_tools``` comes after the restructuring)
+  - ```utils.py```: older general utilities, used by the scripts not yet split up (to be moved into the modules above)
 - ```results```: figures and intermediate results (e.g., model parameters)
 - ```tests```: check that certain functions work as expected (e.g., EOF reconstructions)
 
@@ -67,7 +74,7 @@ The scripts are being split up so that each figure comes from one script in ```f
 - states the figure, its panels, its inputs, and its output in the first cell;
 - loads the data, computes each plotted quantity in its own cell, and draws one figure;
 - saves the figure to ```SAVE_FP/figures/<label>.pdf``` (saving is on by default);
-- uses the helpers shared between figure scripts in ```src/figure_utils.py``` (tested in ```tests/test_figure_utils.py```); the RO figures also share the fitting and simulation steps in ```src/ro_figure_utils.py```, which use the old RO code in ```src/XRO.py``` so that they reproduce the paper drafts (the switch to ```~/ro_tools``` comes after the restructuring).
+- uses the shared functions in ```src``` (see "Description of project directory"; tested in ```tests/test_<module>.py```); the RO figures share the fitting and simulation steps in ```src/ro.py```.
 
 Run one from ```scripts/cesm2```, e.g. ```MPLBACKEND=Agg python fig_scripts/cesm2-meanstate.py```.
 

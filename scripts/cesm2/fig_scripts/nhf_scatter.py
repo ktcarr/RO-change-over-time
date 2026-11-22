@@ -74,13 +74,16 @@ def _():
     import scipy.optimize
     import xarray as xr
 
-    ## this project's modules (shared figure helpers, general utilities)
-    import src.figure_utils as fu
+    ## this project's modules: loading data, plotting
+    import src.data
+    import src.plot
+
+    ## older general utilities (to be split into the modules above)
     import src.utils
 
     ## plotting style used for all paper figures
     sns.set(rc={"axes.facecolor": "white", "axes.grid": False}, palette="colorblind")
-    return fu, np, os, pathlib, plt, scipy, sns, src, xr
+    return np, os, pathlib, plt, scipy, sns, src, xr
 
 
 @app.cell(hide_code=True)
@@ -138,9 +141,9 @@ def _(mo):
 
 
 @app.cell
-def _(H_ML, T34_INDEX, TROP_SST, fu, os, pathlib, xr):
+def _(H_ML, T34_INDEX, TROP_SST, os, pathlib, src, xr):
     ## total Niño 3.4 index and tropical-mean SST, dims (member, time)
-    T34 = fu.load_T34_total(index=T34_INDEX)
+    T34 = src.data.load_T34_total(index=T34_INDEX)
     trop_sst_fp = pathlib.Path(os.environ["DATA_FP"], "cesm", "trop_sst.nc")
     trop_sst = xr.open_dataset(trop_sst_fp)[TROP_SST]
 
@@ -148,7 +151,7 @@ def _(H_ML, T34_INDEX, TROP_SST, fu, os, pathlib, xr):
     T34_rel = T34 - trop_sst
 
     ## heat flux contribution to the T34 tendency (anomaly, K/yr)
-    Q34 = fu.load_Q34(H=H_ML)
+    Q34 = src.data.load_Q34(H=H_ML)
     return Q34, T34_rel
 
 
@@ -163,14 +166,14 @@ def _(mo):
 
 
 @app.cell
-def _(MONTH, PDF_YEARS, Q34, T34_rel, WINDOW_SIZE, fu):
+def _(MONTH, PDF_YEARS, Q34, T34_rel, WINDOW_SIZE, src):
     ## December values for each window shown (PDF_YEARS includes SCATTER_YEARS),
     ## dims (member, time)
     T_dec = {}
     Q_dec = {}
     for _year in PDF_YEARS:
-        T_dec[_year] = fu.get_window_month(T34_rel, _year, MONTH, WINDOW_SIZE)
-        Q_dec[_year] = fu.get_window_month(Q34, _year, MONTH, WINDOW_SIZE)
+        T_dec[_year] = src.data.get_window_month(T34_rel, _year, MONTH, WINDOW_SIZE)
+        Q_dec[_year] = src.data.get_window_month(Q34, _year, MONTH, WINDOW_SIZE)
     return Q_dec, T_dec
 
 
@@ -209,7 +212,7 @@ def _(mo):
 
 
 @app.cell
-def _(SCATTER_YEARS, Q_dec, T_dec, np, scipy):
+def _(Q_dec, SCATTER_YEARS, T_dec, np, scipy):
     def exp_curve(x, a, b, c):
         """
         Exponential curve, c * exp(a * x) + b.
@@ -303,7 +306,6 @@ def _(
     T_dec,
     exp_curve,
     fit_params,
-    fu,
     np,
     pdfs,
     plot_pdfs,
@@ -387,7 +389,7 @@ def _(
         ax.legend(prop=dict(size=11), frameon=False)
 
     ## save to SAVE_FP/figures
-    fu.save_fig(fig, "nhf_scatter")
+    src.plot.save_fig(fig, "nhf_scatter")
 
     fig
     return

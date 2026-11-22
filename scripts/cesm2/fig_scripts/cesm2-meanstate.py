@@ -69,8 +69,15 @@ def _():
     import seaborn as sns
     import xarray as xr
 
-    ## this project's modules (shared figure helpers, general utilities)
-    import src.figure_utils as fu
+    ## this project's modules: region boundaries, loading data, plotting
+    import src.constants
+    import src.data
+    import src.plot
+
+    ## statistics
+    import src.stats
+
+    ## older general utilities (to be split into the modules above)
     import src.utils
 
     ## plotting style used for all paper figures
@@ -78,7 +85,7 @@ def _():
 
     ## folder with the preprocessed data
     DATA_FP = pathlib.Path(os.environ["DATA_FP"])
-    return DATA_FP, ccrs, fu, mpl, np, plt, src, xr
+    return DATA_FP, ccrs, mpl, np, plt, src, xr
 
 
 @app.cell(hide_code=True)
@@ -130,10 +137,10 @@ def _(src):
 
 
 @app.cell
-def _(fu):
+def _(src):
     ## total (forced + anomaly) fields for the indices in (e-g), using the wide
     ## consolidated data where available
-    total = fu.load_total(["T", "w", "sst"])
+    total = src.data.load_total(["T", "w", "sst"])
     return (total,)
 
 
@@ -323,7 +330,7 @@ def _(src, total):
         """
         Zonal SST difference, western box (140-190E) minus eastern box (240-280E), 5S-5N.
 
-        Note the western box here is wider than fu.LONS_W (150-190E), as in the
+        Note the western box here is wider than src.constants.LONS_W (150-190E), as in the
         original timeseries.py.
 
         Args:
@@ -369,14 +376,14 @@ def _(STRIDE, WINDOW_SIZE, dTdx, dTdz_n3, src, trop_sst, w_n3, xr):
 
 
 @app.cell
-def _(STRIDE, T34_INDEX, WINDOW_SIZE, fu):
+def _(STRIDE, T34_INDEX, WINDOW_SIZE, src):
     ## Niño 3.4 anomalies (ensemble mean removed), cut into windows
-    T34_windowed = fu.load_T34_windowed(
+    T34_windowed = src.data.load_T34_windowed(
         index=T34_INDEX, window_size=WINDOW_SIZE, stride=STRIDE
     )
 
     ## DJF means, measured from the median of each window
-    T34_djf = fu.get_djf_anom(T34_windowed)
+    T34_djf = src.data.get_djf_anom(T34_windowed)
 
     ## ENSO amplitude (d): standard deviation of DJF Niño 3.4 in each window and member
     sigma_T = T34_djf.std("time")
@@ -406,7 +413,7 @@ def _(mo):
 
 
 @app.cell
-def _(ccrs, fu, src):
+def _(ccrs, src):
     def plot_maps(subfig, rsst, enso_pattern):
         """
         Panels (a) relative SST and (b) ENSO pattern, stacked vertically.
@@ -428,13 +435,13 @@ def _(ccrs, fu, src):
 
         ## filled contours, with different intervals for the two fields
         dxs = [0.8, 0.4]
-        cp_a = fu.plot_sst_map(axs[0, 0], rsst, dx=dxs[0])
-        cp_b = fu.plot_sst_map(axs[1, 0], enso_pattern, dx=dxs[1])
+        cp_a = src.plot.plot_sst_map(axs[0, 0], rsst, dx=dxs[0])
+        cp_b = src.plot.plot_sst_map(axs[1, 0], enso_pattern, dx=dxs[1])
 
         ## outline the T_w and T_e boxes (gray) and the Niño 3.4 box (dashed white)
         for ax in axs.flatten():
-            fu.plot_wbox(ax, c="gray", lw=1.5)
-            fu.plot_ebox(ax, c="gray", lw=1.5)
+            src.plot.plot_wbox(ax, c="gray", lw=1.5)
+            src.plot.plot_ebox(ax, c="gray", lw=1.5)
             src.utils.plot_nino34_box(ax, c="w", ls="--", lw=1.5, alpha=0.75)
 
         ## label the boxes on the top map
@@ -451,7 +458,7 @@ def _(ccrs, fu, src):
         ## titles and latitude labels
         axs[0, 0].set_title("(a) Relative SST mean", loc="left")
         axs[1, 0].set_title("(b) SST ENSO pattern", loc="left")
-        fu.add_lat_labels(axs)
+        src.plot.add_lat_labels(axs)
 
         ## let the maps stretch to fill the space
         for ax in axs.flatten():
@@ -563,7 +570,7 @@ def _(mpl, np, src):
 
 
 @app.cell
-def _(fu):
+def _(src):
     def plot_timeseries(subfig, series, trop_warming):
         """
         Panels (d-g): fractional change over time of four indices, with tropical warming.
@@ -603,7 +610,7 @@ def _(fu):
                 (0.05, 1, "5-95%"),
                 (0.95, 1, None),
             ]:
-                frac = fu.frac_change(
+                frac = src.stats.frac_change(
                     series[v].quantile(q=q, dim="member"), x0=baseline
                 )
                 ax.plot(series.year, frac, c="k", lw=lw, label=label)
@@ -676,13 +683,13 @@ def _(mo):
 def _(
     clim0_spatial,
     enso_pattern0,
-    fu,
     plot_depth_section,
     plot_maps,
     plot_timeseries,
     plt,
     rsst0,
     series,
+    src,
     trop_warming,
 ):
     ## figure split into a left column (a-c) and a narrower right column (d-g)
@@ -698,7 +705,7 @@ def _(
     plot_timeseries(subfig_right, series, trop_warming)
 
     ## save to SAVE_FP/figures
-    fu.save_fig(fig, "cesm2-meanstate")
+    src.plot.save_fig(fig, "cesm2-meanstate")
 
     fig
     return
