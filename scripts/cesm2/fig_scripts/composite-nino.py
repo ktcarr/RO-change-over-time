@@ -44,7 +44,7 @@ def _(mo):
 
     Before this script, (a, b) came from the `spatial_comp` cell of `composite-over-time.py`
     (via a composite cached in `SAVE_FP/composites/`), and (c-e) from the `scalar_comp`
-    cell of `spaghetti_updated.py`. Both panels now use the same windows (the scalar panels
+    cell of `explore/spaghetti_updated.py`. Both panels now use the same windows (the scalar panels
     used windows one year later, 2011 and 2081). The old (d, e) took percentiles of the
     differences for one pairing of events (the i-th event in each window); they now use
     all pairs, so the result doesn't depend on the order of the events. The figure has

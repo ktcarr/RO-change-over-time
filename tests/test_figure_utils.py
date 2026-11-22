@@ -224,3 +224,71 @@ def test_get_composite_hov():
     ## at the peak, El Niño composites are positive and La Niña ones negative
     assert (warm["T_34"].sel(lag=0) > 1).all()
     assert (cold["T_34"].sel(lag=0) < -1).all()
+
+
+def make_windowed(values):
+    """
+    Wrap an array as windowed data (dims member, year, time) with monthly times.
+
+    Args:
+        - values (np.ndarray): data, shape (member, year, time)
+
+    Returns:
+        - x (xr.DataArray): data with monthly times starting in January 1850
+    """
+
+    ## coordinates like those from src.utils.get_windowed
+    n_member, n_year, n_time = values.shape
+    time = xr.date_range("1850-01-01", periods=n_time, freq="MS")
+    coords = dict(member=np.arange(n_member), year=1870 + np.arange(n_year), time=time)
+
+    return xr.DataArray(values, coords=coords, dims=["member", "year", "time"])
+
+
+def test_regress_by_sign():
+    """For y = 2x when x > 0 and y = x/2 when x < 0, the slopes are 2, 1/2."""
+
+    ## random predictor
+    rng = np.random.default_rng(0)
+    x = make_windowed(rng.standard_normal((2, 3, 480)))
+
+    ## piecewise-linear target
+    y = xr.where(x > 0, 2 * x, 0.5 * x)
+
+    ## slopes for each subset
+    slopes = fu.regress_by_sign(x, y)
+    np.testing.assert_allclose(slopes["pos"], 2)
+    np.testing.assert_allclose(slopes["neg"], 0.5)
+
+    ## all x together: between the two
+    assert ((slopes["all"] > 0.5) & (slopes["all"] < 2)).all()
+
+    ## fitting by month gives the same slopes, for each month
+    slopes_month = fu.regress_by_sign(x, y, by_month=True)
+    assert slopes_month.sizes["month"] == 12
+    np.testing.assert_allclose(slopes_month["pos"], 2)
+
+
+def test_get_lag_growth_rate():
+    """An AR(1) process x(t+1) = a x(t) + noise grows at 12 log(a) per year."""
+
+    ## AR(1) with a = 0.9, long enough for a precise estimate
+    rng = np.random.default_rng(1)
+    a = 0.9
+    n_time = 48000
+
+    ## white-noise forcing, and the series (starting from zero)
+    noise = rng.standard_normal((1, 1, n_time))
+    values = np.zeros((1, 1, n_time))
+
+    ## step forward in time
+    for t in range(1, n_time):
+        values[..., t] = a * values[..., t - 1] + noise[..., t]
+
+    ## monthly growth rate, all months together
+    R = fu.get_lag_growth_rate(make_windowed(values), lag=1)
+    np.testing.assert_allclose(R["all"], 12 * np.log(a), atol=0.05)
+
+    ## over 3 months the slope is a^3, so the rate is the same
+    R3 = fu.get_lag_growth_rate(make_windowed(values), lag=3, month=11)
+    np.testing.assert_allclose(R3["all"], 12 * np.log(a), atol=0.1)

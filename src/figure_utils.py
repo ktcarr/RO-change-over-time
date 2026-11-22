@@ -725,3 +725,96 @@ def plot_hov_grid(warm, cold, rows, figsize, nino34_lons=(190, 240), year_line=2
                 )
 
     return fig
+
+
+def regress_by_sign(x, y, by_month=False):
+    """
+    Regression slope of y on x, separately for x > 0, x < 0, and all x.
+
+    Each member and window gets its own fit: the regression is over "time" only.
+    Fitting x > 0 and x < 0 separately gives a piecewise-linear relation, which
+    captures El Niño/La Niña asymmetry.
+
+    Args:
+        - x (xr.DataArray): predictor, e.g. windowed Niño 3.4 anomalies with dims
+          (member, year, time)
+        - y (xr.DataArray): target, same dims as x
+        - by_month (bool): if True, fit each calendar month separately (adds a
+          "month" dimension)
+
+    Returns:
+        - slopes (xr.Dataset): slope of y on x for x > 0 ("pos"), x < 0 ("neg"),
+          and all x ("all"), with x's dims other than "time" (plus "month")
+    """
+
+    ## predictor and target in one dataset, so masking applies to both
+    data = xr.merge([x.rename("x"), y.rename("y")])
+
+    ## subsets: all samples, warm (x > 0), and cold (x < 0)
+    subsets = dict(
+        all=data, pos=data.where(data["x"] > 0), neg=data.where(data["x"] < 0)
+    )
+
+    ## regression settings: one fit per member and window
+    kwargs = dict(x_vars=["x"], y_vars=["y"], dims=["time"])
+
+    ## fit each subset
+    slopes = xr.Dataset()
+    for name, subset in subsets.items():
+
+        ## one fit for each calendar month, or one for all months together
+        if by_month:
+            coefs = subset.groupby("time.month").map(
+                src.utils.regress_xr_proj, **kwargs
+            )
+        else:
+            coefs = src.utils.regress_xr_proj(subset, **kwargs)
+
+        ## keep the slope (dropping the predictor-index coordinate)
+        slopes[name] = coefs["y"].drop_vars("j")
+
+    return slopes
+
+
+def get_lag_growth_rate(T, lag=1, month=None, by_month=False):
+    """
+    Growth rate of T from lag regression, separately for warm and cold starts.
+
+    Regresses T(t + lag) on T(t), giving a slope S per member and window. If
+    T(t + lag) = S T(t), then T grows at the rate R = log(S) / lag. Warm and cold
+    subsets are chosen by the sign of T(t).
+
+    Args:
+        - T (xr.DataArray): windowed monthly anomalies, dims (member, year, time),
+          as from src.utils.get_windowed
+        - lag (int): months between the two times
+        - month (int or None): calendar month of the starting time t; None uses
+          all months
+        - by_month (bool): if True, fit each starting month separately (adds a
+          "month" dimension)
+
+    Returns:
+        - R (xr.Dataset): growth rate (yr^-1) for T(t) > 0 ("pos"), T(t) < 0
+          ("neg"), and all T(t) ("all")
+    """
+
+    ## starting values, and the values `lag` months later on the same time axis;
+    ## pairs stay within a window, since the shift is along "time"
+    T0 = T.isel(time=slice(None, -lag))
+    Tf = T.isel(time=slice(lag, None)).assign_coords(time=T0.time)
+
+    ## (optional) keep only one starting month
+    if month is None:
+        T0_sel = T0
+        Tf_sel = Tf
+    else:
+        T0_sel = src.utils.sel_month(T0, months=month)
+        Tf_sel = src.utils.sel_month(Tf, months=month)
+
+    ## lag-regression slope S
+    S = regress_by_sign(T0_sel, Tf_sel, by_month=by_month)
+
+    ## growth rate: log(S) per `lag` months, times 12 months per year
+    R = 12 / lag * np.log(S)
+
+    return R

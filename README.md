@@ -75,17 +75,20 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 
 ```fig:ddt-hov``` and ```fig:nhf-hov``` divide by the composite Niño 3.4 index in K; the old figures divided by the standardized index (standard deviation 1.26 K), so their normalized panels were larger by that factor. Both keep the paper's single-year events (```EVENT_TYPE = 1```), drop the 2090 window (which ran past 2100), and are each drawn as one figure where the halves used to be joined by hand.
 
+```fig:seasonal-ann_comp``` is drawn as one figure (the two rows used to be joined by hand), with windows centered on 1870, ..., 2080; the old script dropped 1850, so its windows were centered on 1871, ..., 2081. On the same data, the new code reproduces the old growth rates and heat flux slopes exactly.
+
 ```fig:composite-nino``` now uses the same windows (2010, 2080) and events in all panels; (d, e) show percentiles of the difference between a random 2080 event and a random 2010 event, computed from all pairs of events in place of one arbitrary pairing (see the script's first cell).
 
 | Script | Paper figure | Replaces |
 | --- | --- | --- |
 | ```fig_scripts/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```explore/timeseries.py``` (d–g) |
 | ```fig_scripts/variance-changes.py``` | ```fig:variance-changes``` (a–c) | ```stats-changes.py``` (a), ```explore/timeseries.py``` (b, c) |
-| ```fig_scripts/composite-nino.py``` | ```fig:composite-nino``` (a–e) | ```composite-over-time.py``` (```spatial_comp```, a, b), ```spaghetti_updated.py``` (```scalar_comp```, c–e) |
+| ```fig_scripts/composite-nino.py``` | ```fig:composite-nino``` (a–e) | ```composite-over-time.py``` (```spatial_comp```, a, b), ```explore/spaghetti_updated.py``` (```scalar_comp```, c–e) |
 | ```fig_scripts/nhf_scatter.py``` | ```fig:nhf_scatter``` (a–c); also thesis ```nhf_rel-sst_triple``` | ```stats-changes.py``` (```nhf_rel-sst_triple```) |
 | ```fig_scripts/nhf_scatter_by_component.py``` | ```fig:nhf_scatter_by_component``` (formerly ```fig:nhf-scatter```) | ```stats-changes.py``` (cell "Similar but for NHF components") |
 | ```fig_scripts/ddt-hov.py``` | ```fig:ddt-hov``` | ```composite-over-time.py``` (cell under "Clean up fig.") |
 | ```fig_scripts/nhf-hov.py``` | ```fig:nhf-hov``` | ```composite-over-time.py``` (cell under "Heat flux") |
+| ```fig_scripts/seasonal-ann_comp.py``` | ```fig:seasonal-ann_comp``` | ```explore/spaghetti_updated.py``` (cells under "Get $R$ over time") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -97,9 +100,6 @@ Once all of a script's figures have moved to ```fig_scripts/```, the script move
   - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux
   - Paper figures: none left (```fig:composite-nino``` (a, b), ```fig:ddt-hov```, and ```fig:nhf-hov``` are now in ```fig_scripts/```); it stays here until its thesis figures are extracted
   - Thesis figures: see "Thesis figures" below
-- ```spaghetti_updated.py```
-  - What it does: plots event timeseries and the warm/cold growth rate and heat-flux feedback over time
-  - Paper figures: ```fig:seasonal-ann_comp``` (its ```fig:composite-nino``` panels are now in ```fig_scripts/composite-nino.py```)
 - ```RO-change-over-time_NL.py```
   - What it does: fits the nonlinear RO over time; validation, growth rate, and parameter perturbation experiments
   - Paper figures: ```fig:RO-validation```, ```fig:gr-over-time```, ```fig:RO-experiments*```, ```fig:RO-experiments_param_hov```
@@ -133,7 +133,7 @@ The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.te
 ### Known issues (to fix when restructuring scripts)
 - In the scripts not yet split up, figure-saving calls are set to ```do_save=False```; paper figures were copied into the Overleaf project by hand. The scripts in ```fig_scripts/``` save by default.
 - ```CESM_climate-change.py``` (exploratory, converted for one thesis figure) stops headless at the skewness-by-month plot: it plots ```ssh``` and ```z20```, but ```SKEW_VARNAMES``` computes only ```sst```. The cells before it, including the ```seasonal-clim``` thesis figure, run.
-- ```spaghetti_updated.py``` (and ```explore/eli-change-over-time.ipynb```, ```explore/powerTransform.ipynb```) read ```results/cesm_dTdx_Tw.nc```, which no longer exists; ```scale.py``` now writes ```results/cesm_dTdx_Tw_v3.nc```.
+- ```explore/spaghetti_updated.py``` (and ```explore/eli-change-over-time.ipynb```, ```explore/powerTransform.ipynb```) read ```results/cesm_dTdx_Tw.nc```, which no longer exists; ```scale.py``` now writes ```results/cesm_dTdx_Tw_v3.nc```.
 - The marimo scripts were converted from Jupyter with ```src/convert_marimo.py``` (```envs/bin/python -m src.convert_marimo NOTEBOOK.ipynb OUTPUT.py```), which wraps ```marimo convert``` so that comments survive (tested in ```tests/test_convert_marimo.py```). When a name was reused across cells, the converter numbered the copies (e.g., ```COMP_1```, ```kwargs_2```). Some cells also modify objects created in earlier cells (e.g., ```Th["x"] = ...```), which marimo doesn't track. Headless runs are unaffected because cells run top to bottom, but re-running a single cell in ```marimo edit``` may not update the cells downstream of it.
 
 ## Casper login
