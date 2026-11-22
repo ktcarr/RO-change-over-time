@@ -114,6 +114,8 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/thesis_eli.py``` | thesis ```fig:eli``` (a–d) | ```explore/stats-changes.py``` (```eli-comparison```, cells under "ELI" and "Plot temperature as a function of ELI") |
 | ```fig_scripts/thesis_seasonal.py``` | thesis ```fig:seasonal``` (a–f) | ```explore/CESM_climate-change.py``` (```seasonal-clim```, cell under "updated, combined fig") |
 | ```fig_scripts/thesis_skew_by-season_over-time.py``` | thesis appendix ```fig:skew_by-season_over-time``` (a–c) | ```explore/CESM_climate-change.py``` (```skew_by-season_over-time```, cells under "Nicer plot, for thesis") |
+| ```fig_scripts/thesis_skew-over-time.py``` | thesis appendix ```fig:skew-over-time``` (a–d) | ```explore/stats-changes.py``` (```nino34_djf_stats-over-time```, cells under "Variance and skewness over time") |
+| ```fig_scripts/thesis_nhf-abs-sst.py``` | thesis appendix ```fig:nhf-abs-sst``` (a–c) | ```explore/stats-changes.py``` (```nhf_abs-sst_triple```, cells under "same, but with total SST") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -127,7 +129,6 @@ The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.te
 - ```CESM-ORAS_validation_v2.py```
   - What it does: validates CESM2 ENSO against ERSSTv5 (relative SST, El Niño / La Niña composites, Niño 3.4 vs. zonal gradient, PDFs, power spectrum, event timeseries)
   - Thesis figures (introduction): ```spatial-valid```, ```spatial-asym-scatter```, ```psd_spaghetti```
-- ```explore/stats-changes.py``` (moved there before these were noticed): ```nino34_djf_stats-over-time``` (appendix ```fig:skew-over-time```), ```nhf_abs-sst_triple``` (appendix ```fig:nhf-abs-sst```)
 - ```composite-over-time.py```: ```combined_hov```, ```combined_hov_nina``` (the same cell, with El Niño or La Niña chosen by ```_COMPS``` at its top; the save lines are commented out)
 
 ### 4. Supporting analyses (not in the current outline)
