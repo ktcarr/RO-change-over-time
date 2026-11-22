@@ -67,7 +67,7 @@ The scripts are being split up so that each figure comes from one script in ```f
 - states the figure, its panels, its inputs, and its output in the first cell;
 - loads the data, computes each plotted quantity in its own cell, and draws one figure;
 - saves the figure to ```SAVE_FP/figures/<label>.pdf``` (saving is on by default);
-- uses the helpers shared between figure scripts in ```src/figure_utils.py``` (tested in ```tests/test_figure_utils.py```).
+- uses the helpers shared between figure scripts in ```src/figure_utils.py``` (tested in ```tests/test_figure_utils.py```); the RO figures also share the fitting and simulation steps in ```src/ro_figure_utils.py```, which use the old RO code in ```src/XRO.py``` so that they reproduce the paper drafts (the switch to ```~/ro_tools``` comes after the restructuring).
 
 Run one from ```scripts/cesm2```, e.g. ```MPLBACKEND=Agg python fig_scripts/cesm2-meanstate.py```.
 
@@ -76,6 +76,8 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 ```fig:ddt-hov``` and ```fig:nhf-hov``` divide by the composite Niño 3.4 index in K; the old figures divided by the standardized index (standard deviation 1.26 K), so their normalized panels were larger by that factor. Both keep the paper's single-year events (```EVENT_TYPE = 1```), drop the 2090 window (which ran past 2100), and are each drawn as one figure where the halves used to be joined by hand.
 
 ```fig:seasonal-ann_comp``` is drawn as one figure (the two rows used to be joined by hand), with windows centered on 1870, ..., 2080; the old script dropped 1850, so its windows were centered on 1871, ..., 2081. On the same data, the new code reproduces the old growth rates and heat flux slopes exactly.
+
+```fig:RO-validation``` shows the Niño 3 index in K: the RO is fitted to the index divided by its standard deviation (1.23 K), and the old panels plotted those non-dimensional values with a "K" label.
 
 ```fig:composite-nino``` now uses the same windows (2010, 2080) and events in all panels; (d, e) show percentiles of the difference between a random 2080 event and a random 2010 event, computed from all pairs of events in place of one arbitrary pairing (see the script's first cell).
 
@@ -88,6 +90,7 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/nhf_scatter_by_component.py``` | ```fig:nhf_scatter_by_component``` (formerly ```fig:nhf-scatter```) | ```stats-changes.py``` (cell "Similar but for NHF components") |
 | ```fig_scripts/ddt-hov.py``` | ```fig:ddt-hov``` | ```composite-over-time.py``` (cell under "Clean up fig.") |
 | ```fig_scripts/nhf-hov.py``` | ```fig:nhf-hov``` | ```composite-over-time.py``` (cell under "Heat flux") |
+| ```fig_scripts/RO-validation.py``` | ```fig:RO-validation``` (a–d) | ```RO-change-over-time_NL.py``` (```RO-valid2_T_3```, a, b; ```RO-valid_T_3```, c, d) |
 | ```fig_scripts/seasonal-ann_comp.py``` | ```fig:seasonal-ann_comp``` | ```explore/spaghetti_updated.py``` (cells under "Get $R$ over time") |
 
 #### Scripts not yet split up
@@ -102,7 +105,7 @@ Once all of a script's figures have moved to ```fig_scripts/```, the script move
   - Thesis figures: see "Thesis figures" below
 - ```RO-change-over-time_NL.py```
   - What it does: fits the nonlinear RO over time; validation, growth rate, and parameter perturbation experiments
-  - Paper figures: ```fig:RO-validation```, ```fig:gr-over-time```, ```fig:RO-experiments*```, ```fig:RO-experiments_param_hov```
+  - Paper figures: ```fig:gr-over-time```, ```fig:RO-experiments*```, ```fig:RO-experiments_param_hov``` (```fig:RO-validation``` is now in ```fig_scripts/RO-validation.py```)
 - ```nhf_validation.py```
   - What it does: compares the heat flux feedback in ERA5 and CESM2
   - Paper figures: ```fig:Q-comp```, ```fig:Q-structure_era5```, ```fig:Q-structure_cesm2```
