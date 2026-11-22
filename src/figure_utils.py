@@ -1,5 +1,5 @@
 """
-Shared helpers for the figure scripts in scripts/cesm2/figures.
+Shared helpers for the figure scripts in scripts/cesm2/fig_scripts.
 
 Each figure script used to carry its own copy of these functions (e.g., eleven
 copies of a `save` function). They live here so that every figure saves to the

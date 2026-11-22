@@ -15,6 +15,7 @@ How do recharge oscillator parameters change over time in a large ensemble? What
 - ```scripts```: code used for analysis/plots
   - ```cesm2```: analysis of the CESM2 large ensemble (the main focus of the paper; see below)
     - ```preprocess```: build $T$, $h$ indices and consolidated (EOF-compressed) fields from raw CESM2-LENS output
+    - ```fig_scripts```: one script per paper (or thesis) figure, named after its LaTeX label
     - ```explore```: exploratory notebooks not needed to reproduce the paper's results
   - ```mpi```: analysis of the MPI grand ensemble (earlier phase of the project)
   - ```obs```: analysis and download of observational/reanalysis data
@@ -61,24 +62,24 @@ The key scripts below are [marimo](https://marimo.io) notebooks, saved as plain 
 ### 2. Figures
 Figure labels refer to ```paper-outline.tex``` in the ch3 Overleaf project.
 
-#### Figure scripts (```figures/```)
-The scripts are being split up so that each figure comes from one script in ```figures/```, named after its LaTeX label. Thesis-only figures will be ```figures/thesis_<pdf-name>.py```. Every figure script:
+#### Figure scripts (```fig_scripts/```)
+The scripts are being split up so that each figure comes from one script in ```fig_scripts/```, named after its LaTeX label. Thesis-only figures will be ```fig_scripts/thesis_<pdf-name>.py```. Every figure script:
 - states the figure, its panels, its inputs, and its output in the first cell;
 - loads the data, computes each plotted quantity in its own cell, and draws one figure;
 - saves the figure to ```SAVE_FP/figures/<label>.pdf``` (saving is on by default);
 - uses the helpers shared between figure scripts in ```src/figure_utils.py``` (tested in ```tests/test_figure_utils.py```).
 
-Run one from ```scripts/cesm2```, e.g. ```MPLBACKEND=Agg python figures/cesm2-meanstate.py```.
+Run one from ```scripts/cesm2```, e.g. ```MPLBACKEND=Agg python fig_scripts/cesm2-meanstate.py```.
 
 | Script | Paper figure | Replaces |
 | --- | --- | --- |
-| ```figures/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```timeseries.py``` (d–g) |
+| ```fig_scripts/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```timeseries.py``` (d–g) |
 
 #### Scripts not yet split up
-Once all of a script's figures have moved to ```figures/```, the script moves unchanged to ```explore/```.
+Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
 - ```timeseries.py```
   - What it does: plots mean-state timeseries and El Niño / La Niña contributions to variance
-  - Paper figures: ```fig:variance-changes``` (b, c) (its ```fig:cesm2-meanstate``` (d–g) panels are now in ```figures/cesm2-meanstate.py```)
+  - Paper figures: ```fig:variance-changes``` (b, c) (its ```fig:cesm2-meanstate``` (d–g) panels are now in ```fig_scripts/cesm2-meanstate.py```)
 - ```stats-changes.py```
   - What it does: computes ENSO statistics over time and heat flux vs. relative SST
   - Paper figures: ```fig:variance-changes``` (a), ```fig:nhf_scatter```, ```fig:nhf-scatter```
@@ -121,7 +122,7 @@ The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.te
   - What it does: estimates heat flux damping $\alpha$ over time from surface flux components and cloud fraction
 
 ### Known issues (to fix when restructuring scripts)
-- In the scripts not yet split up, figure-saving calls are set to ```do_save=False```; paper figures were copied into the Overleaf project by hand. The scripts in ```figures/``` save by default.
+- In the scripts not yet split up, figure-saving calls are set to ```do_save=False```; paper figures were copied into the Overleaf project by hand. The scripts in ```fig_scripts/``` save by default.
 - ```CESM_climate-change.py``` (exploratory, converted for one thesis figure) stops headless at the skewness-by-month plot: it plots ```ssh``` and ```z20```, but ```SKEW_VARNAMES``` computes only ```sst```. The cells before it, including the ```seasonal-clim``` thesis figure, run.
 - ```spaghetti_updated.py``` (and ```explore/eli-change-over-time.ipynb```, ```explore/powerTransform.ipynb```) read ```results/cesm_dTdx_Tw.nc```, which no longer exists; ```scale.py``` now writes ```results/cesm_dTdx_Tw_v3.nc```.
 - The marimo scripts were converted from Jupyter with ```src/convert_marimo.py``` (```envs/bin/python -m src.convert_marimo NOTEBOOK.ipynb OUTPUT.py```), which wraps ```marimo convert``` so that comments survive (tested in ```tests/test_convert_marimo.py```). When a name was reused across cells, the converter numbered the copies (e.g., ```COMP_1```, ```kwargs_2```). Some cells also modify objects created in earlier cells (e.g., ```Th["x"] = ...```), which marimo doesn't track. Headless runs are unaffected because cells run top to bottom, but re-running a single cell in ```marimo edit``` may not update the cells downstream of it.

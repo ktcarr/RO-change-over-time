@@ -16,8 +16,9 @@ thesis (`~/thesis/thesis/chapters`: `intro.tex`, `chapter_enso-change.tex`). See
 the layout and the key scripts, in the order they run.
 
 - `scripts/cesm2/`: key CESM2 scripts (marimo notebooks saved as `.py`); `preprocess/` builds
-  the indices and consolidated fields; `explore/` holds exploratory Jupyter notebooks not needed
-  to reproduce the paper or thesis.
+  the indices and consolidated fields; `fig_scripts/` has one script per paper or thesis figure
+  (being split out of the big scripts; shared helpers in `src/figure_utils.py`); `explore/`
+  holds exploratory Jupyter notebooks not needed to reproduce the paper or thesis.
 - `src/`: the project's module (installed editable); `src/XRO.py` is the old RO implementation,
   to be replaced by `~/ro_tools`.
 - `tests/`: checks on known answers. `results/`: figures and intermediate results.
