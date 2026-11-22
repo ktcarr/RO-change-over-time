@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.25.2"
+__generated_with = "0.25.1"
 app = marimo.App()
 
 
@@ -91,39 +91,87 @@ def _(mo):
 def _(np, pathlib, tqdm, xr):
     def get_ensemble_ids():
         """get files for given variable name"""
-        cesm2_fp = pathlib.Path('/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1')
-        data_fp = cesm2_fp / 'WVEL'  ## path to cesm2 lens data
+
+        ## path to cesm2 lens data
+        cesm2_fp = pathlib.Path(
+            "/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1"
+        )
+
+        ## path to FSNS (arbitrary, just want the ids)
+        data_fp = cesm2_fp / "WVEL"
+
+        ## get list of ensemble ids
         ensemble_ids = []
-        for f in data_fp.glob('*.nc'):
+        for f in data_fp.glob("*.nc"):
             ensemble_ids.append(str(f)[-53:-28])
+
+        ## get unique values and sort
         ensemble_ids = sorted(list(set(ensemble_ids)))
-        return ensemble_ids  ## path to FSNS (arbitrary, just want the ids)
+
+        return ensemble_ids
+
 
     def _load_var(varname, ensemble_id):
-        """Load variable for given ensemble ID"""  ## get list of ensemble ids
-        cesm2_fp = pathlib.Path('/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1')
+        """Load variable for given ensemble ID"""
+
+        ## get path to data
+        cesm2_fp = pathlib.Path(
+            "/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1"
+        )
+
+        ## path to data
         data_fp = cesm2_fp / varname
-        if varname in ['WVEL', 'WTT']:
-            z_coord = 'z_w_top'
-            prep_fn = lambda x: x.where(np.isnan(x) | (x > 0), other=0.0)  ## get unique values and sort
+
+        ## get z-coordinate name
+        if varname in ["WVEL", "WTT"]:
+            z_coord = "z_w_top"
+            prep_fn = lambda x: x.where(np.isnan(x) | (x > 0), other=0.0)
+
         else:
-            z_coord = 'z_t'
+            z_coord = "z_t"
             prep_fn = lambda x: x
-        data = xr.open_mfdataset(data_fp.glob(f'*{ensemble_id}*.nc'), decode_timedelta=True, chunks={'time': 18, z_coord: 60, 'nlat': 384, 'nlon': 320}, parallel=True)[varname]
+
+        ## open data for ensemble member
+        data = xr.open_mfdataset(
+            data_fp.glob(f"*{ensemble_id}*.nc"),
+            decode_timedelta=True,
+            chunks={"time": 18, z_coord: 60, "nlat": 384, "nlon": 320},
+            parallel=True,
+        )[varname]
+
+        ## trim to eq Pac
         data = trim(data, lat_range=[-5, 5], lon_range=[120, 285])
-        data = data.isel({z_coord: slice(None, 27), 'nlon': slice(None, None, 2)})
+
+        ## subset longitude and get top 300 m
+        data = data.isel({z_coord: slice(None, 27), "nlon": slice(None, None, 2)})
+
+        ## zero out downwelling before meridional average
         data = prep_fn(data)
-        data = data.assign_coords({'lon': data['TLONG'].mean('nlat')})
-        data = data.mean('nlat')  ## get path to data
+
+        ## average over latitudes
+        data = data.assign_coords({"lon": data["TLONG"].mean("nlat")})
+        data = data.mean("nlat")
+
         return data
+
 
     def preprocess_ensemble(varname, temp_dir):
         """compute net heat flux for full ensemble. Save to temp directory"""
-        ensemble_ids = get_ensemble_ids()  ## path to data
+
+        ## get ensemble ids
+        ensemble_ids = get_ensemble_ids()
+
+        ## loop through members
+        # idx 60 throwing "NetCDF: HDF error" for WVEL
+        # for i in tqdm.tqdm(ensemble_ids[61:]):
         for i in tqdm.tqdm(ensemble_ids):
-            save_fp = pathlib.Path(temp_dir, f'{varname}_{i}.nc')
-            if save_fp.is_file():  ## get z-coordinate name
+
+            ## save filepath
+            save_fp = pathlib.Path(temp_dir, f"{varname}_{i}.nc")
+
+            if save_fp.is_file():
                 pass
+
             else:
                 try:
                     data = _load_var(varname=varname, ensemble_id=i)
@@ -131,7 +179,8 @@ def _(np, pathlib, tqdm, xr):
                 except:
                     print(f"warning: {i} didn't work...")
                     pass
-        return  ## open data for ensemble member  ## trim to eq Pac  ## subset longitude and get top 300 m  ## zero out downwelling before meridional average  ## average over latitudes  ## get ensemble ids  ## loop through members  # idx 60 throwing "NetCDF: HDF error" for WVEL  # for i in tqdm.tqdm(ensemble_ids[61:]):  ## save filepath
+
+        return
 
     return get_ensemble_ids, preprocess_ensemble
 
@@ -147,6 +196,7 @@ def _(mo):
 @app.cell
 def _():
     from dask.distributed import LocalCluster, Client
+
     _cluster = LocalCluster(n_workers=16)
     _client = Client(_cluster)
     _client
@@ -283,13 +333,14 @@ def _(T2, T2_prime, T_, T_prime):
 @app.cell
 def _(T, T2, plt):
     _shift = lambda x: x.isel(time=slice(1, None))
-    t = dict(time=slice('1860', '1865'))
+
+    t = dict(time=slice("1860", "1865"))
     _fig, _ax = plt.subplots(figsize=(7, 3))
     _ax.plot(T.sel(t))
     _ax.plot(T2.sel(t))
-    _ax.plot(_shift(T.sel(t)), ls='--')
-    # ax.plot(T3.sel(t))
+    _ax.plot(_shift(T.sel(t)), ls="--")
     plt.gca()
+    # ax.plot(T3.sel(t))
     return
 
 
@@ -310,18 +361,23 @@ def _(mo):
 
 @app.cell
 def _(get_ensemble_ids, load_var_test, src):
-    print('Loading T')
-    T_1 = load_var_test('TEMP', get_ensemble_ids()[0])
+    print("Loading T")
+    T_1 = load_var_test("TEMP", get_ensemble_ids()[0])
     T_1.load()
-    print('Loading ddt(T)')
-    ddt_T = load_var_test('TEND_TEMP', get_ensemble_ids()[0])
+
+    print("Loading ddt(T)")
+    ddt_T = load_var_test("TEND_TEMP", get_ensemble_ids()[0])
     ddt_T.load()
+
+    ## convert to K/mo
     sec_per_month = 86400 * 30
     ddt_T = ddt_T * sec_per_month
-    ## convert to K/mo
-    T_1 = src.utils.align_pop_times(T_1.to_dataset(), pop_vars=['TEMP'])['TEMP']
+
     ## fix times
-    ddt_T = src.utils.align_pop_times(ddt_T.to_dataset(), pop_vars=['TEND_TEMP'])['TEND_TEMP']
+    T_1 = src.utils.align_pop_times(T_1.to_dataset(), pop_vars=["TEMP"])["TEMP"]
+    ddt_T = src.utils.align_pop_times(ddt_T.to_dataset(), pop_vars=["TEND_TEMP"])[
+        "TEND_TEMP"
+    ]
     return T_1, ddt_T
 
 
@@ -337,34 +393,57 @@ def _(mo):
 def _(src, xr):
     ## load spatial data
     forced, _anom = src.utils.load_consolidated()
-    T_eof = (_anom['T'] + forced['T']).isel(member=0)
+
     ## get total
-    T_eof = xr.merge([T_eof, forced['T_comp']])
-    _fun_1d = lambda x: x.sel(longitude=slice(210, 270)).isel(z_t=0).mean('longitude').squeeze(drop=True)
+    T_eof = (_anom["T"] + forced["T"]).isel(member=0)
+    T_eof = xr.merge([T_eof, forced["T_comp"]])
+
     ## reconstruct
-    T_recon = src.utils.reconstruct_fn(scores=T_eof['T'], components=T_eof['T_comp'], fn=_fun_1d)
+    _fun_1d = (
+        lambda x: x.sel(longitude=slice(210, 270))
+        .isel(z_t=0)
+        .mean("longitude")
+        .squeeze(drop=True)
+    )
+    T_recon = src.utils.reconstruct_fn(
+        scores=T_eof["T"],
+        components=T_eof["T_comp"],
+        fn=_fun_1d,
+    )
     return (T_recon,)
 
 
 @app.cell
 def _(T_1, T_recon, ddt_T, plt, xr):
     _order = 2
+
+    ## estimate ddt(T)
     if _order == 2:
         _dT = T_1.values[2:] - T_1.values[:-2]
         ddt_T_hat = 0.5 * xr.ones_like(T_1.isel(time=slice(1, -1))) * _dT
+
         dT_recon = T_recon.values[2:] - T_recon.values[:-2]
         ddt_T_recon = 0.5 * xr.ones_like(T_recon.isel(time=slice(1, -1))) * dT_recon
+
+
     else:
         _dT = T_1.values[1:] - T_1.values[:-1]
         ddt_T_hat = xr.ones_like(T_1.isel(time=slice(1, None))) * _dT
+
         dT_recon = T_recon.values[1:] - T_recon.values[:-1]
         ddt_T_recon = xr.ones_like(T_recon.isel(time=slice(1, None))) * dT_recon
-    _plot_idx = dict(time=slice('1851', '1854'))
+
+
+    ## plot
+    _plot_idx = dict(time=slice("1851", "1854"))
     _shift = lambda x: x.isel(dict(time=slice(1, None)))
+
     _fig, _ax = plt.subplots(figsize=(7, 3))
-    _ax.plot(ddt_T.sel(_plot_idx), ls='-')
-    _ax.plot(ddt_T_hat.sel(_plot_idx), ls='-')
-    _ax.plot(ddt_T_recon.sel(_plot_idx), ls='--')
+    # ax.plot(adv0.sel(plot_idx))
+    _ax.plot(ddt_T.sel(_plot_idx), ls="-")
+    _ax.plot(ddt_T_hat.sel(_plot_idx), ls="-")
+    _ax.plot(ddt_T_recon.sel(_plot_idx), ls="--")
+    # ax.plot(adv3.sel(plot_idx), ls="--")
     plt.gca()
     return (ddt_T_hat,)
 
@@ -385,29 +464,45 @@ def _(mo):
 
 @app.cell
 def _(src, xr):
+    ## specify order
     _order = 2
+
+    ## load spatial data
     _, _anom = src.utils.load_consolidated()
-    _anom = _anom[['T', 'T_comp']]
-    _fun_1d = lambda x: x.sel(longitude=slice(210, 270)).isel(z_t=0).mean('longitude').squeeze(drop=True)
-    T_recon_1 = src.utils.reconstruct_wrapper(_anom, fn=_fun_1d)['T']
+    _anom = _anom[["T", "T_comp"]]
+
+    ## reconstruct
+    _fun_1d = (
+        lambda x: x.sel(longitude=slice(210, 270))
+        .isel(z_t=0)
+        .mean("longitude")
+        .squeeze(drop=True)
+    )
+    T_recon_1 = src.utils.reconstruct_wrapper(_anom, fn=_fun_1d)["T"]
+
+    ## ddt(T)
     if _order == 2:
         _dT = T_recon_1.values[:, 2:] - T_recon_1.values[:, :-2]
         ddt_T_hat_1 = 0.5 * xr.ones_like(T_recon_1.isel(time=slice(1, -1))) * _dT
     else:
         _dT = T_recon_1.values[:, 1:] - T_recon_1.values[:, :-1]
         ddt_T_hat_1 = xr.ones_like(T_recon_1.isel(time=slice(None, -1))) * _dT
+
+    ## get budget data
     _, budg_anom = src.utils.load_budget_data()
-    ddt_T_1 = _fun_1d(budg_anom['TEND_TEMP']).rename('ddt_T')
+    ddt_T_1 = _fun_1d(budg_anom["TEND_TEMP"]).rename("ddt_T")
     return ddt_T_1, ddt_T_hat_1
 
 
 @app.cell
 def _(ddt_T_1, ddt_T_hat_1, plt):
-    _plot_idx = dict(time=slice('1851', '1854'), member=5)
+    ## plot
+    _plot_idx = dict(time=slice("1851", "1854"), member=5)
     _shift = lambda x: x.isel(dict(time=slice(1, None)))
+
     _fig, _ax = plt.subplots(figsize=(7, 3))
-    _ax.plot(ddt_T_1.sel(_plot_idx), ls='-')
-    _ax.plot(ddt_T_hat_1.sel(_plot_idx), ls='-')
+    _ax.plot(ddt_T_1.sel(_plot_idx), ls="-")
+    _ax.plot(ddt_T_hat_1.sel(_plot_idx), ls="-")
     plt.gca()
     return
 
@@ -430,33 +525,79 @@ def _(mo):
 def _(pathlib, tqdm, xr):
     def get_ensemble_ids_1():
         """get files for given variable name"""
-        cesm2_fp = pathlib.Path('/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1')
-        data_fp = cesm2_fp / 'UVEL'
+
+        ## path to cesm2 lens data
+        cesm2_fp = pathlib.Path(
+            "/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1"
+        )
+
+        ## path to FSNS (arbitrary, just want the ids)
+        data_fp = cesm2_fp / "UVEL"
+
+        ## get list of ensemble ids
         ensemble_ids = []
-        for f in data_fp.glob('*.nc'):
+        for f in data_fp.glob("*.nc"):
             ensemble_ids.append(str(f)[-53:-28])
+
+        ## get unique values and sort
         ensemble_ids = sorted(list(set(ensemble_ids)))
+
         return ensemble_ids
+
 
     def _load_var(varname, ensemble_id):
         """Load variable for given ensemble ID"""
-        cesm2_fp = pathlib.Path('/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1')
+
+        ## get path to data
+        cesm2_fp = pathlib.Path(
+            "/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1"
+        )
+
+        ## path to data
         data_fp = cesm2_fp / varname
-        data = xr.open_mfdataset(data_fp.glob(f'*{ensemble_id}*.nc'), decode_timedelta=True, chunks={'time': 120, 'nlat': 384, 'nlon': 320}, parallel=True)[varname]
+
+        ## open data for ensemble member
+        data = xr.open_mfdataset(
+            data_fp.glob(f"*{ensemble_id}*.nc"),
+            decode_timedelta=True,
+            chunks={"time": 120, "nlat": 384, "nlon": 320},
+            parallel=True,
+        )[varname]
+
+        ## get top layer
         data = data.isel(z_t=0)
-        data = trim(data, lat_range=[-15, 15], lon_range=[120, 300], lon_name='ULONG', lat_name='ULAT')
+
+        ## trim to eq Pac
+        data = trim(
+            data,
+            lat_range=[-15, 15],
+            lon_range=[120, 300],
+            lon_name="ULONG",
+            lat_name="ULAT",
+        )
+
         return data
+
 
     def preprocess_ensemble_1(varname, temp_dir):
         """compute net heat flux for full ensemble. Save to temp directory"""
+
+        ## get ensemble ids
         ensemble_ids = get_ensemble_ids_1()
+
+        ## loop through members
         for i in tqdm.tqdm(ensemble_ids):
-            save_fp = pathlib.Path(temp_dir, f'{varname}_{i}.nc')
+
+            ## save filepath
+            save_fp = pathlib.Path(temp_dir, f"{varname}_{i}.nc")
+
             if save_fp.is_file():
                 pass
+
             else:
                 data = _load_var(varname=varname, ensemble_id=i)
                 data.to_netcdf(save_fp)
+
         return
 
     return (preprocess_ensemble_1,)
@@ -472,6 +613,8 @@ def _(mo):
 
 @app.cell
 def _(Client, LocalCluster):
+
+
     _cluster = LocalCluster(n_workers=12)
     _client = Client(_cluster)
     _client
@@ -488,8 +631,9 @@ def _(mo):
 
 @app.cell
 def _(DATA_FP, pathlib, preprocess_ensemble_1):
-    preprocess_ensemble_1(varname='UVEL', temp_dir=pathlib.Path(DATA_FP, 'cesm', 'uvel_temp'))
-    preprocess_ensemble_1(varname='VVEL', temp_dir=pathlib.Path(DATA_FP, 'cesm', 'vvel_temp'))
+    preprocess_ensemble_1(varname="UVEL", temp_dir=pathlib.Path(DATA_FP, "cesm", "uvel_temp"))
+
+    preprocess_ensemble_1(varname="VVEL", temp_dir=pathlib.Path(DATA_FP, "cesm", "vvel_temp"))
     return
 
 
@@ -505,51 +649,118 @@ def _(mo):
 def _(np, pathlib, tqdm, xesmf, xr):
     def get_ensemble_ids_2():
         """get files for given variable name"""
-        cesm2_fp = pathlib.Path('/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1')
-        data_fp = cesm2_fp / 'WVEL'
+
+        ## path to cesm2 lens data
+        cesm2_fp = pathlib.Path(
+            "/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1"
+        )
+
+        ## path to FSNS (arbitrary, just want the ids)
+        data_fp = cesm2_fp / "WVEL"
+
+        ## get list of ensemble ids
         ensemble_ids = []
-        for f in data_fp.glob('*.nc'):
+        for f in data_fp.glob("*.nc"):
             ensemble_ids.append(str(f)[-53:-28])
+
+        ## get unique values and sort
         ensemble_ids = sorted(list(set(ensemble_ids)))
+
         return ensemble_ids
+
 
     def load_grid(lon_range, lat_range):
         """Create mask from OISST data on cloud"""
-        sst = xr.open_dataset('http://psl.noaa.gov/thredds/dodsC/Datasets/noaa.oisst.v2/new/sst.oisst.mon.ltm.1991-2020.nc', decode_times=False)
-        sst = sst['sst'].isel(time=0).drop_vars('time')
+
+        ## load sst data
+        sst = xr.open_dataset(
+            r"http://psl.noaa.gov/thredds/dodsC/Datasets/noaa.oisst.v2/new/sst.oisst.mon.ltm.1991-2020.nc",
+            decode_times=False,
+        )
+        sst = sst["sst"].isel(time=0).drop_vars("time")
+
+        ## convert to lsm (fill ones over ocean)
         lsm = sst.where(np.isnan(sst), other=1.0)
+
+        ## sel lon/lat range
         lsm = lsm.sel(lon=slice(*lon_range), lat=slice(*lat_range))
-        lsm['mask'] = ~np.isnan(lsm)
+
+        # ## add binary mask for regridding
+        lsm["mask"] = ~np.isnan(lsm)
+
         return lsm
+
 
     def _load_var(varname, ensemble_id):
         """Load variable for given ensemble ID"""
-        cesm2_fp = pathlib.Path('/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1')
+
+        ## get path to data
+        cesm2_fp = pathlib.Path(
+            "/glade/campaign/collections/rda/data/d651056/CESM2-LE/ocn/proc/tseries/month_1"
+        )
+
+        ## path to data
         data_fp = cesm2_fp / varname
-        if varname == 'WVEL':
-            z_coord = 'z_w_top'
+
+        ## get z-coordinate name
+        if varname == "WVEL":
+            z_coord = "z_w_top"
         else:
-            z_coord = 'z_t'
-        data = xr.open_mfdataset(data_fp.glob(f'*{ensemble_id}*.nc'), decode_timedelta=True, chunks={'time': 12, z_coord: 60, 'nlat': 384, 'nlon': 320}, parallel=True)[varname]
+            z_coord = "z_t"
+
+        ## open data for ensemble member
+        data = xr.open_mfdataset(
+            data_fp.glob(f"*{ensemble_id}*.nc"),
+            decode_timedelta=True,
+            chunks={"time": 12, z_coord: 60, "nlat": 384, "nlon": 320},
+            parallel=True,
+        )[varname]
+
+        ## trim to eq Pac
         data = trim(data, lat_range=[-6.5, 6.5], lon_range=[130, 290])
-        data = data.isel({z_coord: slice(None, 27), 'nlon': slice(None, None, 2)})
-        data = data.rename({'TLONG': 'lon', 'TLAT': 'lat'})
+
+        ## subset longitude and get top 300 m
+        data = data.isel({z_coord: slice(None, 27), "nlon": slice(None, None, 2)})
+
+        ## rename coords for regridding
+        data = data.rename({"TLONG": "lon", "TLAT": "lat"})
+
+        ## get regridding operator
         grid = load_grid(lon_range=[130, 290], lat_range=[-6, 6])
+
+        ## downsample in longitude (consistent with data)
         grid = grid.isel(lon=slice(None, None, 2))
-        regridder = xesmf.Regridder(data, grid, 'bilinear')
-        data_regrid = regridder(data).drop_vars('mask')
+
+        ## get regridding object
+        regridder = xesmf.Regridder(data, grid, "bilinear")
+
+        ## do the regridding
+        data_regrid = regridder(data).drop_vars("mask")
+
         return data_regrid
+
 
     def preprocess_ensemble_2(varname, temp_dir):
         """compute net heat flux for full ensemble. Save to temp directory"""
+
+        ## get ensemble ids
         ensemble_ids = get_ensemble_ids_2()
+
+        ## loop through members
+        # idx 60 throwing "NetCDF: HDF error" for WVEL
+        # for i in tqdm.tqdm(ensemble_ids[61:]):
         for i in tqdm.tqdm(ensemble_ids):
-            save_fp = pathlib.Path(temp_dir, f'{varname}_{i}.nc')
+
+            ## save filepath
+            save_fp = pathlib.Path(temp_dir, f"{varname}_{i}.nc")
+
             if save_fp.is_file():
                 pass
+
             else:
                 data = _load_var(varname=varname, ensemble_id=i)
                 data.to_netcdf(save_fp)
+
         return
 
     return (preprocess_ensemble_2,)
@@ -565,6 +776,8 @@ def _(mo):
 
 @app.cell
 def _(Client, LocalCluster):
+
+
     _cluster = LocalCluster(n_workers=16)
     _client = Client(_cluster)
     _client
@@ -584,9 +797,18 @@ def _(DATA_FP, pathlib, preprocess_ensemble_2):
     # preprocess_ensemble(
     #     varname="VVEL", temp_dir=pathlib.Path(DATA_FP, "cesm", "vvel_3d_temp")
     # )
+
+    # preprocess_ensemble(
     #     varname="TEMP", temp_dir=pathlib.Path(DATA_FP, "cesm", "temp_3d_temp")
+    # )
+
+    # preprocess_ensemble(
     #     varname="UVEL", temp_dir=pathlib.Path(DATA_FP, "cesm", "uvel_3d_temp")
-    preprocess_ensemble_2(varname='WVEL', temp_dir=pathlib.Path(DATA_FP, 'cesm', 'wvel_3d_temp'))
+    # )
+
+    preprocess_ensemble_2(
+        varname="WVEL", temp_dir=pathlib.Path(DATA_FP, "cesm", "wvel_3d_temp")
+    )
     return
 
 

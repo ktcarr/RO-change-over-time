@@ -69,9 +69,11 @@ Figure labels refer to ```paper-outline.tex``` in the ch3 Overleaf project.
 - ```stats-changes.py```
   - What it does: computes ENSO statistics over time and heat flux vs. relative SST
   - Paper figures: ```fig:variance-changes``` (a), ```fig:nhf_scatter```, ```fig:nhf-scatter```
+  - Thesis figures: see "Thesis figures" below
 - ```composite-over-time.py```
   - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux
   - Paper figures: ```fig:composite-nino``` (spatial), ```fig:ddt-hov```, ```fig:nhf-hov```
+  - Thesis figures: see "Thesis figures" below
 - ```spaghetti_updated.py```
   - What it does: plots event timeseries and the warm/cold growth rate and heat-flux feedback over time
   - Paper figures: ```fig:composite-nino``` (scalar), ```fig:seasonal-ann_comp```
@@ -82,7 +84,21 @@ Figure labels refer to ```paper-outline.tex``` in the ch3 Overleaf project.
   - What it does: compares the heat flux feedback in ERA5 and CESM2
   - Paper figures: ```fig:Q-comp```, ```fig:Q-structure_era5```, ```fig:Q-structure_cesm2```
 
-### 3. Supporting analyses (not in the current outline)
+### 3. Thesis figures
+The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.tex```) used figures from these scripts. File names are the PDFs under ```thesis/figs/```.
+- ```CESM-ORAS_validation_v2.py```
+  - What it does: validates CESM2 ENSO against ERSSTv5 (relative SST, El Niño / La Niña composites, Niño 3.4 vs. zonal gradient, PDFs, power spectrum, event timeseries)
+  - Thesis figures (introduction): ```spatial-valid```, ```spatial-asym-scatter```, ```psd_spaghetti```
+- ```mean-state-changes.py```
+  - What it does: plots the mean-state change and its timeseries, Niño indices over time, and ENSO variance by month over time
+  - Thesis figures: ```mean-state-pattern_change_labeled```, ```subsurface-change```, ```mean-state_timeseries```, ```nino-indices_overtime```, ```sigma-over-time_hov_simple```, ```sigma-cycle-change```
+- ```CESM_climate-change.py```
+  - What it does: broad exploration of CESM2 changes under warming (seasonal cycle, variance and skewness by month, ELI, background state)
+  - Thesis figures: ```seasonal-clim```
+- ```stats-changes.py```: ```pdf-over-time_bounds```, ```eli-comparison```, ```nhf_rel-sst_triple```
+- ```composite-over-time.py```: ```combined_hov```, ```combined_hov_nina``` (the same cell, with El Niño or La Niña chosen by ```_COMPS``` at its top; the save lines are commented out)
+
+### 4. Supporting analyses (not in the current outline)
 - ```physics-bjerknes_asym_precompute.py```
   - What it does: precomputes data for ```physics-bjerknes_asym```
   - Main outputs: ```DATA_FP/bjerknes_ML_80/```
@@ -93,8 +109,9 @@ Figure labels refer to ```paper-outline.tex``` in the ch3 Overleaf project.
 
 ### Known issues (to fix when restructuring scripts)
 - Figure-saving calls are set to ```do_save=False```; paper figures were copied into the Overleaf project by hand.
+- ```CESM_climate-change.py``` (exploratory, converted for one thesis figure) stops headless at the skewness-by-month plot: it plots ```ssh``` and ```z20```, but ```SKEW_VARNAMES``` computes only ```sst```. The cells before it, including the ```seasonal-clim``` thesis figure, run.
 - ```spaghetti_updated.py``` (and ```explore/eli-change-over-time.ipynb```, ```explore/powerTransform.ipynb```) read ```results/cesm_dTdx_Tw.nc```, which no longer exists; ```scale.py``` now writes ```results/cesm_dTdx_Tw_v3.nc```.
-- The marimo scripts were auto-converted from Jupyter. When a name was reused across cells, the converter numbered the copies (e.g., ```COMP_1```, ```kwargs_2```). Some cells also modify objects created in earlier cells (e.g., ```Th["x"] = ...```), which marimo doesn't track. Headless runs are unaffected because cells run top to bottom, but re-running a single cell in ```marimo edit``` may not update the cells downstream of it.
+- The marimo scripts were converted from Jupyter with ```src/convert_marimo.py``` (```envs/bin/python -m src.convert_marimo NOTEBOOK.ipynb OUTPUT.py```), which wraps ```marimo convert``` so that comments survive (tested in ```tests/test_convert_marimo.py```). When a name was reused across cells, the converter numbered the copies (e.g., ```COMP_1```, ```kwargs_2```). Some cells also modify objects created in earlier cells (e.g., ```Th["x"] = ...```), which marimo doesn't track. Headless runs are unaffected because cells run top to bottom, but re-running a single cell in ```marimo edit``` may not update the cells downstream of it.
 
 ## Casper login
 1. Go to jupyterhub.hpc.ucar.edu

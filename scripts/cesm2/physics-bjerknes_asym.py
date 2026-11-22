@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.25.2"
+__generated_with = "0.25.1"
 app = marimo.App()
 
 
@@ -590,9 +590,12 @@ def _(mo):
 def _(anom, forced, load_consolidated_wide):
     ## should we use "wide" data?
     USE_WIDE = False
-    forced_wide, anom_wide = load_consolidated_wide()
+
     ## load spatial data
+    forced_wide, anom_wide = load_consolidated_wide()
+
     if USE_WIDE:
+
         for _v in list(forced_wide):
             forced[_v] = forced_wide[_v]
             anom[_v] = anom_wide[_v]
@@ -923,6 +926,7 @@ def _(R_struct, SEL_MONTH, add_vticks, plot_zonal_structure, plt):
     fig, axs = plot_zonal_structure(R_struct, sel_fn=SEL_MONTH)
     for _ax in axs:
         _ax.set_xlim([140, 280])
+
     add_vticks(axs, xticks=[140, 190, 240, 280], xlines=[190, 240])
     plt.gca()
     return
@@ -940,8 +944,9 @@ def _(mo):
 def _(R_struct, plot_timeseries, plt, reduce_x):
     ## get index
     R = reduce_x(R_struct)
-    fig_1, axs_1 = plot_timeseries(coefs=R, sel_fn=lambda x: x.mean('month'))
+
     # fig, axs = plot_timeseries(coefs=R, sel_fn=SEL_MONTH)
+    fig_1, axs_1 = plot_timeseries(coefs=R, sel_fn=lambda x : x.mean("month"))
     plt.gca()
     return (R,)
 
@@ -956,9 +961,15 @@ def _(mo):
 
 @app.cell
 def _(MONTH0, T_VAR, YVAR, anom, get_ddt, make_scatter, plt, recon_idx, xr):
-    scatter_data = xr.merge([get_ddt(recon_idx(anom[YVAR], YVAR)).rename(f'ddt_{YVAR}'), anom[['T_3', 'T_34', 'h_w']]])
-    for _xvar in [T_VAR, 'h_w']:
-        fig_2, axs_2 = make_scatter(scatter_data, xvar=_xvar, yvar=f'ddt_{YVAR}', month=MONTH0)
+    scatter_data = xr.merge(
+        [
+            get_ddt(recon_idx(anom[YVAR], YVAR)).rename(f"ddt_{YVAR}"),
+            anom[["T_3", "T_34", "h_w"]],
+        ]
+    )
+
+    for _xvar in [T_VAR, "h_w"]:
+        fig_2, axs_2 = make_scatter(scatter_data, xvar=_xvar, yvar=f"ddt_{YVAR}", month=MONTH0)
         plt.show()
     return
 
@@ -1002,19 +1013,30 @@ def _(mo):
 def _(T_VAR, src, x, xr, y, z):
     ## do regression
     # z_pos = z.where(z[T_VAR]>0)
-    _kwargs = dict(func=src.utils.regress_xr_proj, x_vars=list(x), y_vars=list(y), dims=['time', 'member'])
-    regress_by_month = lambda x: 12 * x.groupby('time.month').map(**_kwargs)
+
+    _kwargs = dict(
+        func=src.utils.regress_xr_proj,
+        x_vars=list(x),
+        y_vars=list(y),
+        dims=["time", "member"],
+    )
+
+    regress_by_month = lambda x: 12 * x.groupby("time.month").map(**_kwargs)
+
+    ## find pos/neg
     is_pos_ = z[T_VAR] > 0
     is_neg_ = z[T_VAR] < 0
+
+    ## do regression
     coefs2_all = regress_by_month(z)
     coefs2_pos = regress_by_month(z.where(is_pos_))
     coefs2_neg = regress_by_month(z.where(is_neg_))
     coefs2 = [coefs2_all, coefs2_pos, coefs2_neg]
-    get_R = lambda x: x[f'ddt_{T_VAR}'].sel(j=T_VAR)
-    get_eps = lambda x: -x['ddt_h_w'].sel(j='h_w')
-    ## find pos/neg
+
     ## get R, epsilon
-    R2 = xr.merge([get_R(c).rename(n) for c, n in zip(coefs2, ['all', 'pos', 'neg'])])
+    get_R = lambda x: x[f"ddt_{T_VAR}"].sel(j=T_VAR)
+    get_eps = lambda x: -x["ddt_h_w"].sel(j="h_w")
+    R2 = xr.merge([get_R(c).rename(n) for c, n in zip(coefs2, ["all", "pos", "neg"])])
     return (R2,)
 
 
@@ -1028,15 +1050,17 @@ def _(mo):
 
 @app.cell
 def _(R, R2, add_vticks, plt, src):
-    fig_3, axs_3 = plt.subplots(1, 3, figsize=(8.5, 2.5), layout='constrained')
+    fig_3, axs_3 = plt.subplots(1, 3, figsize=(8.5, 2.5), layout="constrained")
     for _ax, _n in zip(axs_3, list(R)):
-        _ax.plot(R2.year, R2[_n].mean('month'))
-        _ax.plot(R.year, R[_n].mean(['month', 'member']), ls='--')
-        _ax.axhline(0, ls='--', c='k', lw=0.8)
+        _ax.plot(R2.year, R2[_n].mean("month"))
+        _ax.plot(R.year, R[_n].mean(["month", "member"]), ls="--")
+        _ax.axhline(0, ls="--", c="k", lw=0.8)
         _ax.set_title(_n)
+
     src.utils.set_lims(axs_3)
     for _ax in axs_3[1:]:
         _ax.set_yticks([])
+
     add_vticks(axs_3, xticks=[1870, 2010, 2090], xlines=[2010, 2090])
     plt.gca()
     return
@@ -1157,22 +1181,28 @@ def _(
     plt,
     src,
 ):
-    fig_4, axs_4 = plt.subplots(1, 3, figsize=(8.5, 2.5), layout='constrained')
+    fig_4, axs_4 = plt.subplots(1, 3, figsize=(8.5, 2.5), layout="constrained")
     for _ax, _n in zip(axs_4, list(R)):
-        _ax.plot(R2.year, R2[_n].mean('month'))
-        _ax.plot(R.year, R[_n].mean(['month', 'member']), ls='--')
-        _ax.axhline(0, ls='--', c='k', lw=0.8)
+        _ax.plot(R2.year, R2[_n].mean("month"))
+        _ax.plot(R.year, R[_n].mean(["month", "member"]), ls="--")
+        _ax.axhline(0, ls="--", c="k", lw=0.8)
         _ax.set_title(_n)
-    axs_4[0].plot(params.year, params['R'].mean('cycle'), label='$R_0$')
-    axs_4[0].plot(params.year, R_nl.mean(['cycle', 'T']), label='avg($R$)')
-    axs_4[1].plot(params.year, R_nl_pos.mean('cycle'), c='gray')
-    axs_4[1].plot(params.year, R_nl_pos2.mean('cycle'), c='gray', ls='--')
-    axs_4[2].plot(params.year, R_nl_neg.mean('cycle'), c='gray')
-    axs_4[2].plot(params.year, R_nl_neg2.mean('cycle'), c='gray', ls='--')
+
+    axs_4[0].plot(params.year, params["R"].mean("cycle"), label=r"$R_0$")
+    axs_4[0].plot(params.year, R_nl.mean(["cycle", "T"]), label=r"avg($R$)")
+
+
+    axs_4[1].plot(params.year, R_nl_pos.mean("cycle"), c="gray")
+    axs_4[1].plot(params.year, R_nl_pos2.mean("cycle"), c="gray", ls="--")
+
+    axs_4[2].plot(params.year, R_nl_neg.mean("cycle"), c="gray")
+    axs_4[2].plot(params.year, R_nl_neg2.mean("cycle"), c="gray", ls="--")
+
     axs_4[0].legend(prop=dict(size=8))
     src.utils.set_lims(axs_4)
     for _ax in axs_4[1:]:
         _ax.set_yticks([])
+
     add_vticks(axs_4, xticks=[1870, 2010, 2090], xlines=[2010, 2050, 2090])
     plt.gca()
     return
@@ -1190,26 +1220,29 @@ def _(mo):
 
 @app.cell
 def _(coefs_nl, params, plt):
-    sel = lambda x: x.mean('cycle')
+    sel = lambda x: x.mean("cycle")  # .differentiate("year")
     fig_5, _ax = plt.subplots(figsize=(3, 2.5))
-    _ax.plot(params.year, 0.2 * sel(params['R']), c='k')
-    _ax.plot(coefs_nl.year, sel(coefs_nl.sel(nro_form='T2')))
-    _ax.plot(coefs_nl.year, sel(coefs_nl.sel(nro_form='T3')))
-    _ax.axhline(0, ls='--', lw=0.8, c='gray')
-    _ax.axvline(2050, ls='--', lw=0.8, c='gray')
+    _ax.plot(params.year, 0.2 * sel(params["R"]), c="k")
+    _ax.plot(coefs_nl.year, sel(coefs_nl.sel(nro_form="T2")))
+    _ax.plot(coefs_nl.year, sel(coefs_nl.sel(nro_form="T3")))
+    _ax.axhline(0, ls="--", lw=0.8, c="gray")
+    _ax.axvline(2050, ls="--", lw=0.8, c="gray")
     plt.gca()
     return
 
 
 @app.cell
 def _(R_nl, R_nl_neg, R_nl_neg2, R_nl_pos, R_nl_pos2, add_vticks, params, plt):
-    fig_6, _ax = plt.subplots(figsize=(3, 2.5), layout='constrained')
-    _ax.plot(params.year, R_nl.mean(['T', 'cycle']), c='k')
-    _ax.plot(params.year, R_nl_pos.mean('cycle'), c='r')
-    _ax.plot(params.year, R_nl_neg.mean('cycle'), c='b')
-    _ax.plot(params.year, params['R'].mean('cycle'), c='k', ls='--')
-    _ax.plot(params.year, R_nl_pos2.mean('cycle'), c='r', ls='--')
-    _ax.plot(params.year, R_nl_neg2.mean('cycle'), c='b', ls='--')
+    fig_6, _ax = plt.subplots(figsize=(3, 2.5), layout="constrained")
+
+    _ax.plot(params.year, R_nl.mean(["T", "cycle"]), c="k")
+    _ax.plot(params.year, R_nl_pos.mean("cycle"), c="r")
+    _ax.plot(params.year, R_nl_neg.mean("cycle"), c="b")
+
+    _ax.plot(params.year, params["R"].mean("cycle"), c="k", ls="--")
+    _ax.plot(params.year, R_nl_pos2.mean("cycle"), c="r", ls="--")
+    _ax.plot(params.year, R_nl_neg2.mean("cycle"), c="b", ls="--")
+
     add_vticks([_ax], xticks=[1870, 2010, 2090], xlines=[2010, 2050])
     plt.gca()
     return
@@ -1242,19 +1275,37 @@ def _(mo):
 @app.cell
 def _(DIMS, T_VAR, anom, coefs, regress_over_time, window, xr):
     LOAD_GAMMA = True
+
     if LOAD_GAMMA:
-        gamma_proj = xr.merge((c['T'].rename(n) for n, c in coefs.items()))
+
+        ## load coefs
+        gamma_proj = xr.merge(c["T"].rename(n) for n, c in coefs.items())
+        # gamma_proj = xr.merge(c["T"].rename(n) for n, c in coefs_T.items())
+
     else:
-        gamma_data = window(anom[['T', T_VAR, 'h_w']])  ## load coefs
-        _regress_kwargs = dict(x_vars=[T_VAR, 'h_w'], y_vars=['T'], dims=DIMS)
-        _regress_helper = lambda x: regress_over_time(x, **_regress_kwargs)  # gamma_proj = xr.merge(c["T"].rename(n) for n, c in coefs_T.items())
-        print('regress all')
+
+        ## get data for regression
+        gamma_data = window(anom[["T", T_VAR, "h_w"]])
+    
+        _regress_kwargs = dict(x_vars=[T_VAR, "h_w"], y_vars=["T"], dims=DIMS)
+        _regress_helper = lambda x: regress_over_time(x, **_regress_kwargs)
+    
+        ## do the regression
+        print("regress all")
         gamma_proj_all = _regress_helper(gamma_data)
-        print('regress pos')
-        gamma_proj_pos = _regress_helper(gamma_data.where(gamma_data[T_VAR] > 0))  ## get data for regression
-        print('regress neg')
+        print("regress pos")
+        gamma_proj_pos = _regress_helper(gamma_data.where(gamma_data[T_VAR] > 0))
+        print("regress neg")
         gamma_proj_neg = _regress_helper(gamma_data.where(gamma_data[T_VAR] < 0))
-        gamma_proj = xr.merge([gamma_proj_all.rename({'T': 'all'}), gamma_proj_pos.rename({'T': 'pos'}), gamma_proj_neg.rename({'T': 'neg'})])  ## do the regression  ## merge into single dataarray
+
+
+        ## merge into single dataarray
+        gamma_proj = xr.merge(
+            [gamma_proj_all.rename({"T":"all"}), 
+             gamma_proj_pos.rename({"T":"pos"}), 
+             gamma_proj_neg.rename({"T":"neg"}),
+            ]
+        )
     return (gamma_proj,)
 
 
@@ -1270,32 +1321,54 @@ def _(mo):
 def _(ENT_DEPTH_RANGE, MLD, REDUCE_X, anom, src, xr):
     def reduce_x_1(x):
         """Get Tsub, but don't average over depth yet"""
+
         return REDUCE_X(x)
+
 
     def reduce_z(x, use_dT):
         """Get diff b/n Tsub and Tsurf, but don't average over longitude yet"""
-        Tsurf = x.sel(z_t=slice(None, MLD)).mean('z_t')
-        Tsub = x.sel(z_t=ENT_DEPTH_RANGE).mean('z_t')
+
+        Tsurf = x.sel(z_t=slice(None, MLD)).mean("z_t")
+        Tsub = x.sel(z_t=ENT_DEPTH_RANGE).mean("z_t")
+
         if use_dT:
             return Tsub - Tsurf
+
         else:
             return Tsub
 
+
     def recon_struct_1(coefs, use_dT=False):
         """post-process regression coefficients"""
-        coefs_ = src.utils.reconstruct_wrapper(xr.merge([coefs.rename('T'), anom['T_comp']]), fn=lambda x: reduce_z(x, use_dT=use_dT))
-        mu = coefs_['T'].squeeze(drop=True)
+
+        ## reconstruct mean over equatorial region
+        coefs_ = src.utils.reconstruct_wrapper(
+            xr.merge([coefs.rename("T"), anom["T_comp"]]),
+            fn=lambda x : reduce_z(x, use_dT=use_dT),
+        )
+        ## drop extra variables
+        mu = coefs_["T"].squeeze(drop=True)
+
         return mu
+
 
     def recon_idx_1(coefs, use_dT):
         """reconstruct spatial structure of coefficients"""
-        coefs_struct = src.utils.reconstruct_wrapper(xr.merge([coefs['T'], anom[f'T_comp']]), fn=lambda y: reduce_x_1(reduce_z(y, use_dT=use_dT)))
-        return coefs_struct['T']  ## reconstruct mean over equatorial region
+
+        coefs_struct = src.utils.reconstruct_wrapper(
+            xr.merge([coefs["T"], anom[f"T_comp"]]),
+            fn=lambda y: reduce_x_1(reduce_z(y, use_dT=use_dT)),
+        )
+
+        return coefs_struct["T"]
+
 
     def get_wsub(x):
         """Get upwelling at base of mixed layer"""
-        wsub = x.sel(z_t=ENT_DEPTH_RANGE).mean('z_t')
-        return wsub  ## drop extra variables
+
+        wsub = x.sel(z_t=ENT_DEPTH_RANGE).mean("z_t")
+
+        return wsub
 
     return get_wsub, recon_idx_1, recon_struct_1, reduce_x_1
 
@@ -1304,16 +1377,25 @@ def _(ENT_DEPTH_RANGE, MLD, REDUCE_X, anom, src, xr):
 def _(MLD, clim, forced, gamma_proj, get_wsub, recon_struct_1, src, xr):
     ## should we use dT?
     USE_dT = False
-    w_bar_struct = src.utils.reconstruct_wrapper(xr.merge([clim['w'], forced['w_comp']]), fn=get_wsub)['w']
+
     ## get wbar
-    gamma_struct = xr.merge([recon_struct_1(gamma_proj[v], use_dT=USE_dT).rename(v) for v in ['all', 'pos', 'neg']])
-    w_H = 12 * w_bar_struct / MLD
+    w_bar_struct = src.utils.reconstruct_wrapper(
+        xr.merge([clim["w"], forced["w_comp"]]),
+        fn=get_wsub,
+    )["w"]
+
     ## load coefs
+    gamma_struct = xr.merge(
+        [recon_struct_1(gamma_proj[v], use_dT=USE_dT).rename(v) for v in ["all", "pos", "neg"]]
+    )
+
     ## handle dT
     # if not USE_dT:
     #     gamma_struct = gamma_struct-1
+
     # ## compute THF
     # first, scale upwelling by mixed layer depth (50 m) and convert from m/mo to m/yr
+    w_H = 12 * w_bar_struct / MLD
     thf_struct = gamma_struct * w_H
     return gamma_struct, thf_struct, w_H, w_bar_struct
 
@@ -1328,7 +1410,7 @@ def _(mo):
 
 @app.cell
 def _(T_VAR, gamma_struct, thf_struct, w_H):
-    if 'j' not in list(gamma_struct.dims):
+    if "j" not in list(gamma_struct.dims):
         gamma_struct_1 = gamma_struct.expand_dims(j=[T_VAR])
         w_H_1 = w_H.expand_dims(j=[T_VAR])
         thf_struct_1 = thf_struct.expand_dims(j=[T_VAR])
@@ -1346,9 +1428,11 @@ def _(mo):
 @app.cell
 def _(SEL_MONTH, add_vticks, gamma_struct_1, plot_zonal_structure, plt):
     for _v in list(gamma_struct_1.j.values):
+
         fig_7, axs_5 = plot_zonal_structure(coefs=gamma_struct_1.sel(j=_v), sel_fn=SEL_MONTH)
         add_vticks(axs_5, xticks=[190, 240, 280], xlines=[190, 240])
-        axs_5[0].set_ylabel('$T_{\\text{sub}}~/~T-1$')
+        axs_5[0].set_ylabel(r"$T_{\text{sub}}~/~T-1$")
+
         plt.show()
     return
 
@@ -1372,9 +1456,11 @@ def _(
 ):
     for _v in gamma_struct_1.j.values:
         print(_v)
+
         fig_8, axs_6 = plot_zonal_structure(coefs=thf_struct_1.sel(j=_v), sel_fn=SEL_MONTH)
         add_vticks(axs_6, xticks=[190, 240, 280], xlines=[190, 240])
-        axs_6[0].set_ylabel('$T_{\\text{sub}}~/~T-1$')
+        axs_6[0].set_ylabel(r"$T_{\text{sub}}~/~T-1$")
+
         plt.show()
     return
 
@@ -1400,18 +1486,22 @@ def _(
     xr,
 ):
     ## compute gamma
-    print('gamma')
+    print("gamma")
     gamma = reduce_x_1(gamma_struct_1).sel(j=T_VAR)
     fig_9, axs_7 = plot_timeseries(coefs=gamma, sel_fn=SEL_MONTH)
     plt.show()
-    print(f'\nTHF')
+
     ## compute THF
+    print(f"\nTHF")
     thf = reduce_x_1(thf_struct_1)
     fig_9, axs_7 = plot_timeseries(coefs=thf.sel(j=T_VAR), sel_fn=SEL_MONTH)
     plt.show()
-    print('wbar')
+
+    print("wbar")
     w_bar = reduce_x_1(w_bar_struct)
-    fig_9, axs_7 = plot_timeseries(coefs=w_bar * xr.ones_like(gamma), sel_fn=SEL_MONTH)
+    fig_9, axs_7 = plot_timeseries(
+        coefs=w_bar * xr.ones_like(gamma), sel_fn=SEL_MONTH
+    )
     plt.gca()
     return gamma, thf, w_bar
 
@@ -1427,10 +1517,16 @@ def _(mo):
 @app.cell
 def _(T_VAR, anom, make_scatter, plt, recon_idx_1, xr):
     for u in [True, False]:
-        print(f'use_dT={u}')
-        scatter_data_1 = xr.merge([recon_idx_1(anom[['T']], use_dT=u), anom[['T_3', 'T_34', 'h_w']]])
-        for _xvar in [T_VAR, 'h_w']:
-            fig_10, axs_8 = make_scatter(scatter_data_1, xvar=_xvar, yvar=f'T', month=4, by_season=False)
+        print(f"use_dT={u}")
+        scatter_data_1 = xr.merge(
+            [
+                recon_idx_1(anom[["T"]], use_dT=u),
+                anom[["T_3", "T_34", "h_w"]],
+            ]
+        )
+
+        for _xvar in [T_VAR, "h_w"]:
+            fig_10, axs_8 = make_scatter(scatter_data_1, xvar=_xvar, yvar=f"T", month=4, by_season=False)
             plt.show()
     return
 
@@ -1480,22 +1576,40 @@ def _(mo):
 def _(REDUCE_X, anom, src, xr):
     def reduce_x_2(x):
         """Get Tsub, but don't average over depth yet"""
-        return REDUCE_X(x)
 
-    def reduce_y(x):  # return LON_AVG_34(x)
+        return REDUCE_X(x)
+        # return LON_AVG_34(x)
+
+
+    def reduce_y(x):
         """Get diff b/n Tsub and Tsurf, but don't average over longitude yet"""
-        return x.sel(latitude=slice(-5, 5)).mean('latitude')
+
+        return x.sel(latitude=slice(-5, 5)).mean("latitude")
+
 
     def recon_struct_2(coefs):
         """post-process regression coefficients"""
-        coefs_ = src.utils.reconstruct_wrapper(xr.merge([coefs.rename('nhf'), anom['nhf_comp']]), fn=reduce_y)
-        coefs_ = coefs_['nhf'].squeeze(drop=True)
+
+        ## reconstruct mean over equatorial region
+        coefs_ = src.utils.reconstruct_wrapper(
+            xr.merge([coefs.rename("nhf"), anom["nhf_comp"]]),
+            fn=reduce_y,
+        )
+        ## drop extra variables
+        coefs_ = coefs_["nhf"].squeeze(drop=True)
+
         return coefs_
+
 
     def recon_idx_2(coefs):
         """reconstruct spatial structure of coefficients"""
-        coefs_struct = src.utils.reconstruct_wrapper(xr.merge([coefs['nhf'], anom[f'nhf_comp']]), fn=lambda z: reduce_x_2(reduce_y(z)))  ## reconstruct mean over equatorial region
-        return coefs_struct['nhf']  ## drop extra variables
+
+        coefs_struct = src.utils.reconstruct_wrapper(
+            xr.merge([coefs["nhf"], anom[f"nhf_comp"]]),
+            fn=lambda z: reduce_x_2(reduce_y(z)),
+        )
+
+        return coefs_struct["nhf"]
 
     return recon_idx_2, recon_struct_2, reduce_x_2
 
@@ -1503,16 +1617,18 @@ def _(REDUCE_X, anom, src, xr):
 @app.cell
 def _(alpha_proj, recon_struct_2, xr):
     ## load coefs
-    alpha_struct = xr.merge([recon_struct_2(alpha_proj[v]).rename(v) for v in ['all', 'pos', 'neg']])
+    alpha_struct = xr.merge(
+        [recon_struct_2(alpha_proj[v]).rename(v) for v in ["all", "pos", "neg"]]
+    )
     return (alpha_struct,)
 
 
 @app.cell
 def _(add_vticks, alpha_struct, plot_zonal_structure, plt):
-    sel_1 = lambda x: x.sel(month=slice(5, 12)).mean('month')
+    sel_1 = lambda x : x.sel(month=slice(5,12)).mean("month")
     fig_11, axs_9 = plot_zonal_structure(coefs=alpha_struct, sel_fn=sel_1)
     add_vticks(axs_9, xticks=[190, 240, 280], xlines=[190, 240])
-    axs_9[0].set_ylabel('$\\alpha$')
+    axs_9[0].set_ylabel(r"$\alpha$")
     for _ax in axs_9:
         _ax.set_xlim([140, 280])
     plt.gca()
@@ -1521,18 +1637,23 @@ def _(add_vticks, alpha_struct, plot_zonal_structure, plt):
 
 @app.cell
 def _(alpha_struct, plt, sel_1, src):
-    alph = alpha_struct.mean('member')
-    fig_12, axs_10 = plt.subplots(1, 3, figsize=(9, 3))
-    for _ax, _n in zip(axs_10, ['pos', 'all', 'neg']):
-        _ax.plot(alph.longitude, sel_1(alph[_n]).sel(year=1870, method='nearest'), c='k')
-        _ax.plot(alph.longitude, sel_1(alph[_n]).sel(year=2000, method='nearest'), c='r')
-        _ax.set_xlim([120, 280])
+    alph = alpha_struct.mean("member")
+    fig_12,axs_10 = plt.subplots(1,3,figsize=(9,3))
+
+    for _ax, _n in zip(axs_10, ["pos","all","neg"]):
+
+        _ax.plot(alph.longitude, sel_1(alph[_n]).sel(year=1870, method="nearest"), c="k")
+        _ax.plot(alph.longitude, sel_1(alph[_n]).sel(year=2000, method="nearest"), c="r")
+        _ax.set_xlim([120,280])
         _ax.set_yticks([])
-        _ax.axhline(0, ls='--', c='k', lw=1)
+        _ax.axhline(0, ls="--", c="k", lw=1)
         _ax.set_title(_n)
-    src.utils.add_vticks(axs_10, xticks=[210, 270], xlines=[210, 270])
+
+    src.utils.add_vticks(axs_10, xticks=[210,270], xlines=[210,270])
     axs_10[0].set_yticks([0, 2])
     src.utils.set_lims(axs_10)
+
+    # src.utils.
     plt.gca()
     return
 
@@ -1548,8 +1669,9 @@ def _(mo):
 @app.cell
 def _(alpha_struct, plot_timeseries, plt, reduce_x_2, sel_1):
     alpha = reduce_x_2(alpha_struct)
-    fig_13, axs_11 = plot_timeseries(coefs=alpha, sel_fn=sel_1)
+
     # fig, axs = plot_timeseries(coefs=alpha, sel_fn=SEL_MONTH)
+    fig_13, axs_11 = plot_timeseries(coefs=alpha, sel_fn=sel_1)
     plt.gca()
     return (alpha,)
 
@@ -1564,8 +1686,13 @@ def _(mo):
 
 @app.cell
 def _(MONTH0, T_VAR, anom, make_scatter, plt, recon_idx_2, xr):
-    scatter_data_2 = xr.merge([recon_idx_2(anom[['nhf']]), anom[['T_3', 'T_34']]])
-    fig_14, axs_12 = make_scatter(scatter_data_2, xvar=T_VAR, yvar='nhf', month=MONTH0)
+    scatter_data_2 = xr.merge(
+        [
+            recon_idx_2(anom[["nhf"]]),
+            anom[["T_3", "T_34"]],
+        ]
+    )
+    fig_14, axs_12 = make_scatter(scatter_data_2, xvar=T_VAR, yvar="nhf", month=MONTH0)
     plt.gca()
     return
 
@@ -1605,22 +1732,40 @@ def _(mo):
 def _(anom, src, xr):
     def reduce_x_3(x):
         """Get Tsub, but don't average over depth yet"""
-        return x.sel(longitude=slice(150, 270)).mean('longitude')
 
-    def reduce_y_1(x):  # return x.sel(longitude=slice(230, 270)).mean("longitude")
+        return x.sel(longitude=slice(150, 270)).mean("longitude")
+        # return x.sel(longitude=slice(230, 270)).mean("longitude")
+
+
+    def reduce_y_1(x):
         """Get diff b/n Tsub and Tsurf, but don't average over longitude yet"""
-        return x.sel(latitude=slice(-5, 5), longitude=slice(140, 280)).mean('latitude')
+
+        return x.sel(latitude=slice(-5, 5), longitude=slice(140, 280)).mean("latitude")
+
 
     def recon_struct_3(coefs):
         """post-process regression coefficients"""
-        coefs_ = src.utils.reconstruct_wrapper(xr.merge([coefs.rename('taux'), anom['taux_comp']]), fn=reduce_y_1)
-        coefs_ = coefs_['taux'].squeeze(drop=True)
+
+        ## reconstruct mean over equatorial region
+        coefs_ = src.utils.reconstruct_wrapper(
+            xr.merge([coefs.rename("taux"), anom["taux_comp"]]),
+            fn=reduce_y_1,
+        )
+        ## drop extra variables
+        coefs_ = coefs_["taux"].squeeze(drop=True)
+
         return coefs_
+
 
     def recon_taux_idx(coefs):
         """reconstruct spatial structure of coefficients"""
-        coefs_struct = src.utils.reconstruct_wrapper(xr.merge([coefs['taux'], anom['taux_comp']]), fn=lambda z: reduce_x_3(reduce_y_1(z)))  ## reconstruct mean over equatorial region
-        return coefs_struct['taux']  ## drop extra variables
+
+        coefs_struct = src.utils.reconstruct_wrapper(
+            xr.merge([coefs["taux"], anom["taux_comp"]]),
+            fn=lambda z: reduce_x_3(reduce_y_1(z)),
+        )
+
+        return coefs_struct["taux"]
 
     return recon_struct_3, recon_taux_idx, reduce_x_3
 
@@ -1628,14 +1773,18 @@ def _(anom, src, xr):
 @app.cell
 def _(mu_proj, recon_struct_3, xr):
     ## load coefs
-    mu_struct = xr.merge([recon_struct_3(mu_proj[v]).rename(v) for v in ['all', 'pos', 'neg']])
+    mu_struct = xr.merge(
+        [recon_struct_3(mu_proj[v]).rename(v) for v in ["all", "pos", "neg"]]
+    )
     return (mu_struct,)
 
 
 @app.cell
 def _(SEL_MONTH, add_vticks, mu_struct, plot_zonal_structure, plt):
     fig_15, axs_13 = plot_zonal_structure(coefs=mu_struct, sel_fn=SEL_MONTH)
+
     add_vticks(axs_13, xticks=[150, 210, 270], xlines=[150, 210, 270])
+
     plt.gca()
     return
 
@@ -1651,8 +1800,9 @@ def _(mo):
 @app.cell
 def _(SEL_MONTH, mu_struct, plot_timeseries, plt, reduce_x_3):
     mu = reduce_x_3(mu_struct)
-    fig_16, axs_14 = plot_timeseries(coefs=mu, sel_fn=SEL_MONTH)
+
     # fig, axs = plot_timeseries(coefs=alpha, sel_fn=SEL_MONTH)
+    fig_16, axs_14 = plot_timeseries(coefs=mu, sel_fn=SEL_MONTH)
     plt.gca()
     return (mu,)
 
@@ -1667,8 +1817,13 @@ def _(mo):
 
 @app.cell
 def _(MONTH0, T_VAR, anom, make_scatter, plt, recon_taux_idx, xr):
-    scatter_data_3 = xr.merge([recon_taux_idx(anom[['taux']]), anom[['T_3', 'T_34']]])
-    fig_17, axs_15 = make_scatter(scatter_data_3, xvar=T_VAR, yvar='taux', month=MONTH0)
+    scatter_data_3 = xr.merge(
+        [
+            recon_taux_idx(anom[["taux"]]),
+            anom[["T_3", "T_34"]],
+        ]
+    )
+    fig_17, axs_15 = make_scatter(scatter_data_3, xvar=T_VAR, yvar="taux", month=MONTH0)
     plt.gca()
     return
 
@@ -1709,9 +1864,9 @@ def _(anom, get_taux_idx, get_w_idx, src, xr):
 
 @app.cell
 def _(MONTH0, make_scatter, plot_data, plt):
-    for _xvar in ['T_3', 'sst', 'taux']:
-        print(f'\n{_xvar}')
-        fig_18, axs_16 = make_scatter(plot_data, xvar=_xvar, yvar='w', month=MONTH0)
+    for _xvar in ["T_3","sst","taux"]:
+        print(f"\n{_xvar}")
+        fig_18, axs_16 = make_scatter(plot_data, xvar=_xvar, yvar="w", month=MONTH0)
         plt.show()
     return
 
@@ -1719,16 +1874,16 @@ def _(MONTH0, make_scatter, plot_data, plt):
 @app.cell
 def _(plot_data, src):
     plot_windowed = src.utils.get_windowed(plot_data)
-    sel_2 = lambda x: x['sst'].resample({'time': 'QS-JAN'}).mean().isel(time=slice(4, -4, 4)).values.flatten()
+    sel_2 = lambda x : x["sst"].resample({"time":"QS-JAN"}).mean().isel(time=slice(4,-4,4)).values.flatten()
     return plot_windowed, sel_2
 
 
 @app.cell
 def _(np, plot_windowed, plt, sel_2, src):
-    edges = np.linspace(-3.25, 4, 20)
-    pdf0, _ = src.utils.get_empirical_pdf(sel_2(plot_windowed.sel(year=1870)), edges=edges)
-    pdf1, _ = src.utils.get_empirical_pdf(sel_2(plot_windowed.sel(year=2010)), edges=edges)
-    fig_19, _ax = plt.subplots(figsize=(6, 3))
+    edges = np.linspace(-3.25,4,20)
+    pdf0,_  = src.utils.get_empirical_pdf(sel_2(plot_windowed.sel(year=1870)), edges=edges)
+    pdf1,_ = src.utils.get_empirical_pdf(sel_2(plot_windowed.sel(year=2010)), edges=edges)
+    fig_19,_ax = plt.subplots(figsize=(6,3))
     _ax.stairs(pdf0, edges, lw=2)
     _ax.stairs(pdf1, edges, lw=2)
     plt.gca()
@@ -1769,21 +1924,41 @@ def _(mo):
 def _(anom, check_dims, src, xr):
     def reduce_y_2(x):
         """reduce over lat/lon/depth"""
+
+        ## make sure dims are all there
         x_ = check_dims(x)
-        idx = dict(longitude=slice(120, 280), latitude=slice(-5, 5))  ## make sure dims are all there
-        x_ = x_.sel(idx).mean('latitude')
+
+        ## specify indices
+        idx = dict(longitude=slice(120, 280), latitude=slice(-5, 5))
+
+        ## average over lats
+        x_ = x_.sel(idx).mean("latitude")
+
+        ## integrate (optionally)
         if len(x_.z_t) > 1:
-            x_ = x_.integrate('z_t') / 300  ## specify indices
+            x_ = x_.integrate("z_t") / 300
         else:
             x_ = x_.squeeze(drop=True)
-        return x_  ## average over lats
+
+        return x_
+
 
     def postprocess_(coefs, T_var):
-        """post-process regression coefficients"""  ## integrate (optionally)
-        comps = check_dims(anom[f'{T_var}_comp'])
-        coefs_ = src.utils.reconstruct_wrapper(xr.merge([coefs, comps]), fn=reduce_y_2)
+        """post-process regression coefficients"""
+
+        ## get recon components
+        comps = check_dims(anom[f"{T_var}_comp"])
+
+        ## reconstruct mean over equatorial region
+        coefs_ = src.utils.reconstruct_wrapper(
+            xr.merge([coefs, comps]),
+            fn=reduce_y_2,
+        )
+
+        ## drop extra variables
         coefs_ = coefs_[T_var].squeeze(drop=True)
-        return coefs_  ## get recon components  ## reconstruct mean over equatorial region  ## drop extra variables
+
+        return coefs_
 
     return postprocess_, reduce_y_2
 
@@ -1791,26 +1966,34 @@ def _(anom, check_dims, src, xr):
 @app.cell
 def _(DIMS, USE_OHC, anom, postprocess_, regress_over_time, window, xr):
     ## specify wind variable (one of "T_34", "taux_idx")
-    x_var = 'taux_idx'
+    x_var = "taux_idx"
     # x_var = T_VAR
-    if USE_OHC:
+
     ## specify h-variable (one of "T", "ssh")
-        y_var = 'T'
+    if USE_OHC:
+        y_var = "T"
     else:
-        y_var = 'ssh'
+        y_var = "ssh"
+
+    ## get data for regression (OHC)
     beta_data = window(xr.merge([anom[y_var], anom[x_var]]))
     _regress_kwargs = dict(x_vars=[x_var], y_vars=[y_var], dims=DIMS)
-    ## get data for regression (OHC)
-    _regress_helper = lambda x: postprocess_(regress_over_time(x, **_regress_kwargs), T_var=y_var)
-    print('regress all')
-    _beta_all = _regress_helper(beta_data)
-    print('regress pos')
-    _beta_pos = _regress_helper(beta_data.where(beta_data[x_var] > 0))
-    print('regress neg')
+    _regress_helper = lambda x: postprocess_(
+        regress_over_time(x, **_regress_kwargs), T_var=y_var
+    )
+
     ## do the regression
+    print("regress all")
+    _beta_all = _regress_helper(beta_data)
+    print("regress pos")
+    _beta_pos = _regress_helper(beta_data.where(beta_data[x_var] > 0))
+    print("regress neg")
     _beta_neg = _regress_helper(beta_data.where(beta_data[x_var] < 0))
+
     ## merge into single dataarray
-    beta_struct = xr.merge([_beta_all.rename('all'), _beta_pos.rename('pos'), _beta_neg.rename('neg')])
+    beta_struct = xr.merge(
+        [_beta_all.rename("all"), _beta_pos.rename("pos"), _beta_neg.rename("neg")]
+    )
     return beta_data, beta_struct, x_var, y_var
 
 
@@ -1825,7 +2008,9 @@ def _(mo):
 @app.cell
 def _(SEL_MONTH, add_vticks, beta_struct, plot_zonal_structure, plt):
     fig_20, axs_17 = plot_zonal_structure(coefs=beta_struct, sel_fn=SEL_MONTH)
+
     add_vticks(axs_17, xticks=[120, 170, 210], xlines=[170, 210])
+
     plt.gca()
     return
 
@@ -1850,18 +2035,29 @@ def _(mo):
 def _(reduce_y_2):
     def get_he(x):
         """average over eastern Pacific"""
+
+        ## lats/lons for averaging
+        # idx = dict(longitude=slice(190, 240))
         idx = dict(longitude=slice(210, 270))
-        return reduce_y_2(x).sel(idx).sum('longitude')  ## lats/lons for averaging
-      # idx = dict(longitude=slice(190, 240))
+
+        return reduce_y_2(x).sel(idx).sum("longitude")
+
+
     def get_hw(x):
         """average over western Pacific"""
+
+        ## lats/lons for averaging
         idx = dict(longitude=slice(120, 170))
-        return reduce_y_2(x).sel(idx).sum('longitude')
+
+        return reduce_y_2(x).sel(idx).sum("longitude")
+
         return
+
 
     def get_dh(x):
         """east-west difference"""
-        return get_he(x) - get_hw(x)  ## lats/lons for averaging
+
+        return get_he(x) - get_hw(x)
 
     return get_dh, get_he, get_hw
 
@@ -1869,8 +2065,11 @@ def _(reduce_y_2):
 @app.cell
 def _(anom, beta_data, get_dh, get_he, get_hw, src, xr, y_var):
     # add to dataarray
-    for _n, fn in zip(['he', 'hw', 'dh'], [get_he, get_hw, get_dh]):
-        beta_data[_n] = src.utils.reconstruct_wrapper(xr.merge([beta_data[y_var], anom[f'{y_var}_comp']]), fn=fn)[y_var]
+    for _n, fn in zip(["he", "hw", "dh"], [get_he, get_hw, get_dh]):
+        beta_data[_n] = src.utils.reconstruct_wrapper(
+            xr.merge([beta_data[y_var], anom[f"{y_var}_comp"]]),
+            fn=fn,
+        )[y_var]
     return
 
 
@@ -1884,9 +2083,12 @@ def _(mo):
 
 @app.cell
 def _(beta_data, make_scatter, plt, x_var):
+    ## specify kwargs
     _kwargs = dict(anom_=beta_data, xvar=x_var, month=7, by_season=True)
-    for _yvar in ['dh', 'he', 'hw']:
+
+    for _yvar in ["dh", "he", "hw"]:
         print(_yvar)
+
         fig_21, axs_18 = make_scatter(yvar=_yvar, **_kwargs)
         plt.show()
     return
@@ -1905,7 +2107,8 @@ def _(beta_struct, get_dh, get_he, plot_timeseries, plt):
     ## compute beta index
     beta_he = get_he(beta_struct)
     beta = get_dh(beta_struct)
-    fig_22, axs_19 = plot_timeseries(coefs=beta, sel_fn=lambda x: x.mean('month'))
+
+    fig_22, axs_19 = plot_timeseries(coefs=beta, sel_fn=lambda x : x.mean("month"))
     plt.gca()
     return (beta,)
 
@@ -1936,14 +2139,27 @@ def _(ENT_DEPTH_RANGE):
 def _(anom, src, xr):
     def reduce_z_1(x):
         """average over depth"""
-        idx = dict(longitude=slice(120, 280), z_t=slice(0, 60, None))
-        return x.sel(idx).mean('z_t')  ## get indices
-      # idx = dict(longitude=slice(120, 280), z_t=ENT_DEPTH_RANGE)
+
+        ## get indices
+        # idx = dict(longitude=slice(120, 280), z_t=ENT_DEPTH_RANGE)
+        idx = dict(longitude=slice(120, 280), z_t=slice(0,60,None))
+
+        return x.sel(idx).mean("z_t")
+
+
     def postprocess_Tsub(coefs):
         """post-process regression coefficients"""
-        coefs_ = src.utils.reconstruct_wrapper(xr.merge([coefs, anom['T_comp']]), fn=reduce_z_1)
-        mu = coefs_['T'].squeeze(drop=True)
-        return mu  ## reconstruct mean over equatorial region  ## drop extra variables
+
+        ## reconstruct mean over equatorial region
+        coefs_ = src.utils.reconstruct_wrapper(
+            xr.merge([coefs, anom["T_comp"]]),
+            fn=reduce_z_1,
+        )
+
+        ## drop extra variables
+        mu = coefs_["T"].squeeze(drop=True)
+
+        return mu
 
     return postprocess_Tsub, reduce_z_1
 
@@ -1958,24 +2174,28 @@ def _(anom, beta_data, window, xr):
 @app.cell
 def _(DIMS, ah_data, postprocess_Tsub, regress_over_time, xr):
     # regress_kwargs = dict(x_vars=["he"], y_vars=["T"], dims=DIMS)
-    _regress_kwargs = dict(x_vars=['h_e'], y_vars=['T'], dims=DIMS)
+    _regress_kwargs = dict(x_vars=["h_e"], y_vars=["T"], dims=DIMS)
     _regress_helper = lambda x: postprocess_Tsub(regress_over_time(x, **_regress_kwargs))
-    print('regress all')
+
     ## do the regression
+    print("regress all")
     ah_all = _regress_helper(ah_data)
-    print('regress pos')
-    ah_pos = _regress_helper(ah_data.where(ah_data['he'] > 0))
-    print('regress neg')
-    ah_neg = _regress_helper(ah_data.where(ah_data['he'] < 0))
+    print("regress pos")
+    ah_pos = _regress_helper(ah_data.where(ah_data["he"] > 0))
+    print("regress neg")
+    ah_neg = _regress_helper(ah_data.where(ah_data["he"] < 0))
+
     ## merge into single dataarray
-    ah_struct = xr.merge([ah_all.rename('all'), ah_pos.rename('pos'), ah_neg.rename('neg')])
+    ah_struct = xr.merge([ah_all.rename("all"), ah_pos.rename("pos"), ah_neg.rename("neg")])
     return (ah_struct,)
 
 
 @app.cell
 def _(SEL_MONTH, add_vticks, ah_struct, plot_zonal_structure, plt):
     fig_23, axs_20 = plot_zonal_structure(coefs=ah_struct, sel_fn=SEL_MONTH)
+
     add_vticks(axs_20, xticks=[190, 240], xlines=[190, 240])
+
     plt.gca()
     return
 
@@ -1983,14 +2203,25 @@ def _(SEL_MONTH, add_vticks, ah_struct, plot_zonal_structure, plt):
 @app.cell
 def _(REDUCE_X, ah_data, anom, reduce_z_1, src, xr):
     def reduce_x_4(T):
-        return REDUCE_X(T)  ## compute
+        ## compute
+        return REDUCE_X(T)
+
 
     def get_Tsub_idx(T):
         """compute Tsub over central/east Pacific"""
+
+        ## specify averaging range
         idx = dict(longitude=slice(210, 270))
+
+        ## compute
         return reduce_x_4(reduce_z_1(T))
+
+
     ## add to dataarray
-    ah_data['Tsub'] = src.utils.reconstruct_wrapper(xr.merge([ah_data['T'], anom['T_comp']]), fn=get_Tsub_idx)['T']  ## specify averaging range  ## compute
+    ah_data["Tsub"] = src.utils.reconstruct_wrapper(
+        xr.merge([ah_data["T"], anom["T_comp"]]),
+        fn=get_Tsub_idx,
+    )["T"]
     return (reduce_x_4,)
 
 
@@ -2004,7 +2235,9 @@ def _(mo):
 
 @app.cell
 def _(ah_data, make_scatter, plt):
-    _kwargs = dict(anom_=ah_data, xvar='T_3', yvar='Tsub', month=10, by_season=True)
+    ## specify kwargs
+    _kwargs = dict(anom_=ah_data, xvar="T_3", yvar="Tsub", month=10, by_season=True)
+
     fig_24, axs_21 = make_scatter(**_kwargs)
     plt.gca()
     return
@@ -2020,11 +2253,14 @@ def _(mo):
 
 @app.cell
 def _(ah_struct, plot_timeseries, plt, reduce_x_4):
-    SEL_MONTH_ah = lambda x: x.sel(month=slice(7, None)).mean('month')
+    SEL_MONTH_ah = lambda x : x.sel(month=slice(7,None)).mean("month")
+
+    ## get index
     ah = reduce_x_4(ah_struct)
+
     fig_25, axs_22 = plot_timeseries(coefs=ah, sel_fn=SEL_MONTH_ah)
     for _ax in axs_22:
-        _ax.set_ylim([1.3, None])
+        _ax.set_ylim([1.3,None])
     plt.gca()
     return (ah,)
 
@@ -2064,22 +2300,39 @@ def _(mo):
 def _(MLD, REDUCE_X, anom, src, xr):
     def reduce_x_5(x):
         """Get Tsub, but don't average over depth yet"""
+
         return REDUCE_X(x)
+
 
     def reduce_z_2(x):
         """Average over ML don't average over longitude yet"""
-        return x.sel(z_t=slice(None, MLD)).mean('z_t')
+
+        return x.sel(z_t=slice(None, MLD)).mean("z_t")
+
 
     def recon_struct_4(coefs):
         """post-process regression coefficients"""
-        coefs_ = src.utils.reconstruct_wrapper(xr.merge([coefs.rename('u'), anom['u_comp']]), fn=reduce_z_2)
-        mu = coefs_['u'].squeeze(drop=True)
+
+        ## reconstruct mean over equatorial region
+        coefs_ = src.utils.reconstruct_wrapper(
+            xr.merge([coefs.rename("u"), anom["u_comp"]]),
+            fn=reduce_z_2,
+        )
+        ## drop extra variables
+        mu = coefs_["u"].squeeze(drop=True)
+
         return mu
 
+
     def recon_idx_3(coefs):
-        """reconstruct spatial structure of coefficients"""  ## reconstruct mean over equatorial region
-        coefs_struct = src.utils.reconstruct_wrapper(xr.merge([coefs['u'], anom[f'u_comp']]), fn=lambda y: reduce_x_5(reduce_z_2(y)))
-        return coefs_struct['u']  ## drop extra variables
+        """reconstruct spatial structure of coefficients"""
+
+        coefs_struct = src.utils.reconstruct_wrapper(
+            xr.merge([coefs["u"], anom[f"u_comp"]]),
+            fn=lambda y: reduce_x_5(reduce_z_2(y)),
+        )
+
+        return coefs_struct["u"]
 
     return recon_idx_3, recon_struct_4, reduce_x_5, reduce_z_2
 
@@ -2087,21 +2340,32 @@ def _(MLD, REDUCE_X, anom, src, xr):
 @app.cell
 def _(betau_proj, clim_norect, forced, recon_struct_4, reduce_z_2, src, xr):
     ## load coefs
-    betau_struct = xr.merge([recon_struct_4(betau_proj[v]).rename(v) for v in ['all', 'pos', 'neg']])
-    T_bar = src.utils.reconstruct_wrapper(xr.merge([clim_norect['T'], forced['T_comp']]), fn=lambda x: reduce_z_2(x))['T']
+    betau_struct = xr.merge(
+        [recon_struct_4(betau_proj[v]).rename(v) for v in ["all", "pos", "neg"]]
+    )
+
     # ## Get zonal T profile
+    T_bar = src.utils.reconstruct_wrapper(
+        # xr.merge([clim["T"], forced["T_comp"]]),
+        xr.merge([clim_norect["T"], forced["T_comp"]]),
+        fn=lambda x: reduce_z_2(x),
+    )["T"]
+
     ## compute zonal advective feedback
     ## mult. by 12 to convert from K/mo to K/yr
-    zaf_struct = 12 * -src.utils.get_udTdx(u=betau_struct, T=T_bar)  # xr.merge([clim["T"], forced["T_comp"]]),
+    zaf_struct = 12 * -src.utils.get_udTdx(u=betau_struct, T=T_bar)
     return betau_struct, zaf_struct
 
 
 @app.cell
 def _(SEL_MONTH, T_VAR, add_vticks, plot_zonal_structure, plt, zaf_struct):
-    for _v in [T_VAR, 'h_w']:
+    for _v in [T_VAR, "h_w"]:
         print(_v)
+
         fig_26, axs_23 = plot_zonal_structure(coefs=zaf_struct.sel(j=_v), sel_fn=SEL_MONTH)
         add_vticks(axs_23, xticks=[190, 240, 280], xlines=[190, 240])
+        # axs[0].set_ylabel(r"$T_{\text{sub}}~/~T-1$")
+
         plt.show()
     return
 
@@ -2118,6 +2382,7 @@ def _(mo):
 def _(SEL_MONTH, T_VAR, plot_timeseries, plt, reduce_x_5, zaf_struct):
     ## compute gamma
     zaf = reduce_x_5(zaf_struct)
+
     fig_27, axs_24 = plot_timeseries(coefs=zaf.sel(j=T_VAR), sel_fn=SEL_MONTH)
     plt.gca()
     return (zaf,)
@@ -2133,9 +2398,15 @@ def _(mo):
 
 @app.cell
 def _(MONTH0, T_VAR, anom, make_scatter, plt, recon_idx_3, xr):
-    scatter_data_4 = xr.merge([recon_idx_3(anom[['u']]), anom[['T_3', 'T_34', 'h_w']]])
-    for _xvar in [T_VAR, 'h_w']:
-        fig_28, axs_25 = make_scatter(scatter_data_4, xvar=_xvar, yvar='u', month=MONTH0)
+    scatter_data_4 = xr.merge(
+        [
+            recon_idx_3(anom[["u"]]),
+            anom[["T_3", "T_34", "h_w"]],
+        ]
+    )
+
+    for _xvar in [T_VAR, "h_w"]:
+        fig_28, axs_25 = make_scatter(scatter_data_4, xvar=_xvar, yvar="u", month=MONTH0)
         plt.show()
     return
 
@@ -2175,30 +2446,52 @@ def _(mo):
 def _(MLD, REDUCE_X, T_VAR, anom, src, xr):
     def reduce_x_6(x):
         """Get Tsub, but don't average over depth yet"""
+
         return REDUCE_X(x)
+
 
     def reduce_x_discrete(x):
         """Get Tsub, but don't average over depth yet"""
-        if T_VAR == 'T_3':
+
+        if T_VAR == "T_3":
             lon_range = [210, 270]
         else:
             lon_range = [190, 240]
-        return x.sel(longitude=lon_range[1], method='nearest') - x.sel(longitude=lon_range[0], method='nearest')
+
+        return x.sel(longitude=lon_range[1], method="nearest") - x.sel(
+            longitude=lon_range[0], method="nearest"
+        )
+
 
     def reduce_z_3(x):
         """Average over ML don't average over longitude yet"""
-        return x.sel(z_t=slice(None, MLD)).mean('z_t')
+
+        return x.sel(z_t=slice(None, MLD)).mean("z_t")
+
 
     def recon_struct_5(coefs):
         """post-process regression coefficients"""
-        coefs_ = src.utils.reconstruct_wrapper(xr.merge([coefs.rename('T'), anom['T_comp']]), fn=reduce_z_3)
-        mu = coefs_['T'].squeeze(drop=True)
+
+        ## reconstruct mean over equatorial region
+        coefs_ = src.utils.reconstruct_wrapper(
+            xr.merge([coefs.rename("T"), anom["T_comp"]]),
+            fn=reduce_z_3,
+        )
+        ## drop extra variables
+        mu = coefs_["T"].squeeze(drop=True)
+
         return mu
+
 
     def recon_idx_4(coefs):
         """reconstruct spatial structure of coefficients"""
-        coefs_struct = src.utils.reconstruct_wrapper(xr.merge([coefs['T'], anom[f'T_comp']]), fn=lambda y: reduce_x_discrete(reduce_z_3(y)))
-        return coefs_struct['T']  ## reconstruct mean over equatorial region  ## drop extra variables
+
+        coefs_struct = src.utils.reconstruct_wrapper(
+            xr.merge([coefs["T"], anom[f"T_comp"]]),
+            fn=lambda y: reduce_x_discrete(reduce_z_3(y)),
+        )
+
+        return coefs_struct["T"]
 
     return recon_idx_4, recon_struct_5, reduce_x_6, reduce_z_3
 
@@ -2206,21 +2499,32 @@ def _(MLD, REDUCE_X, T_VAR, anom, src, xr):
 @app.cell
 def _(betaT_proj, clim_norect, forced, recon_struct_5, reduce_z_3, src, xr):
     ## load coefs
-    betaT_struct = xr.merge([recon_struct_5(betaT_proj[v]).rename(v) for v in ['all', 'pos', 'neg']])
-    u_bar = src.utils.reconstruct_wrapper(xr.merge([clim_norect['u'], forced['u_comp']]), fn=lambda x: reduce_z_3(x))['u']
+    betaT_struct = xr.merge(
+        [recon_struct_5(betaT_proj[v]).rename(v) for v in ["all", "pos", "neg"]]
+    )
+
     ## Get u_bar
+    u_bar = src.utils.reconstruct_wrapper(
+        # xr.merge([clim["u"], forced["u_comp"]]),
+        xr.merge([clim_norect["u"], forced["u_comp"]]),
+        fn=lambda x: reduce_z_3(x),
+    )["u"]
+
     ## compute dynamical damping
     # multiply by 12 to convert from K/mo to K/yr
-    dd_struct = 12 * -src.utils.get_udTdx(u=u_bar, T=betaT_struct)  # xr.merge([clim["u"], forced["u_comp"]]),
+    dd_struct = 12 * -src.utils.get_udTdx(u=u_bar, T=betaT_struct)
     return betaT_struct, dd_struct
 
 
 @app.cell(hide_code=True)
 def _(SEL_MONTH, T_VAR, add_vticks, dd_struct, plot_zonal_structure, plt):
-    for _v in [T_VAR, 'h_w']:
+    for _v in [T_VAR, "h_w"]:
         print(_v)
+
         fig_29, axs_26 = plot_zonal_structure(coefs=dd_struct.sel(j=_v), sel_fn=SEL_MONTH)
         add_vticks(axs_26, xticks=[190, 240, 280], xlines=[190, 240])
+        # axs[0].set_ylabel(r"$T_{\text{sub}}~/~T-1$")
+
         plt.show()
     return
 
@@ -2237,6 +2541,7 @@ def _(mo):
 def _(SEL_MONTH, T_VAR, dd_struct, plot_timeseries, plt, reduce_x_6):
     ## compute gamma
     dd = reduce_x_6(dd_struct)
+
     fig_30, axs_27 = plot_timeseries(coefs=dd.sel(j=T_VAR), sel_fn=SEL_MONTH)
     plt.gca()
     return (dd,)
@@ -2252,9 +2557,15 @@ def _(mo):
 
 @app.cell
 def _(MONTH0, T_VAR, anom, make_scatter, plt, recon_idx_4, xr):
-    scatter_data_5 = xr.merge([recon_idx_4(anom[['T']]), anom[['T_3', 'T_34', 'h_w']]])
-    for _xvar in [T_VAR, 'h_w']:
-        fig_31, axs_28 = make_scatter(scatter_data_5, xvar=_xvar, yvar='T', month=MONTH0)
+    scatter_data_5 = xr.merge(
+        [
+            recon_idx_4(anom[["T"]]),
+            anom[["T_3", "T_34", "h_w"]],
+        ]
+    )
+
+    for _xvar in [T_VAR, "h_w"]:
+        fig_31, axs_28 = make_scatter(scatter_data_5, xvar=_xvar, yvar="T", month=MONTH0)
         plt.show()
     return
 
@@ -2275,10 +2586,13 @@ def _(betaT_struct, betau_struct, src):
 
 @app.cell
 def _(SEL_MONTH, T_VAR, add_vticks, ndh_struct, plot_zonal_structure, plt):
-    for _v in [T_VAR, 'h_w']:
+    for _v in [T_VAR, "h_w"]:
         print(_v)
+
         fig_32, axs_29 = plot_zonal_structure(coefs=ndh_struct.sel(j=_v), sel_fn=SEL_MONTH)
         add_vticks(axs_29, xticks=[190, 240, 280], xlines=[190, 240])
+        # axs[0].set_ylabel(r"$T_{\text{sub}}~/~T-1$")
+
         plt.show()
     return
 
@@ -2287,6 +2601,7 @@ def _(SEL_MONTH, T_VAR, add_vticks, ndh_struct, plot_zonal_structure, plt):
 def _(SEL_MONTH, T_VAR, ndh_struct, plot_timeseries, plt, reduce_x_6):
     ## compute gamma
     ndh = reduce_x_6(ndh_struct)
+
     fig_33, axs_30 = plot_timeseries(coefs=ndh.sel(j=T_VAR), sel_fn=SEL_MONTH)
     plt.gca()
     return (ndh,)
@@ -2312,10 +2627,13 @@ def _(
     zaf_struct,
 ):
     zonal_struct = zaf_struct + dd_struct + ndh_struct
-    for _v in [T_VAR, 'h_w']:
+    for _v in [T_VAR, "h_w"]:
         print(_v)
+
         fig_34, axs_31 = plot_zonal_structure(coefs=zonal_struct.sel(j=_v), sel_fn=SEL_MONTH)
         add_vticks(axs_31, xticks=[190, 240, 280], xlines=[190, 240])
+        # axs[0].set_ylabel(r"$T_{\text{sub}}~/~T-1$")
+
         plt.show()
     return
 
@@ -2362,28 +2680,52 @@ def _(mo):
 def _(anom, src, xr):
     def reduce_x_7(x):
         """Get Tsub, but don't average over depth yet"""
-        return x.sel(longitude=slice(240, 280)).mean('longitude')
-      # return REDUCE_X(x)
+
+        # return REDUCE_X(x)
+        return x.sel(longitude=slice(240,280)).mean("longitude")
+
+
     def reduce_z_4(x):
         """average over entrainment zone"""
-        return x.sel(z_t=slice(30, 80)).mean('z_t')
+
+        # return x.sel(z_t=ENT_DEPTH_RANGE).mean("z_t")
+        return x.sel(z_t=slice(30,80)).mean("z_t")
+
 
     def recon_struct_6(coefs):
         """post-process regression coefficients"""
-        coefs_ = src.utils.reconstruct_wrapper(xr.merge([coefs.rename('w'), anom['w_comp']]), fn=reduce_z_4)  # return x.sel(z_t=ENT_DEPTH_RANGE).mean("z_t")
-        mu = coefs_['w'].squeeze(drop=True)
+
+        ## reconstruct mean over equatorial region
+        coefs_ = src.utils.reconstruct_wrapper(
+            xr.merge([coefs.rename("w"), anom["w_comp"]]),
+            fn=reduce_z_4,
+        )
+        ## drop extra variables
+        mu = coefs_["w"].squeeze(drop=True)
+
         return mu
+
 
     def recon_idx_5(coefs):
         """reconstruct spatial structure of coefficients"""
-        coefs_struct = src.utils.reconstruct_wrapper(xr.merge([coefs['w'], anom[f'w_comp']]), fn=lambda y: reduce_x_7(reduce_z_4(y)))
-        return coefs_struct['w']  ## reconstruct mean over equatorial region
+
+        coefs_struct = src.utils.reconstruct_wrapper(
+            xr.merge([coefs["w"], anom[f"w_comp"]]),
+            fn=lambda y: reduce_x_7(reduce_z_4(y)),
+        )
+
+        return coefs_struct["w"]
+
 
     def get_dT(x):
         """Get diff b/n Tsub and Tsurf, but don't average over longitude yet"""
-        Tsurf = x.sel(z_t=slice(None, 30)).mean('z_t')
-        Tsub = x.sel(z_t=slice(30, 80)).mean('z_t')  ## drop extra variables
-        return Tsub - Tsurf  # Tsurf = x.sel(z_t=slice(None, MLD)).mean("z_t")  # Tsub = x.sel(z_t=ENT_DEPTH_RANGE).mean("z_t")
+
+        # Tsurf = x.sel(z_t=slice(None, MLD)).mean("z_t")
+        # Tsub = x.sel(z_t=ENT_DEPTH_RANGE).mean("z_t")
+        Tsurf = x.sel(z_t=slice(None, 30)).mean("z_t")
+        Tsub = x.sel(z_t=slice(30,80)).mean("z_t")
+
+        return Tsub - Tsurf
 
     return get_dT, recon_idx_5, recon_struct_6, reduce_x_7
 
@@ -2391,32 +2733,49 @@ def _(anom, src, xr):
 @app.cell
 def _(MLD, betaw_proj, clim, forced, get_dT, recon_struct_6, src, xr):
     ## load coefs
-    betaw_struct = xr.merge([recon_struct_6(betaw_proj[v]).rename(v) for v in ['all', 'pos', 'neg']])
-    dT_bar_struct = src.utils.reconstruct_wrapper(xr.merge([clim['T'], forced['T_comp']]), fn=get_dT)['T']
-    w_H_2 = 12 * betaw_struct / MLD
+    betaw_struct = xr.merge(
+        [recon_struct_6(betaw_proj[v]).rename(v) for v in ["all", "pos", "neg"]]
+    )
+
     ## get dTbar
+    dT_bar_struct = src.utils.reconstruct_wrapper(
+        xr.merge([clim["T"], forced["T_comp"]]),
+        fn=get_dT,
+    )["T"]
+
     ## compute ekman
     # first, scale upwelling by mixed layer depth (50 m) and convert from m/mo to m/yr
+    w_H_2 = 12 * betaw_struct / MLD
     ekf_struct = dT_bar_struct * w_H_2
     return betaw_struct, dT_bar_struct, ekf_struct
 
 
 @app.cell
 def _(T_VAR, add_vticks, betaw_struct, ekf_struct, plot_zonal_structure, plt):
-    SEL_MONTH_1 = lambda x: x.sel(month=slice(4, 6)).mean('month')
-    print('w')
+    SEL_MONTH_1 = lambda x : x.sel(month=slice(4,6)).mean("month")
+
+    ## plot upwelling structure
+    print("w")
     fig_36, axs_33 = plot_zonal_structure(coefs=betaw_struct.isel(j=0), sel_fn=SEL_MONTH_1)
     add_vticks(axs_33, xticks=[190, 240, 280], xlines=[190, 240])
     for _ax in axs_33:
         _ax.set_xlim([210, 285])
-    add_vticks(axs_33, xticks=[240, 270], xlines=[240, 270])
+    add_vticks(axs_33, xticks=[240, 270], xlines=[240,270])
+    # axs[0].set_ylabel(r"$T_{\text{sub}}~/~T-1$")
+
     plt.show()
-    for _v in [T_VAR, 'h_w']:
-        print(f'ekf ({_v})')
+
+
+    ## plot ekman structure
+    for _v in [T_VAR, "h_w"]:
+        print(f"ekf ({_v})")
+
         fig_36, axs_33 = plot_zonal_structure(coefs=ekf_struct.sel(j=_v), sel_fn=SEL_MONTH_1)
-        add_vticks(axs_33, xticks=[240, 270], xlines=[240, 270])
+        add_vticks(axs_33, xticks=[240, 270], xlines=[240,270])
         for _ax in axs_33:
             _ax.set_xlim([210, 285])
+        # axs[0].set_ylabel(r"$T_{\text{sub}}~/~T-1$")
+
         plt.show()
     return (SEL_MONTH_1,)
 
@@ -2442,11 +2801,16 @@ def _(
 ):
     ## compute EKF
     ekf = reduce_x_7(ekf_struct)
+
     fig_37, axs_34 = plot_timeseries(coefs=ekf.sel(j=T_VAR), sel_fn=SEL_MONTH_1)
     plt.show()
-    dT_bar = reduce_x_7(dT_bar_struct)
-    fig_37, axs_34 = plot_timeseries(coefs=xr.ones_like(ekf.sel(j=T_VAR)) * dT_bar, sel_fn=SEL_MONTH_1)
+
     ## compute gamma
+    dT_bar = reduce_x_7(dT_bar_struct)
+
+    fig_37, axs_34 = plot_timeseries(
+        coefs=xr.ones_like(ekf.sel(j=T_VAR)) * dT_bar, sel_fn=SEL_MONTH_1
+    )
     plt.gca()
     return (ekf,)
 
@@ -2461,9 +2825,15 @@ def _(mo):
 
 @app.cell
 def _(MONTH0, T_VAR, anom, make_scatter, plt, recon_idx_5, xr):
-    scatter_data_6 = xr.merge([recon_idx_5(anom[['w']]), anom[['T_3', 'T_34', 'h_w']]])
-    for _xvar in [T_VAR, 'h_w']:
-        fig_38, axs_35 = make_scatter(scatter_data_6, xvar=_xvar, yvar=f'w', month=MONTH0)
+    scatter_data_6 = xr.merge(
+        [
+            recon_idx_5(anom[["w"]]),
+            anom[["T_3", "T_34", "h_w"]],
+        ]
+    )
+
+    for _xvar in [T_VAR, "h_w"]:
+        fig_38, axs_35 = make_scatter(scatter_data_6, xvar=_xvar, yvar=f"w", month=MONTH0)
         plt.show()
     return
 
@@ -2487,8 +2857,11 @@ def _(MLD, betaw_struct, gamma_struct_1):
 def _(SEL_MONTH_1, add_vticks, ndh_z_struct, plot_zonal_structure, plt):
     for _v in ndh_z_struct.j.values:
         print(_v)
+
         fig_39, axs_36 = plot_zonal_structure(coefs=ndh_z_struct.sel(j=_v), sel_fn=SEL_MONTH_1)
         add_vticks(axs_36, xticks=[190, 240, 280], xlines=[190, 240])
+        # axs[0].set_ylabel(r"$T_{\text{sub}}~/~T-1$")
+
         plt.show()
     return
 
@@ -2497,6 +2870,7 @@ def _(SEL_MONTH_1, add_vticks, ndh_z_struct, plot_zonal_structure, plt):
 def _(SEL_MONTH_1, T_VAR, ndh_z_struct, plot_timeseries, plt, reduce_x_7):
     ## compute gamma
     ndh_z = reduce_x_7(ndh_z_struct)
+
     fig_40, axs_37 = plot_timeseries(coefs=ndh_z.sel(j=T_VAR), sel_fn=SEL_MONTH_1)
     plt.gca()
     return axs_37, fig_40
@@ -2514,35 +2888,67 @@ def _(mo):
 def _(anom, check_dims, src, xr):
     def reduce_y_3(x):
         """reduce over lat/lon/depth"""
+
+        ## make sure dims are all there
         x_ = check_dims(x)
-        idx = dict(longitude=slice(230, 280), z_t=slice(50, 100))  ## make sure dims are all there
-        x_ = x_.sel(idx).mean('z_t')
+
+        ## specify indices
+        idx = dict(longitude=slice(230, 280), z_t=slice(50,100))
+
+        ## average over lats
+        x_ = x_.sel(idx).mean("z_t")
+
         return x_
-      ## specify indices
+
+
     def postprocess__1(coefs, T_var):
         """post-process regression coefficients"""
-        comps = check_dims(anom[f'{T_var}_comp'])  ## average over lats
-        coefs_ = src.utils.reconstruct_wrapper(xr.merge([coefs, comps]), fn=reduce_y_3)
+
+        ## get recon components
+        comps = check_dims(anom[f"{T_var}_comp"])
+
+        ## reconstruct mean over equatorial region
+        coefs_ = src.utils.reconstruct_wrapper(
+            xr.merge([coefs, comps]),
+            fn=reduce_y_3,
+        )
+
+        ## drop extra variables
         coefs_ = coefs_[T_var].squeeze(drop=True)
-        return coefs_  ## get recon components  ## reconstruct mean over equatorial region  ## drop extra variables
+
+        return coefs_
 
     return (postprocess__1,)
 
 
 @app.cell
 def _(DIMS, anom, postprocess__1, regress_over_time, window, xr):
-    x_var_1 = 'taux_idx'
-    y_var_1 = 'w'
+    ## specify wind variable (one of "T_34", "taux_idx")
+    x_var_1 = "taux_idx"
+    # x_var = T_VAR
+
+    ## specify h-variable (one of "T", "ssh")
+    y_var_1 = "w"
+
+    ## get data for regression (OHC)
     beta_data_1 = window(xr.merge([anom[y_var_1], anom[x_var_1]]))
     _regress_kwargs = dict(x_vars=[x_var_1], y_vars=[y_var_1], dims=DIMS)
-    _regress_helper = lambda x: postprocess__1(regress_over_time(x, **_regress_kwargs), T_var=y_var_1)
-    print('regress all')
+    _regress_helper = lambda x: postprocess__1(
+        regress_over_time(x, **_regress_kwargs), T_var=y_var_1
+    )
+
+    ## do the regression
+    print("regress all")
     _beta_all = _regress_helper(beta_data_1)
-    print('regress pos')
+    print("regress pos")
     _beta_pos = _regress_helper(beta_data_1.where(beta_data_1[x_var_1] > 0))
-    print('regress neg')
+    print("regress neg")
     _beta_neg = _regress_helper(beta_data_1.where(beta_data_1[x_var_1] < 0))
-    beta_struct_1 = xr.merge([_beta_all.rename('all'), _beta_pos.rename('pos'), _beta_neg.rename('neg')])
+
+    ## merge into single dataarray
+    beta_struct_1 = xr.merge(
+        [_beta_all.rename("all"), _beta_pos.rename("pos"), _beta_neg.rename("neg")]
+    )
     return (beta_data_1,)
 
 
@@ -2556,45 +2962,81 @@ def _(mo):
 
 @app.cell
 def _(axs_37, fig_40):
-    def plot_timeseries_v2(ax, coefs, sel_fn=lambda x: x.mean('month'), norm=True, norm_center=False):
+    def plot_timeseries_v2(ax, coefs, sel_fn=lambda x: x.mean("month"), norm=True, norm_center = False):
         """plot timeseries comparison"""
+
+        ## normalize coefficients
         coefs_ = sel_fn(coefs)
-        coefs_norm = coefs_ / coefs_.isel(year=0).mean('member')['pos'].values.item()  ## normalize coefficients
+        coefs_norm = coefs_ / coefs_.isel(year=0).mean("member")["pos"].values.item()
+
+        ## select coefficients to plot
         if norm:
             plot_coefs = coefs_norm
         else:
-            plot_coefs = coefs_  ## select coefficients to plot
-        for i, (name, color) in enumerate(zip(['pos', 'neg', 'all'], ['r', 'b', 'k'])):
-            if name == 'all':
+            plot_coefs = coefs_
+
+        ## loop thru pos and negative
+        for i, (name, color) in enumerate(zip(["pos", "neg", "all"], ["r", "b", "k"])):
+
+            ## plot median and bounds
+            if name == "all":
                 q_vals = [0.5]
             else:
                 q_vals = [0.5, 0.1, 0.9]
-            for q, lw in zip(q_vals, [2, 0.6, 0.6]):  ## loop thru pos and negative
-                ax.plot(plot_coefs.year, plot_coefs[name].quantile(q=q, dim='member'), c=color, lw=lw)
+
+            for q, lw in zip(q_vals, [2, 0.6, 0.6]):
+
+                ## finally, plot data
+                ax.plot(
+                    plot_coefs.year,
+                    plot_coefs[name].quantile(q=q, dim="member"),
+                    c=color,
+                    lw=lw,
+                )
+
+        ## formatting
         ax.set_xticks([1870, 2010, 2080])
-        ax_kwargs = dict(ls='--', c='gray', lw=0.8)  ## plot median and bounds
+        ax_kwargs = dict(ls="--", c="gray", lw=0.8)
         ax.axvline(2010, **ax_kwargs)
         ax.axhline(0, **ax_kwargs)
-        return (fig_40, axs_37)
+        # ax.set_yticks([])
 
-    def plot_timeseries_v2_all(ax, coefs, sel_fn=lambda x: x.mean('month'), norm=True, norm_center=False):
+        return fig_40, axs_37
+
+    def plot_timeseries_v2_all(ax, coefs, sel_fn=lambda x: x.mean("month"), norm=True, norm_center=False):
         """plot timeseries comparison"""
+
+        ## normalize coefficients
         coefs_ = sel_fn(coefs)
-        coefs_norm = coefs_ / coefs_.isel(year=0).mean('member')['all'].values.item()  ## finally, plot data
+        coefs_norm = coefs_ / coefs_.isel(year=0).mean("member")["all"].values.item()
         coefs_norm_center = coefs_norm - 1
+
+        ## select coefficients to plot
         if norm_center:
             plot_coefs = coefs_norm_center
         elif norm:
             plot_coefs = coefs_norm
         else:
             plot_coefs = coefs_
-        for q, lw in zip([0.5, 0.1, 0.9], [2, 0.6, 0.6]):  ## formatting
-            ax.plot(plot_coefs.year, plot_coefs['all'].quantile(q=q, dim='member'), c='k', lw=lw)
+
+        for q, lw in zip([0.5, 0.1, 0.9], [2, 0.6, 0.6]):
+
+            ## finally, plot data
+            ax.plot(
+                plot_coefs.year,
+                plot_coefs["all"].quantile(q=q, dim="member"),
+                c="k",
+                lw=lw,
+            )
+
+        ## formatting
         ax.set_xticks([1870, 2010, 2080])
-        ax_kwargs = dict(ls='--', c='gray', lw=0.8)
+        ax_kwargs = dict(ls="--", c="gray", lw=0.8)
         ax.axvline(2010, **ax_kwargs)
-        ax.axhline(0, **ax_kwargs)  # ax.set_yticks([])
-        return (fig_40, axs_37)  ## normalize coefficients  ## select coefficients to plot  ## finally, plot data  ## formatting  # ax.set_yticks([])
+        ax.axhline(0, **ax_kwargs)
+        # ax.set_yticks([])
+
+        return fig_40, axs_37
 
     return plot_timeseries_v2, plot_timeseries_v2_all
 
@@ -2625,37 +3067,80 @@ def _(mo):
 
 @app.cell
 def _(MLD, ah, beta, gamma, mu, plot_timeseries_v2_all, plt, save, src, w_bar):
+    ## should we save plots?
     do_save_THF = False
-    for plot_months, plot_name in zip([slice(1, 12), slice(10, 12)], ['all', 'OND']):
-        _kwargs = dict(sel_fn=lambda x: x.sel(month=plot_months).mean('month'), norm_center=True)
+
+    for plot_months, plot_name in zip([slice(1,12), slice(10,12)], ["all", "OND"]):
+
+        ## specify which months to plot
+        _kwargs = dict(sel_fn = lambda x : x.sel(month=plot_months).mean("month"), norm_center=True)
+    
+        ## get normalized w
         w_bar_norm = w_bar / w_bar.isel(year=0)
-        fig_41, axs_38 = plt.subplots(1, 3, figsize=(7.5, 2.5), layout='constrained')
+    
+        fig_41, axs_38 = plt.subplots(1, 3, figsize=(7.5, 2.5), layout="constrained")
+    
+        ## mu
         plot_timeseries_v2_all(axs_38[0], coefs=mu, **_kwargs)
+    
+        ## beta
         plot_timeseries_v2_all(axs_38[1], coefs=beta, **_kwargs)
+    
+        ## THERMAL expansion
         plot_timeseries_v2_all(axs_38[2], coefs=ah, **_kwargs)
-        _labels = ['a) $\\mu$', 'b) $\\beta$', 'c) $a_h$']
+    
+        ## label
+        _labels = [r"a) $\mu$", r"b) $\beta$", r"c) $a_h$"]
+    
         for _ax, _label in zip(axs_38, _labels):
-            _ax.set_title(_label, loc='left')
-        axs_38[0].set_yticks([-0.2, 0, 0.2])
+            _ax.set_title(_label, loc="left")
+    
+        ##formatting
+        axs_38[0].set_yticks([-.2, 0, .2])
         src.utils.set_lims(axs_38)
         for _ax in axs_38[1:]:
             _ax.set_yticks([])
-        axs_38[0].set_ylabel('Frac. change')
-        save(fig_41, fname=f'THF_all_pt1_{plot_name}', do_save=do_save_THF)
+        axs_38[0].set_ylabel("Frac. change")
+    
+        save(fig_41, fname=f"THF_all_pt1_{plot_name}", do_save=do_save_THF)
+    
         plt.show()
-        _kwargs = dict(sel_fn=lambda x: x.sel(month=plot_months).mean('month'))
-        fig_41, axs_38 = plt.subplots(1, 3, figsize=(7.5, 2.5), layout='constrained')
-        plot_timeseries_v2_all(axs_38[0], coefs=mu * beta * ah - 1, norm=False, **_kwargs)
-        plot_timeseries_v2_all(axs_38[1], coefs=12 * w_bar / MLD * (mu * beta * ah - 1), norm=False, **_kwargs)
-        plot_timeseries_v2_all(axs_38[2], coefs=12 * w_bar / MLD * gamma, norm=False, **_kwargs)
-        _labels = ['d) $\\hat{\\eta} = \\mu\\cdot \\beta \\cdot a_h-1$', 'e) $\\frac{\\overline{w}}{H}\\cdot\\hat{\\eta}$', 'f) $\\frac{\\overline{w}}{H}\\cdot\\eta$ (direct estimate)']
+    
+        ##### Pt 2: Direct vs. indirect
+    
+        ## specify which months to plot
+        _kwargs = dict(sel_fn = lambda x : x.sel(month=plot_months).mean("month"))
+    
+        fig_41, axs_38 = plt.subplots(1, 3, figsize=(7.5, 2.5), layout="constrained")
+    
+        ## product
+        plot_timeseries_v2_all(axs_38[0], coefs=mu * beta * ah-1, norm=False, **_kwargs)
+    
+        ## product
+        plot_timeseries_v2_all(axs_38[1], coefs=12*w_bar/MLD * (mu * beta * ah-1), norm=False, **_kwargs)
+    
+        ## direct estimate
+        plot_timeseries_v2_all(axs_38[2], coefs=12*w_bar/MLD * (gamma), norm=False, **_kwargs)
+    
+    
+        ## label
+        _labels = [
+            r"d) $\hat{\eta} = \mu\cdot \beta \cdot a_h-1$",
+            r"e) $\frac{\overline{w}}{H}\cdot\hat{\eta}$",
+            r"f) $\frac{\overline{w}}{H}\cdot\eta$ (direct estimate)",
+        ]
         for _ax, _label in zip(axs_38, _labels):
-            _ax.set_title(_label, loc='left')
+            _ax.set_title(_label, loc="left")
+            # ax.axvline(2050)
+    
+        ##formatting
         src.utils.set_lims(axs_38[1:])
         axs_38[-1].set_yticks([])
-        axs_38[0].set_ylabel('$K$')
-        axs_38[1].set_ylabel('$K/yr$')
-        save(fig_41, fname=f'THF_all_pt2_{plot_name}', do_save=do_save_THF)
+        axs_38[0].set_ylabel(r"$K$")
+        axs_38[1].set_ylabel(r"$K/yr$")
+    
+        save(fig_41, fname=f"THF_all_pt2_{plot_name}", do_save=do_save_THF)
+    
         plt.show()
     return
 
@@ -2680,41 +3165,66 @@ def _(mo):
 def _(ENT_AVG, REDUCE_X, T_VAR, ah, anom, beta, gamma, mu, src, window):
     ## should we use dh in pred?
     USE_DH_PRED = False
-    eta_hat = (mu * beta * ah).mean('member')
-    eta = (gamma + 1).mean('member')
-    T = window(anom[T_VAR])
-    hw = window(anom['h_w'])
+
+    eta_hat = (mu * beta * ah).mean("member")
+    eta = (gamma+1).mean("member")
+
     ## get data for regression
-    Tsub_hat0 = eta_hat * T.groupby('time.month')
-    Tsub_hat1 = eta * T.groupby('time.month')
-    if USE_DH_PRED:
+    T = window(anom[T_VAR])
+    hw = window(anom["h_w"])
+
     ## get predictions
-        ah_ens = ah.mean('member')
-        Tsub_hat0 = Tsub_hat0 + ah_ens * hw.groupby('time.month')
-        Tsub_hat1 = Tsub_hat1 + ah_ens * hw.groupby('time.month')
+    Tsub_hat0 = eta_hat * T.groupby("time.month")
+    Tsub_hat1 = eta * T.groupby("time.month")
+
     ## account for hw if desired
+    if USE_DH_PRED:
+    
+        ## get dh prediction
+        ah_ens = ah.mean("member")
+
+        ## to-do: fix prediction for Tsub_hat1 to use estimated gamma coef
+        Tsub_hat0 = Tsub_hat0 + (ah_ens * hw.groupby("time.month"))
+        Tsub_hat1 = Tsub_hat1 + (ah_ens * hw.groupby("time.month"))
+
     ## get ground truth
-    Tsub = window(src.utils.reconstruct_fn(scores=anom['T'], components=anom['T_comp'], fn=lambda x: REDUCE_X(ENT_AVG(x))))  ## get dh prediction  ## to-do: fix prediction for Tsub_hat1 to use estimated gamma coef
+    Tsub = window(
+        src.utils.reconstruct_fn(
+            scores=anom["T"],
+            components=anom["T_comp"],
+            fn = lambda x : REDUCE_X(ENT_AVG(x)),
+        )
+    )
     return T, Tsub, Tsub_hat0, Tsub_hat1, eta, eta_hat
 
 
 @app.cell
 def _(MONTH0, T, Tsub, Tsub_hat0, Tsub_hat1, make_scatter, np, plt, xr):
-    reg_type = 'pos'
-    scatter_data_7 = xr.merge([T.rename('T'), Tsub.rename('Tsub'), Tsub_hat0[reg_type].rename('indirect'), Tsub_hat1[reg_type].rename('direct')])
-    for y_1 in ['direct', 'indirect']:
+    ## specify which part of regression to plot
+    reg_type = "pos"
+
+    scatter_data_7 = xr.merge(
+        [
+            T.rename("T"),
+            Tsub.rename("Tsub"), 
+            Tsub_hat0[reg_type].rename("indirect"), 
+            Tsub_hat1[reg_type].rename("direct"),
+        ]
+    )
+    for y_1 in ["direct", "indirect"]:
         print(y_1)
-        fig_42, axs_39 = make_scatter(scatter_data_7, xvar='Tsub', yvar=y_1, month=MONTH0)
+        fig_42, axs_39 = make_scatter(scatter_data_7, xvar="Tsub", yvar=y_1, month=MONTH0)
         for _ax in axs_39:
-            _zz = np.linspace(-4, 4)
-            _ax.plot(_zz, _zz, lw=1, c='k')
+            _zz = np.linspace(-4,4)
+            _ax.plot(_zz,_zz, lw=1, c="k")
         plt.show()
-    print('direct vs. indirect')
-    fig_42, axs_39 = make_scatter(scatter_data_7, xvar='direct', yvar='indirect', month=MONTH0)
+
+    print("direct vs. indirect")
+    fig_42, axs_39 = make_scatter(scatter_data_7, xvar="direct", yvar="indirect", month=MONTH0)
     for _ax in axs_39:
-        _zz = np.linspace(-4, 4)
-        _ax.plot(_zz, _zz, lw=1, c='k')
-        _ax.set_aspect('equal')
+        _zz = np.linspace(-4,4)
+        _ax.plot(_zz,_zz, lw=1, c="k")
+        _ax.set_aspect("equal")
     plt.gca()
     return (scatter_data_7,)
 
@@ -2732,26 +3242,48 @@ def _(
     save,
     scatter_data_7,
 ):
-    _zz_pos = np.linspace(0, 4)
-    _zz_neg = np.linspace(-4, 0)
-    _get = lambda x: x.values.item()
-    fig_43, axs_40 = make_scatter(scatter_data_7, xvar='T', yvar='Tsub', month=MONTH0, c='gray', alpha=0.5, verbose=False, by_season=False)
-    _labels = ['a)', 'b)', 'c)', 'd)']
+    ## pos/neg values for regression
+    _zz_pos = np.linspace(0,4)
+    _zz_neg = np.linspace(-4,0)
+
+    ## helperfunc
+    _get = lambda x : x.values.item()
+
+    fig_43, axs_40 = make_scatter(
+        scatter_data_7, xvar="T", yvar="Tsub", month=MONTH0, c="gray", alpha=.5, verbose=False, by_season=False
+    )
+
+    ## labels
+    _labels = ["a)", "b)", "c)", "d)"]
     for _ax, label_ in zip(axs_40, _labels):
+
+        ## get year
         y_2 = int(_ax.get_title())
-        get_helper = lambda x: _get(SEL_MONTH_1(x).sel(year=y_2))
-        for eta_, c, l in zip([eta_hat, eta], ['k', 'magenta'], ['indirect', 'direct']):
-            for _zz, _n, ls in zip([_zz_neg, _zz_pos], ['neg', 'pos'], ['--', '-']):
-                _label = None if _n == 'pos' else l
-                _ax.plot(_zz, _zz * get_helper(eta_[_n]), c=c, ls=ls, lw=2.5, label=_label)
-        _ax.set_xticks([-4, 0, 4])
-        _ax.set_xlabel('$T_{\\text{surf}}$')
-        _ax.set_title('')
-        _ax.set_title(f'{label_} {y_2}', loc='left')
-    axs_40[0].set_ylabel('$T_{\\text{sub}}$')
-    axs_40[0].set_yticks([-4, 0, 4])
+
+        ## helper func to get data
+        get_helper = lambda x : _get(SEL_MONTH_1(x).sel(year=y_2))
+    
+        for eta_, c, l in zip([eta_hat, eta], ["k", "magenta"], [r"indirect",r"direct"]):
+            for _zz, _n, ls in zip([_zz_neg, _zz_pos], ["neg", "pos"], ["--","-"]):
+                _label = None if (_n=="pos") else l
+                _ax.plot(_zz, _zz*get_helper(eta_[_n]), c=c, ls=ls, lw=2.5, label=_label)
+
+        ## do some formatting
+        _ax.set_xticks([-4,0,4])
+        _ax.set_xlabel(r"$T_{\text{surf}}$")
+
+        ## update title
+        _ax.set_title("")
+        _ax.set_title(f"{label_} {y_2}", loc="left")
+
+    ## do some formatting
+    axs_40[0].set_ylabel(r"$T_{\text{sub}}$")
+    axs_40[0].set_yticks([-4,0,4])
     axs_40[0].legend(prop=dict(size=8))
-    save(fig_43, fname=f'THF_bias_overtime_{T_VAR}', do_save=False)
+
+    ## save to file
+    save(fig_43, fname=f"THF_bias_overtime_{T_VAR}", do_save=False)
+
     plt.gca()
     return (ls,)
 
@@ -2780,33 +3312,72 @@ def _(
     src,
     xr,
 ):
-    scatter_data2 = xr.merge([scatter_data_7[['T', 'Tsub']], beta_data_1[['taux_idx', 'dh', 'he', 'hw']]])
-    scatter_data2['dT'] = scatter_data2['Tsub'] - scatter_data2['T']
-    hw_dot_ah = scatter_data2['hw'].groupby('time.month') * ah['all']
-    scatter_data2['dT_prime'] = scatter_data2['dT'] - hw_dot_ah
-    _kwargs = dict(by_season=False, month=12, label='', verbose=False, alpha=0.5, c='gray')
-    plot_stuff = [('T', 'taux_idx', mu, 4, '$\\tau_x$', '$T$'), ('taux_idx', 'dh', beta, 0.025, '$h_e-h_w$', '$\\tau_x$'), ('he', 'Tsub', ah, 50, '$T_{sub}$', '$h_e$'), ('T', 'dT', mu * beta * ah - 1, 2.5, '$T_{sub}-T$', '$T$')]
-    fig_44, axs_41 = plt.subplots(4, 4, figsize=(12, 10), layout='constrained')
+    scatter_data2 = xr.merge([
+        scatter_data_7[["T","Tsub"]], beta_data_1[["taux_idx", "dh", "he", "hw"]],
+    ])
+    scatter_data2["dT"] = scatter_data2["Tsub"]-scatter_data2["T"]
+
+    ## get hw * ah
+    hw_dot_ah = scatter_data2["hw"].groupby("time.month") * ah["all"]
+    scatter_data2["dT_prime"] = scatter_data2["dT"] - hw_dot_ah
+
+    ## shared args
+    _kwargs = dict(by_season=False, month=12, label="", verbose=False, alpha=.5, c="gray")
+
+    ## specify things to plot
+    plot_stuff = [
+        ("T", "taux_idx", mu, 4, r"$\tau_x$", "$T$"),
+        ("taux_idx", "dh", beta, .025, r"$h_e-h_w$", r"$\tau_x$"),
+        # ("taux_idx", "he", beta_he, .025),
+        ("he", "Tsub", ah, 50, r"$T_{sub}$", "$h_e$"),
+        ("T", "dT", mu*beta*ah-1, 2.5, r"$T_{sub}-T$", "$T$"),
+        # ("T", "dT_prime", mu*beta*ah-1, 2.5, r"$T_{sub}-T$", "$T$"),
+        # ("T", "Tsub", mu*beta*ah, 4, r"$T_{sub}$", "$T$"),
+    ]
+
+
+    fig_44, axs_41 = plt.subplots(4, 4, figsize=(12,10), layout="constrained")
+
     for j, y_3 in enumerate([1870, 2010, 2050, 2080]):
+
+        ## plot data
         for _ax, (_xvar, _yvar, _param, amp, ylabel, xlabel) in zip(axs_41[j], plot_stuff):
+    
+            ## scatter plot of data
             make_scatter_ax(_ax, xvar=_xvar, yvar=_yvar, anom_=scatter_data2.sel(year=y_3), **_kwargs)
-            _get = lambda x: x.sel(year=y_3, month=_kwargs['month']).mean(['member']).values.item()
-            _zz_pos = np.linspace(0, amp)
-            _zz_neg = np.linspace(-amp, 0)
+    
+            ## plot best fit
+            _get = lambda x : x.sel(year=y_3, month=_kwargs["month"]).mean(["member"]).values.item()
+    
+            ## test points
+            _zz_pos = np.linspace(0,amp)
+            _zz_neg = np.linspace(-amp,0)
             zz_all = np.linspace(-amp, amp)
-            if 'dT' in _yvar:
-                _ax.plot(zz_all, zz_all * _get(gamma['all']), c='magenta', ls=ls, lw=2.5)
+    
+            ## plot pos/neg
+            if ("dT" in _yvar):
+                _ax.plot(zz_all, zz_all*_get(gamma["all"]), c="magenta", ls=ls, lw=2.5)
+
             else:
                 pass
-            _ax.plot(zz_all, zz_all * _get(_param['all']), c='k', ls='--', lw=2.5)
+                # for zz, n, ls in zip([zz_neg, zz_pos], ["neg", "pos"], ["--","-"]):
+                #     ax.plot(zz, zz*get(param[n]), c="k", ls=ls, lw=2.5)
+            
+    
+            ## plot all
+            _ax.plot(zz_all, zz_all*_get(_param["all"]), c="k", ls="--", lw=2.5, )
+    
             _ax.set_xlabel(xlabel)
             _ax.set_ylabel(ylabel)
+
     for k in range(4):
-        src.utils.set_lims(axs_41[:, k])
-    for j in range(axs_41.shape[0] - 1):
+        src.utils.set_lims(axs_41[:,k])
+    for j in range(axs_41.shape[0]-1):
         for _ax in axs_41[j]:
             _ax.set_xticks([])
-    save(fig_44, 'thf_scatter_comp', do_save=False)
+
+    save(fig_44, "thf_scatter_comp", do_save=False)
+    
     plt.gca()
     return
 
@@ -2841,15 +3412,29 @@ def _(T, anom, mu, src, window):
 
 @app.cell
 def _(MONTH0, SEL_MONTH_1, T, error, make_scatter, mu, np, plt, taux, xr):
-    scatter_data_8 = xr.merge([error.rename('error'), taux.rename('taux'), T.rename('T')])
-    fig_45, axs_42 = make_scatter(scatter_data_8.where(T > 0), xvar='T', yvar='error', month=MONTH0)
+    scatter_data_8 = xr.merge(
+        [
+            error.rename("error"),
+            taux.rename("taux"),
+            T.rename("T"),
+        ]
+    )
+
+    ## plot error
+    fig_45, axs_42 = make_scatter(scatter_data_8.where(T>0), xvar="T", yvar="error", month=MONTH0)
+
     plt.show()
-    fig_45, axs_42 = make_scatter(scatter_data_8.where(T > 0), xvar='T', yvar='taux', month=MONTH0)
+
+    ## plot prediction
+    fig_45, axs_42 = make_scatter(scatter_data_8.where(T>0), xvar="T", yvar="taux", month=MONTH0)
+
     for _ax in axs_42:
-        _zz = np.linspace(0, 4)
+        _zz = np.linspace(0,4)
+
         y_4 = int(_ax.get_title())
-        mu_ = SEL_MONTH_1(mu['pos']).sel(year=y_4).mean('member').values.item()
-        _ax.plot(_zz, mu_ * _zz, c='k')
+        mu_ = SEL_MONTH_1(mu["pos"]).sel(year=y_4).mean("member").values.item()
+        _ax.plot(_zz, mu_*_zz, c="k")
+
     plt.gca()
     return
 
@@ -2895,14 +3480,21 @@ def _(mo):
 
 @app.cell
 def _(R, R_check, SEL_MONTH_1, coefs, plt, src):
-    sel_3 = lambda x: SEL_MONTH_1(x).mean('member')
+    sel_3 = lambda x: SEL_MONTH_1(x).mean("member")
+    # sel = lambda x: SEL_MONTH(x).mean("member")
+
+    ## check R matches
     fig_46, axs_43 = plt.subplots(1, 3, figsize=(7.5, 2.5))
     for _ax, _n in zip(axs_43, list(coefs)):
         _ax.set_title(_n)
-        _ax.plot(R.year, sel_3(R[_n]), c='k')
-        _ax.plot(R.year, sel_3(R_check[_n]), c='orange', ls='--')
+        _ax.plot(R.year, sel_3(R[_n]), c="k")
+        _ax.plot(R.year, sel_3(R_check[_n]), c="orange", ls="--")
+        # ax.plot(R.year, sel(eps[n]), c="green")
+        # ax.axvline(2030)
+
+
     for _ax in axs_43:
-        _ax.axhline(0, ls='--', c='k', lw=0.8)
+        _ax.axhline(0, ls="--", c="k", lw=0.8)
     for _ax in axs_43[1:]:
         _ax.set_yticks([])
     src.utils.set_lims(axs_43)
@@ -2945,38 +3537,65 @@ def _(plot_timeseries_v2, src):
 
 @app.cell
 def _(MLD, R, alpha, copy, eps, plot_R_comparison, plt, save):
+    ## scale alpha by MLD
     MLD_ALPHA = copy.deepcopy(MLD)
     alpha_scaled = MLD / MLD_ALPHA * alpha
-    SEL_ALL = lambda x: x.sel(month=slice(1, 12)).mean('month')
-    SEL_OND = lambda x: x.sel(month=slice(10, 12)).mean('month')
-    fig_47, axs_44 = plt.subplots(2, 4, figsize=(10, 5), layout='constrained')
+
+    SEL_ALL = lambda x: x.sel(month=slice(1, 12)).mean("month")
+    SEL_OND = lambda x: x.sel(month=slice(10, 12)).mean("month")
+
+    ## shared args
+
+    fig_47, axs_44 = plt.subplots(2, 4, figsize=(10, 5), layout="constrained")
+
     axs_44[0] = plot_R_comparison(axs_44[0], R=R, eps=eps, alpha=alpha_scaled, sel_fn=SEL_ALL)
     axs_44[1] = plot_R_comparison(axs_44[1], R=R, eps=eps, alpha=alpha_scaled, sel_fn=SEL_OND)
-    _labels = ['$R-\\varepsilon$', '$R$', '$\\alpha$', '$R_o=R+\\alpha$']
+
+    ## formatting
+    _labels = [r"$R-\varepsilon$", r"$R$", r"$\alpha$", r"$R_o=R+\alpha$"]
     for _ax, _label in zip(axs_44[0], _labels):
         _ax.set_title(_label)
+    
     for _ax in axs_44[0]:
         _ax.set_xticks([])
-    axs_44[0, 0].set_yticks([-1, 0, 1])
-    axs_44[0, 1].set_yticks([0, 2, 4])
-    axs_44[1, 0].set_yticks([0, -1, -2])
-    axs_44[1, 1].set_yticks([0, 1, 2])
-    axs_44[0, -1].text(s='All months', x=1.1, y=0.5, transform=axs_44[0, -1].transAxes)
-    axs_44[1, -1].text(s='OND', x=1.1, y=0.5, transform=axs_44[1, -1].transAxes)
-    save(fig_47, fname=f'GR_comp', do_save=True)
+    
+    axs_44[0,0].set_yticks([-1,0,1])
+    axs_44[0,1].set_yticks([0, 2, 4])
+    axs_44[1,0].set_yticks([0, -1, -2])
+    axs_44[1,1].set_yticks([0, 1, 2])
+
+    axs_44[0,-1].text(s="All months", x=1.1, y=0.5, transform=axs_44[0,-1].transAxes)
+    axs_44[1,-1].text(s="OND", x=1.1, y=0.5, transform=axs_44[1,-1].transAxes)
+
+    ## save to file
+    save(fig_47, fname=f"GR_comp", do_save=True)
+
     plt.gca()
     return
 
 
 @app.cell
 def _(F1, F2, plot_timeseries_v2, plt):
-    SEL = lambda x: x.mean('month')
+    SEL = lambda x: x.mean("month")
+    # SEL = lambda x : x.sel(month=[11,12,1,2]).mean("month")
+
+    ## shared args
     _kwargs = dict(sel_fn=SEL, norm=False)
-    fig_48, axs_45 = plt.subplots(1, 3, figsize=(7.5, 2.5), layout='constrained')
+
+    fig_48, axs_45 = plt.subplots(1, 3, figsize=(7.5, 2.5), layout="constrained")
+
+    ## F1
     plot_timeseries_v2(axs_45[0], coefs=F1, **_kwargs)
+
+    ## F2
     plot_timeseries_v2(axs_45[1], coefs=F2, **_kwargs)
+
+    ## Product
     plot_timeseries_v2(axs_45[2], coefs=F1 * F2, **_kwargs)
-    _labels = ['F1', 'F2', 'F1*F2']
+
+
+    ## label
+    _labels = ["F1", "F2", "F1*F2"]
     for _ax, _label in zip(axs_45, _labels):
         _ax.set_title(_label)
     plt.gca()
@@ -3005,38 +3624,99 @@ def _(
     zaf,
 ):
     j_var = T_VAR
+
     YEARS = [1870, 2010, 2050, 2080]
     colors = cmocean.cm.balance(np.linspace(0.2, 0.8, len(YEARS)))
-    for _param, name in zip([R - eps, R, mu, mu * beta * ah - 1, gamma, alpha, (zaf + dd + ndh).sel(j=j_var), ekf.sel(j=j_var), thf.sel(j=j_var)], ['R-eps', 'R', 'mu', 'mu*beta*ah-1', '$\\gamma$', '$\\alpha$', 'zonal', 'EKF', 'THF']):
+
+    for _param, name in zip(
+        [
+            R - eps,
+            R,
+            mu,
+            mu * beta * ah - 1,
+            gamma,
+            alpha,
+            (zaf + dd + ndh).sel(j=j_var),
+            ekf.sel(j=j_var),
+            thf.sel(j=j_var),
+            # dT_bar * xr.ones_like(thf.sel(j=j_var)),
+            # w_bar * xr.ones_like(thf.sel(j=j_var)),
+        ],
+        [
+            "R-eps",
+            "R",
+            "mu",
+            "mu*beta*ah-1",
+            r"$\gamma$",
+            r"$\alpha$",
+            "zonal",
+            "EKF",
+            "THF",
+            # r"$\Delta_z\overline{T}$",
+            # r"$\overline{w}$",
+        ],
+    ):
+
         print(name)
-        fig_49, axs_46 = plt.subplots(1, 3, figsize=(9, 3), layout='constrained')
-        for _ax, _n in zip(axs_46, ['all', 'pos', 'neg']):
+
+        fig_49, axs_46 = plt.subplots(1, 3, figsize=(9, 3), layout="constrained")
+
+        for _ax, _n in zip(axs_46, ["all", "pos", "neg"]):
             _ax.set_title(_n)
-            _ax.axhline(0, ls='--', c='k', lw=0.8)
+            _ax.axhline(0, ls="--", c="k", lw=0.8)
             for i, y_5 in enumerate(YEARS):
-                _ax.plot(R_check.month, _param[_n].mean('member').sel(year=y_5), label=y_5, c=colors[i])
+                _ax.plot(
+                    R_check.month, _param[_n].mean("member").sel(year=y_5), label=y_5, c=colors[i]
+                )
+
         src.utils.set_lims(axs_46)
         for _ax in axs_46[1:]:
             _ax.set_yticks([])
         axs_46[0].legend(prop=dict(size=10))
-        axs_46[0].set_ylabel('yr$^{-1}$')
+        axs_46[0].set_ylabel(r"yr$^{-1}$")
         for _ax in axs_46:
-            _ax.set_xticks([1, 5, 12], labels=['Jan', 'May', 'Dec'])
+            _ax.set_xticks([1,5,12], labels=["Jan","May","Dec"])
+
         plt.show()
     return
 
 
 @app.cell
 def _(R, T_VAR, alpha, plt, src, thf, zaf):
+    ## what value to use for R
     R_VAL = R
+    # R_VAL = R-eps
+
+    ## plot amplitude
     _AMP = 1.5
+
+    ## helper func. to get diff
     _get_delta = lambda x: x - x.isel(year=0)
-    for _F, _label in zip([R_VAL.expand_dims(j=[T_VAR]), -alpha.expand_dims(j=[T_VAR]), (R_VAL + alpha).expand_dims(j=[T_VAR]), thf], ['R', '$-alpha$', '$Ro$', 'THF']):
-        print(f'\n\n{_label}')
+
+
+    for _F, _label in zip(
+        [
+            R_VAL.expand_dims(j=[T_VAR]),
+            -alpha.expand_dims(j=[T_VAR]),
+            (R_VAL + alpha).expand_dims(j=[T_VAR]),
+            thf,
+        ],
+        ["R", r"$-alpha$", r"$Ro$", "THF"],
+    ):
+        print(f"\n\n{_label}")
         fig_50, axs_47 = plt.subplots(1, 3, figsize=(6, 4))
-        for _ax, _n in zip(axs_47, ['all', 'pos', 'neg']):
-            _ax.contourf(zaf.month, zaf.year, _get_delta(_F[_n].isel(j=0).mean('member')).transpose('year', ...), cmap='cmo.balance', levels=src.utils.make_cb_range(_AMP, _AMP / 10), extend='both')
-            _ax.axhline(2010, c='k', ls='--', lw=0.8)
+
+        for _ax, _n in zip(axs_47, ["all", "pos", "neg"]):
+            _ax.contourf(
+                zaf.month,
+                zaf.year,
+                _get_delta(_F[_n].isel(j=0).mean("member")).transpose("year", ...),
+                cmap="cmo.balance",
+                levels=src.utils.make_cb_range(_AMP, _AMP / 10),
+                extend="both",
+            )
+
+            _ax.axhline(2010, c="k", ls="--", lw=0.8)
             _ax.set_yticks([])
         axs_47[0].set_yticks([1870, 2010, 2085])
         plt.show()
@@ -3045,14 +3725,44 @@ def _(R, T_VAR, alpha, plt, src, thf, zaf):
 
 @app.cell
 def _(R, T_VAR, ah, alpha, beta, ekf, eps, gamma, mu, plt, src, thf, zaf):
+    ## specify feedback
+    # F = (zaf+dd+ndh)
+    # F = thf
+    # F = ekf
+    # F = R.expand_dims(j=[T_VAR])
+
     _get_delta = lambda x: x - x.isel(year=0)
     _AMP = 2
-    for _F, _label in zip([(R - eps).expand_dims(j=[T_VAR]), thf, 2 * (mu * ah * beta).expand_dims(j=[T_VAR]), 4 * gamma.expand_dims(j=[T_VAR]), ekf, zaf, -alpha.expand_dims(j=[T_VAR])], ['R', 'thf', 'mu*beta*ah', 'gamma', 'ekf', 'zonal', '-alpha']):
-        print(f'\n\n{_label}')
+    # get_delta = lambda x : x
+    # AMP = 2
+
+    for _F, _label in zip(
+        [
+            (R-eps).expand_dims(j=[T_VAR]),
+            thf,
+            2 * (mu * ah * beta).expand_dims(j=[T_VAR]),
+            4 * gamma.expand_dims(j=[T_VAR]),
+            ekf,
+            # zaf+dd+ndh,
+            zaf,
+            -alpha.expand_dims(j=[T_VAR]),
+        ],
+        ["R", "thf", "mu*beta*ah", "gamma", "ekf", "zonal", "-alpha"],
+    ):
+        print(f"\n\n{_label}")
         fig_51, axs_48 = plt.subplots(1, 3, figsize=(6, 4))
-        for _ax, _n in zip(axs_48, ['all', 'pos', 'neg']):
-            _ax.contourf(zaf.month, zaf.year, _get_delta(_F[_n].isel(j=0).mean('member')).transpose('year', ...), cmap='cmo.balance', levels=src.utils.make_cb_range(_AMP, _AMP / 10), extend='both')
-            _ax.axhline(2010, c='k', ls='--', lw=0.8)
+
+        for _ax, _n in zip(axs_48, ["all", "pos", "neg"]):
+            _ax.contourf(
+                zaf.month,
+                zaf.year,
+                _get_delta(_F[_n].isel(j=0).mean("member")).transpose("year", ...),
+                cmap="cmo.balance",
+                levels=src.utils.make_cb_range(_AMP, _AMP / 10),
+                extend="both",
+            )
+
+            _ax.axhline(2010, c="k", ls="--", lw=0.8)
             _ax.set_yticks([])
         axs_48[0].set_yticks([1870, 2010, 2085])
         plt.show()

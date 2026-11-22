@@ -41,7 +41,10 @@ the layout and the key scripts, in the order they run.
   `MPLBACKEND=Agg envs/bin/python <script>.py`, run from `scripts/cesm2`.
 - Run on the current Casper node by default. Submit PBS jobs (`qsub -A UHWM0049 -q casper`)
   only for parallel or heavy work, e.g. running many scripts at once.
-- pytest is not installed in `envs/` yet.
+- Install packages with mamba, not pip:
+  `/glade/u/apps/opt/conda/bin/mamba install -p ./envs -c conda-forge <pkg>`, and add them to
+  `env.yml`. Dry-run first (`--dry-run`) and check what else it would change.
+- Tests: `envs/bin/python -m pytest tests`.
 
 ## Conventions
 
