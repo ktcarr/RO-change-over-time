@@ -258,3 +258,28 @@ def plot_hov_grid(warm, cold, rows, figsize, nino34_lons=(190, 240), year_line=2
                 )
 
     return fig
+
+
+def plot_amplitudes(ax, amp):
+    """
+    Plot the amplitudes of warm (red) and cold (blue) events and their average
+    (black) over time, as in the RO perturbation experiment figures.
+
+    Args:
+        - ax (matplotlib.axes.Axes): axes to plot on
+        - amp (xr.Dataset): "warm", "cold", and "mean", dims (year,) (e.g. from
+          src.ro.get_amplitudes, or differences between them)
+
+    Returns:
+        - None
+    """
+
+    ## warm and cold events, and their average
+    ax.plot(amp.year, amp["warm"], c="r", label="El Niño")
+    ax.plot(amp.year, amp["cold"], c="b", label="La Niña")
+    ax.plot(amp.year, amp["mean"], c="k", label="Average")
+
+    ## zero line
+    ax.axhline(0, ls="--", c="k", lw=0.8)
+
+    return

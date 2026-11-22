@@ -223,6 +223,106 @@ def get_eps(fits):
     return eps
 
 
+## the RO's terms, as lists of (fit variable, entries) pairs, for the
+## perturbation experiments (fix_terms). The simulation reads the linear
+## operator "Lac" (ranky/rankx: 1 = T, 2 = h; ranky is the equation), the
+## nonlinear terms of the T and h equations ("NROT_Lac", "NROH_Lac"), and the
+## noise's seasonal standard deviation and covariance ("xi_stdac", "xi_covac").
+## The T*h and h^2 terms of F1 are zero in these fits (not in FIT_KWARGS) but
+## are listed so that F1 stays complete if they're fitted.
+RO_TERMS = dict(
+    ## SST growth rate: R_1 T + R_2 T^2 + R_3 T^3 in the T equation
+    R=[
+        ("Lac", dict(ranky=1, rankx=1)),
+        ("NROT_Lac", dict(nro_form="T2")),
+        ("NROT_Lac", dict(nro_form="T3")),
+    ],
+    ## thermocline feedback: h-dependent terms of the T equation
+    F1=[
+        ("Lac", dict(ranky=1, rankx=2)),
+        ("NROT_Lac", dict(nro_form="TH")),
+        ("NROT_Lac", dict(nro_form="H2")),
+    ],
+    ## recharge by T (Sverdrup transport): T-dependent terms of the h equation
+    F2=[("Lac", dict(ranky=2, rankx=1)), ("NROH_Lac", dict(nro_form="T2"))],
+    ## thermocline damping: h term of the h equation
+    eps=[("Lac", dict(ranky=2, rankx=2))],
+    ## stochastic forcing of both equations
+    noise=[("xi_stdac", dict()), ("xi_covac", dict())],
+)
+
+
+def fix_terms(fits, terms, ref_year):
+    """
+    Copy of the fits with some RO terms fixed to their values in a reference
+    window (the other terms still change over time). Simulating with these
+    parameters shows what happens without the changes in those terms.
+
+    Args:
+        - fits (xr.Dataset): fitted parameters with a "year" dimension (from
+          fit_over_time)
+        - terms (list of tuple): (fit variable, entries) pairs, e.g. from
+          RO_TERMS; entries is a dict of coordinate labels (empty for all)
+        - ref_year (int): window whose values the terms are fixed to
+
+    Returns:
+        - fixed (xr.Dataset): same as fits, with the terms fixed
+    """
+
+    ## copy, so the original fits are unchanged
+    fixed = fits.copy(deep=True)
+
+    ## fix each term in turn (so several terms can share a fit variable)
+    for name, entries in terms:
+        x = fixed[name]
+
+        ## True at the term's entries, False elsewhere
+        is_term = xr.zeros_like(x, dtype=bool)
+        is_term.loc[entries] = True
+
+        ## the reference window's values (broadcast over windows)
+        x_ref = x.sel(year=ref_year, drop=True)
+
+        ## replace the term's entries, keeping the original order of dims
+        fixed[name] = xr.where(is_term, x_ref, x).transpose(*x.dims)
+
+    return fixed
+
+
+def get_amplitudes(sims, T_scale, t_var="T_3"):
+    """
+    Amplitude of warm and cold events in each window: the tails of the
+    distribution of monthly T in DJF (pooling all simulation copies and times).
+
+    Args:
+        - sims (xr.Dataset): simulated RO variables (non-dimensional), dims
+          (year, time, member) (from simulate_over_time)
+        - T_scale (float): standard deviation of T_3 (K) (from load_ro_data)
+        - t_var (str): name of the T variable in sims
+
+    Returns:
+        - amp (xr.Dataset): "warm" (95th percentile), "cold" (minus the 5th
+          percentile), and "mean" (their average), in K, dims (year,)
+    """
+
+    ## monthly T in K, Dec-Jan-Feb only
+    T = T_scale * sims[t_var]
+    T_djf = T.sel(time=T.time.dt.month.isin([12, 1, 2]))
+
+    ## 5th and 95th percentiles, pooling members and times
+    q = T_djf.quantile([0.05, 0.95], dim=["time", "member"])
+
+    ## amplitudes of warm and cold events (both positive)
+    amp = xr.Dataset()
+    amp["warm"] = q.sel(quantile=0.95, drop=True)
+    amp["cold"] = -q.sel(quantile=0.05, drop=True)
+
+    ## average amplitude
+    amp["mean"] = 0.5 * (amp["warm"] + amp["cold"])
+
+    return amp
+
+
 def simulate_over_time(model, fits, X0, sim_kwargs=SIM_KWARGS):
     """
     Simulate the RO with each window's fitted parameters.
