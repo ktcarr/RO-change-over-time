@@ -4,7 +4,7 @@ The recharge oscillator (RO) steps shared by the RO figures.
 The RO figures (fig:RO-validation, fig:gr-over-time, fig:RO-experiments*) all fit
 the same nonlinear RO in 40-year windows of CESM2 output and simulate it with the
 fitted parameters. These functions do that once, the same way for every figure.
-They follow the "Load data" to "validate" cells of RO-change-over-time_NL.py,
+They follow the "Load data" to "validate" cells of explore/RO-change-over-time_NL.py,
 and use the old RO implementation in src/XRO.py so that the figures match the
 paper drafts; the plan is to switch to ~/ro_tools later.
 
@@ -79,7 +79,7 @@ def load_ro_data(t_var="T_3", remove_median=True):
     """
     Windowed, non-dimensional T and h_hat for fitting the RO.
 
-    Steps (as in RO-change-over-time_NL.py): load the indices (ensemble mean
+    Steps (as in explore/RO-change-over-time_NL.py): load the indices (ensemble mean
     removed); fill the one missing h value (January 1850, one member) with 0;
     divide T by the standard deviation of T_3 and h by that of h_w; cut into
     windows; remove h's linear dependence on T (separately for each calendar
@@ -171,7 +171,7 @@ def get_R_at(fits, data, n_sigma, t_var="T_3"):
     R(T) = R_1 + R_2 T + R_3 T^2. T is set to n_sigma standard deviations of T
     for that calendar month (pooling members and times in each window, then
     averaging over windows), as in the "Get coefficients" to "Do the
-    reconstruction" cells of RO-change-over-time_NL.py.
+    reconstruction" cells of explore/RO-change-over-time_NL.py.
 
     Args:
         - fits (xr.Dataset): fitted parameters, with a "year" dimension (from
@@ -409,7 +409,7 @@ def fit_alpha(T, Q, cycle):
     coefficients of the cubic fit Q = a_1 T + a_2 T^2 + a_3 T^3 (least squares,
     pooling members and times), so that the flux damps T at the rate
     alpha(T) = alpha_1 + alpha_2 T + alpha_3 T^2. As in the "Compute alpha" cells
-    of RO-change-over-time_NL.py (regress_pinv).
+    of explore/RO-change-over-time_NL.py (regress_pinv).
 
     Args:
         - T (xr.DataArray): non-dimensional T, dims (member, year, time) (from

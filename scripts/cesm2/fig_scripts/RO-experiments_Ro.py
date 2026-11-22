@@ -41,7 +41,7 @@ def _(mo):
     **Output:** `SAVE_FP/figures/RO-experiments_Ro.pdf`
 
     Before this script, the figure came from the "Check linearity of subset" cell of
-    `RO-change-over-time_NL.py` (saved as `exp-comparison_Ro-...`). Changes:
+    `explore/RO-change-over-time_NL.py` (saved as `exp-comparison_Ro-...`). Changes:
 
     - Amplitudes are in K (the RO's non-dimensional $T$ times the standard deviation of
       the Niño 3 index); before, the non-dimensional values were plotted with a

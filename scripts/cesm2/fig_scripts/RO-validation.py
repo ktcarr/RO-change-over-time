@@ -40,7 +40,7 @@ def _(mo):
 
     Before this script, the figure was two PDFs placed side by side
     (`RO-valid2_T_3-...` and `RO-valid_T_3-...`, from the "validate" cells of
-    `RO-change-over-time_NL.py`). Changes:
+    `explore/RO-change-over-time_NL.py`). Changes:
 
     - One figure, with panels labeled (a)-(d).
     - $T$ is shown in K. The RO works with $T$ divided by the standard deviation of the

@@ -41,7 +41,7 @@ def _(mo):
     **Output:** `SAVE_FP/figures/gr-over-time.pdf`
 
     Before this script, the figure came from the "Plot params over time" cells of
-    `RO-change-over-time_NL.py` (saved as `gr-over-time_ann-...`). Changes:
+    `explore/RO-change-over-time_NL.py` (saved as `gr-over-time_ann-...`). Changes:
 
     - Panels are labeled (a)-(c), and the legend labels give the anomaly size in
       standard deviations ($\pm 1.5\sigma$, and $T=0$ instead of "All").
