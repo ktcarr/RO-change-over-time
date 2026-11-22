@@ -110,6 +110,7 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/thesis_mean-state_change.py``` | thesis ```fig:mean-state_change``` (a–f) | ```explore/mean-state-changes.py``` (```mean-state-pattern_change_labeled```, a, b; ```subsurface-change```, c, d; ```mean-state_timeseries```, e; ```nino-indices_overtime```, f) |
 | ```fig_scripts/thesis_sigma-over-time.py``` | thesis ```fig:sigma-over-time``` (a–d) | ```explore/mean-state-changes.py``` (```sigma-over-time_hov_simple```, cell under "Variance over time") |
 | ```fig_scripts/thesis_sigma-by-season.py``` | thesis ```fig:sigma-by-season``` (a–c) | ```explore/mean-state-changes.py``` (```sigma-cycle-change```, cell under "Variance over time (v2)") |
+| ```fig_scripts/thesis_pdf-over-time.py``` | thesis ```fig:pdf-over-time``` (a–c) | ```stats-changes.py``` (```pdf-over-time_bounds```, cells under "similar, but with bounds") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -130,7 +131,7 @@ The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.te
 - ```CESM_climate-change.py```
   - What it does: broad exploration of CESM2 changes under warming (seasonal cycle, variance and skewness by month, ELI, background state)
   - Thesis figures: ```seasonal-clim```
-- ```stats-changes.py```: ```pdf-over-time_bounds```, ```eli-comparison```, ```nhf_rel-sst_triple``` (now made by ```fig_scripts/nhf_scatter.py```, with the SST-based index by default)
+- ```stats-changes.py```: ```eli-comparison``` (```pdf-over-time_bounds``` is now made by ```fig_scripts/thesis_pdf-over-time.py```), ```nhf_rel-sst_triple``` (now made by ```fig_scripts/nhf_scatter.py```, with the SST-based index by default)
 - ```composite-over-time.py```: ```combined_hov```, ```combined_hov_nina``` (the same cell, with El Niño or La Niña chosen by ```_COMPS``` at its top; the save lines are commented out)
 
 ### 4. Supporting analyses (not in the current outline)
