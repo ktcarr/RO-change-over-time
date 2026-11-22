@@ -215,7 +215,7 @@ def _(PERIOD_EARLY, PERIOD_LATE, patterns, scores, src, trop_sst):
         ## relative SST
         _clim["sst_rel"] = _clim["sst"] - trop_sst.sel(time=_period).mean()
 
-        ## precipitation in mm/day (from m/s)
+        ## precipitation in mm/day (from kg m^-2 s^-1)
         _clim["pr"] = _clim["pr"] * 8.64e4
         clim[_name] = _clim
 
