@@ -116,3 +116,16 @@ def test_get_season_keeps_full_seasons():
     ndj = src.data.get_season(x, start_month=11)
     np.testing.assert_array_equal(ndj.time.dt.year, [1850, 1851])
     np.testing.assert_allclose(ndj.values, (11 + 12 + 1) / 3)
+
+
+def test_get_3month_means():
+    """Seasons start in November; the time mean is removed first."""
+
+    ## months Nov 2000 - Oct 2001 with values 0, ..., 11 (mean 5.5)
+    time = xr.date_range("2000-11-01", periods=12, freq="MS")
+    x = xr.DataArray(np.arange(12.0), coords=dict(time=time))
+    x_3mo = src.data.get_3month_means(x)
+
+    ## NDJ, FMA, MJJ, ASO means: 1, 4, 7, 10, minus 5.5
+    np.testing.assert_allclose(x_3mo, [-4.5, -1.5, 1.5, 4.5])
+    assert list(x_3mo.time.dt.month.values) == [11, 2, 5, 8]

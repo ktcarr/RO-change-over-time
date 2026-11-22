@@ -117,16 +117,14 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/thesis_skew-over-time.py``` | thesis appendix ```fig:skew-over-time``` (a–d) | ```explore/stats-changes.py``` (```nino34_djf_stats-over-time```, cells under "Variance and skewness over time") |
 | ```fig_scripts/thesis_nhf-abs-sst.py``` | thesis appendix ```fig:nhf-abs-sst``` (a–c) | ```explore/stats-changes.py``` (```nhf_abs-sst_triple```, cells under "same, but with total SST") |
 | ```fig_scripts/thesis_enso-hov.py``` | thesis ```fig:nino-hov``` and ```fig:nina-hov``` (two figures, a–l each) | ```explore/composite-over-time.py``` (```combined_hov```, ```combined_hov_nina```, cell under "SST") |
+| ```fig_scripts/thesis_model-valid.py``` | thesis ```fig:model-valid``` (a–n; formerly three PDFs stacked in LaTeX) | ```explore/CESM-ORAS_validation_v2.py``` (```spatial-valid```, a–h; ```spatial-asym-scatter```, i–k; ```psd_spaghetti```, l–n) |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
-- None left among the paper figures; see "Thesis figures" below for the remaining thesis-only script.
+- None: every paper and thesis figure now has its own script in ```fig_scripts/```.
 
 ### 3. Thesis figures
-The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.tex```, and the appendix ```appendix_enso-change.tex```) used figures from these scripts that aren't in ```fig_scripts/``` yet. File names are the PDFs under ```thesis/figs/```.
-- ```CESM-ORAS_validation_v2.py```
-  - What it does: validates CESM2 ENSO against ERSSTv5 (relative SST, El Niño / La Niña composites, Niño 3.4 vs. zonal gradient, PDFs, power spectrum, event timeseries)
-  - Thesis figures (introduction): ```spatial-valid```, ```spatial-asym-scatter```, ```psd_spaghetti```
+The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.tex```, and the appendix ```appendix_enso-change.tex```) used figures made by this repository. Each is now made by a ```fig_scripts/thesis_*.py``` script (or, for ```nhf_rel-sst_triple```, by ```fig_scripts/nhf_scatter.py```); see the table above. Each script's first cell lists where its figure differs from the thesis caption.
 
 ### 4. Supporting analyses (not in the current outline)
 - ```physics-bjerknes_asym_precompute.py```

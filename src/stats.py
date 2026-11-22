@@ -148,6 +148,34 @@ def get_composite_hov(
     return comp.transpose("year", "lag", ...)
 
 
+def get_quantile_composites(data, idx, q=0.9):
+    """
+    Mean of data over the times when an index is beyond its q (warm) or 1 - q
+    (cold) quantile.
+
+    Args:
+        - data (xr.DataArray): data with a "time" dimension (and optionally others,
+          such as "member", over which the quantiles are computed separately)
+        - idx (xr.DataArray): index used to pick the times, same "time" (and
+          "member") as data
+        - q (float): quantile defining a warm event (cold: 1 - q)
+
+    Returns:
+        - comps (xr.Dataset): "warm" and "cold" composites (data averaged over
+          the selected times)
+    """
+
+    ## times above the upper quantile, and below the lower one
+    is_warm = idx > idx.quantile(q=q, dim="time")
+    is_cold = idx < idx.quantile(q=1 - q, dim="time")
+
+    ## average over those times (dropping the "quantile" coordinate)
+    warm = data.where(is_warm).mean("time").drop_vars("quantile")
+    cold = data.where(is_cold).mean("time").drop_vars("quantile")
+
+    return xr.Dataset({"warm": warm, "cold": cold})
+
+
 def clim_at_lags(clim, lags, peak_month=12):
     """
     Monthly climatology arranged along composite lags (lag 0 = peak_month).

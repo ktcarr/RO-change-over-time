@@ -1410,8 +1410,19 @@ def get_angle(c):
     return phi
 
 
-def format_psd_ax(ax, fs=6):
-    """format PSD plot's axis as desired"""
+def format_psd_ax(ax, fs=6, label_bands=True):
+    """
+    Format a power spectrum axis: limits, shaded ENSO bands, period ticks.
+
+    Args:
+        - ax (matplotlib Axes): axis with a spectrum (frequency in cycles/year)
+        - fs (float): font size of the band labels
+        - label_bands (bool): label the shaded bands (f_E, 1 - f_E, 1 + f_E) at the
+          top of the axis
+
+    Returns:
+        - None
+    """
 
     ## set limits
     ax.set_xlim([1 / 20, 5])
@@ -1426,12 +1437,18 @@ def format_psd_ax(ax, fs=6):
     for Mfreq in [Mfreq_enso, Mfreq_fplus, Mfreq_fmins]:
         ax.axvspan(*Mfreq, fc="gray", alpha=0.1)
 
-    ## label them
-    y_max = ax.get_ylim()[1]
-    kwargs = dict(ha="center", va="top", size=fs)
-    ax.text(np.mean(Mfreq_enso) * 0.9, y_max, "$f_{E}$", **kwargs)
-    ax.text(np.mean(Mfreq_fplus) + 0.1, y_max, "$1+f_{E}$", **kwargs)
-    ax.text(np.mean(Mfreq_fmins), y_max, "$1-f_{E}$", **kwargs)
+    ## label them (optional)
+    if label_bands:
+        ## at the top of the axis
+        y_max = ax.get_ylim()[1]
+        kwargs = dict(ha="center", va="top", size=fs)
+
+        ## one label per band
+        ax.text(np.mean(Mfreq_enso) * 0.9, y_max, "$f_{E}$", **kwargs)
+        ax.text(np.mean(Mfreq_fplus) + 0.1, y_max, "$1+f_{E}$", **kwargs)
+        ax.text(np.mean(Mfreq_fmins), y_max, "$1-f_{E}$", **kwargs)
+    else:
+        pass
 
     ## x-axis labels
     per = [10, 5.5, 2.5, 1, 0.5]
@@ -1443,8 +1460,23 @@ def format_psd_ax(ax, fs=6):
     return
 
 
-def plot_psd(ax, psd_results, color=None, label=None, fs=6):
-    """plot PSD stuff for given data on specified ax"""
+def plot_psd(ax, psd_results, color=None, label=None, fs=6, label_bands=True):
+    """
+    Plot a power spectrum: the (ensemble-)mean spectrum, the 10th-90th
+    percentile range across members (if any), and the 95% significance level
+    (dashed).
+
+    Args:
+        - ax (matplotlib Axes): axis to draw on
+        - psd_results (tuple): (psd, psd_sig, psd_ci) from src.XRO_utils.pmtm
+        - color (str or None): line color (None: next in the color cycle)
+        - label (str or None): legend label
+        - fs (float): font size of the band labels
+        - label_bands (bool): label the shaded ENSO bands (see format_psd_ax)
+
+    Returns:
+        - None
+    """
 
     ## "unzip" psd results
     psd, psd_sig, psd_ci = psd_results
@@ -1476,7 +1508,7 @@ def plot_psd(ax, psd_results, color=None, label=None, fs=6):
     )
 
     ## format axis
-    format_psd_ax(ax, fs=fs)
+    format_psd_ax(ax, fs=fs, label_bands=label_bands)
 
     return
 

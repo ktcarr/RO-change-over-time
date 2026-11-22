@@ -512,6 +512,27 @@ def get_season(x, start_month):
     return x_season
 
 
+def get_3month_means(x):
+    """
+    Non-overlapping 3-month means (NDJ, FMA, MJJ, ASO) of departures from the
+    time mean.
+
+    Each mean is labeled with its first month (e.g., November for NDJ). Seasons
+    cut by the ends of the record are means over the months available.
+
+    Args:
+        - x (xr.DataArray or xr.Dataset): monthly data with a "time" dimension
+
+    Returns:
+        - x_3mo (xr.DataArray or xr.Dataset): 3-month means
+    """
+
+    ## remove the time mean, then average over seasons starting in November
+    x_3mo = (x - x.mean("time")).resample({"time": "QS-NOV"}).mean("time")
+
+    return x_3mo
+
+
 def load_era5_flux():
     """
     ERA5 monthly surface heat fluxes (DATA_FP/era5_nhf_glade.nc), 1950-2022.

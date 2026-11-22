@@ -162,6 +162,37 @@ def add_lat_labels(axs, ylocs=(-20, 0, 20)):
     return
 
 
+def add_lon_labels(axs, xlocs=(150, -170, -120, -80)):
+    """
+    Label longitudes below a row of maps.
+
+    Args:
+        - axs (np.ndarray of GeoAxes): maps in a row (1-D)
+        - xlocs (tuple of float): longitudes to label (degrees east, -180 to 180)
+
+    Returns:
+        - None
+    """
+
+    ## invisible gridlines (alpha=0) used only for their labels; no latitude labels
+    for ax in axs:
+        gl = ax.gridlines(
+            crs=ccrs.PlateCarree(),
+            draw_labels=True,
+            linewidth=1,
+            alpha=0,
+            xlocs=list(xlocs),
+            ylocs=[],
+        )
+
+        ## labels at the bottom only
+        gl.top_labels = False
+        gl.left_labels = False
+        gl.right_labels = False
+
+    return
+
+
 def plot_hov_grid(warm, cold, rows, figsize, nino34_lons=(190, 240), year_line=2010):
     """
     Year-longitude plots of El Niño and La Niña composites: the values over

@@ -243,3 +243,16 @@ def test_get_eq_sigma_and_skew():
 
     ## skewness doesn't depend on the (positive) pattern
     np.testing.assert_allclose(skew.sel(season="DJF"), scipy.stats.skew(djf))
+
+
+def test_get_quantile_composites():
+    """With idx = 0, ..., 9 and q = 0.75, warm averages 8 and 9; cold 0 and 1."""
+
+    ## index 0..9 over ten months; data is twice the index
+    time = xr.date_range("2000-01-01", periods=10, freq="MS")
+    idx = xr.DataArray(np.arange(10.0), coords=dict(time=time))
+    comps = src.stats.get_quantile_composites(2 * idx, idx, q=0.75)
+
+    ## upper quantile 6.75 -> 7, 8, 9; lower quantile 2.25 -> 0, 1, 2
+    np.testing.assert_allclose(comps["warm"], 2 * 8)
+    np.testing.assert_allclose(comps["cold"], 2 * 1)
