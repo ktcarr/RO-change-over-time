@@ -135,11 +135,11 @@ The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.te
 - ```alpha-over-time.py```
   - What it does: estimates heat flux damping $\alpha$ over time from surface flux components and cloud fraction
 
-### Known issues (to fix when restructuring scripts)
-- In the scripts not yet split up, figure-saving calls are set to ```do_save=False```; paper figures were copied into the Overleaf project by hand. The scripts in ```fig_scripts/``` save by default.
+### Known issues
+- Every paper and thesis figure is saved by its script in ```fig_scripts/``` (to ```SAVE_FP/figures/```). Outside ```fig_scripts/```, ```physics-bjerknes_asym.py``` saves only ```GR_comp``` (its other ```save``` calls have ```do_save=False```), and ```alpha-over-time.py``` saves no figures.
 - ```explore/CESM_climate-change.py``` (exploratory; its two thesis figures are now in ```fig_scripts/```) stops headless at the skewness-by-month plot: it plots ```ssh``` and ```z20```, but ```SKEW_VARNAMES``` computes only ```sst```. The cells before it run.
 - ```explore/spaghetti_updated.py``` (and ```explore/eli-change-over-time.ipynb```, ```explore/powerTransform.ipynb```) read ```results/cesm_dTdx_Tw.nc```, which no longer exists; ```scale.py``` now writes ```results/cesm_dTdx_Tw_v3.nc```.
-- The marimo scripts were converted from Jupyter with ```src/convert_marimo.py``` (```envs/bin/python -m src.convert_marimo NOTEBOOK.ipynb OUTPUT.py```), which wraps ```marimo convert``` so that comments survive (tested in ```tests/test_convert_marimo.py```). When a name was reused across cells, the converter numbered the copies (e.g., ```COMP_1```, ```kwargs_2```). Some cells also modify objects created in earlier cells (e.g., ```Th["x"] = ...```), which marimo doesn't track. Headless runs are unaffected because cells run top to bottom, but re-running a single cell in ```marimo edit``` may not update the cells downstream of it.
+- The marimo scripts outside ```fig_scripts/``` (```preprocess/```, the supporting analyses, ```scale.py```, and ```explore/```) don't yet follow the commenting and docstring conventions in ```CLAUDE.md```. They were converted from Jupyter with ```src/convert_marimo.py``` (```envs/bin/python -m src.convert_marimo NOTEBOOK.ipynb OUTPUT.py```), which wraps ```marimo convert``` so that comments survive (tested in ```tests/test_convert_marimo.py```). When a name was reused across cells, the converter numbered the copies (e.g., ```COMP_1```, ```kwargs_2```). Some cells also modify objects created in earlier cells (e.g., ```Th["x"] = ...```), which marimo doesn't track. Headless runs are unaffected because cells run top to bottom, but re-running a single cell in ```marimo edit``` may not update the cells downstream of it.
 
 ## Casper login
 1. Go to jupyterhub.hpc.ucar.edu
