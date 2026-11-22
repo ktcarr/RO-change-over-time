@@ -283,3 +283,93 @@ def load_total(varnames):
     total = xr.merge([forced[comp_names], total])
 
     return total
+
+
+def load_T34_anom(index="sst"):
+    """
+    Monthly Niño 3.4 anomalies (ensemble mean removed) for each member.
+
+    Args:
+        - index (str): which Niño 3.4 index to use:
+            - "sst": SST-based index (Th_anom.nc, via src.utils.load_cesm_indices);
+              the one the RO fits use
+            - "ml50" or "ml80": index from mixed-layer temperature averaged over the
+              top 50 or 80 m (Th_50.nc or Th_80.nc)
+
+    Returns:
+        - T34_anom (xr.DataArray): anomalies, dims (member, time)
+    """
+
+    ## SST-based index (already stored as anomalies, but removing the ensemble
+    ## mean again is harmless and keeps the two cases the same)
+    if index == "sst":
+        T34 = src.utils.load_cesm_indices()["T_34"]
+
+    ## mixed-layer index; "ml80" -> Th_80.nc
+    elif index in ["ml50", "ml80"]:
+        T34 = src.utils.load_cesm_indices_3d(mld=int(index[2:]))["T_34"]
+
+    ## anything else is a typo
+    else:
+        raise ValueError(f"index must be 'sst', 'ml50', or 'ml80', not {index!r}")
+
+    ## anomalies: remove the ensemble mean (the forced response)
+    T34_anom = T34 - T34.mean("member")
+
+    return T34_anom
+
+
+def load_T34_windowed(index="sst", window_size=480, stride=60):
+    """
+    Niño 3.4 anomalies (ensemble mean removed), cut into overlapping windows.
+
+    Args:
+        - index (str): which Niño 3.4 index to use ("sst", "ml50", "ml80"; see
+          load_T34_anom)
+        - window_size (int): window length (months); the default is 40 years
+        - stride (int): spacing between window centers (months); default 5 years
+
+    Returns:
+        - T34_windowed (xr.DataArray): dims (member, year, time); "year" is the
+          window center and "time" the month within the window
+    """
+
+    ## monthly anomalies
+    T34_anom = load_T34_anom(index)
+
+    ## cut into windows
+    T34_windowed = src.utils.get_windowed(
+        T34_anom, window_size=window_size, stride=stride
+    )
+
+    return T34_windowed
+
+
+def get_djf_anom(x_windowed):
+    """
+    DJF means of windowed data, measured from the median of each window.
+
+    Anomalies are measured from the median (over members and years in each
+    window) rather than the mean, because ENSO is skewed.
+
+    Args:
+        - x_windowed (xr.DataArray): monthly data with dims (member, year, time),
+          e.g. from load_T34_windowed
+
+    Returns:
+        - x_djf (xr.DataArray): one DJF value per year of each window, minus the
+          window's median
+    """
+
+    ## seasonal means, with seasons starting in December (DJF, MAM, ...)
+    x_seasonal = x_windowed.resample({"time": "QS-DEC"}).mean()
+
+    ## keep DJF; drop the first and last seasons, which are partial (the window
+    ## runs Jan-Dec, so they hold only Jan-Feb and only Dec)
+    x_djf = x_seasonal.sel(time=x_seasonal.time.dt.month == 12)
+    x_djf = x_djf.isel(time=slice(1, -1))
+
+    ## measure from the median over members and years in each window
+    x_djf = x_djf - x_djf.median(["member", "time"])
+
+    return x_djf

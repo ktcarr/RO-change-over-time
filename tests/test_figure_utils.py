@@ -108,3 +108,14 @@ def test_save_fig(tmp_path, monkeypatch):
     ## the file exists where expected and is a PDF
     assert fp == tmp_path / "figs" / "test-fig.pdf"
     assert fp.read_bytes()[:4] == b"%PDF"
+
+
+def test_load_T34_anom_rejects_unknown_index():
+    """An unknown index name raises a ValueError before any data are read."""
+
+    ## pytest checks that the error is raised
+    import pytest
+
+    ## "ml_80" is a typo for "ml80"
+    with pytest.raises(ValueError):
+        fu.load_T34_anom(index="ml_80")

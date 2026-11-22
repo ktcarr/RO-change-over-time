@@ -71,18 +71,18 @@ The scripts are being split up so that each figure comes from one script in ```f
 
 Run one from ```scripts/cesm2```, e.g. ```MPLBACKEND=Agg python fig_scripts/cesm2-meanstate.py```.
 
+ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```), the one the RO fits use. The setting ```T34_INDEX``` at the top of a script switches to the mixed-layer index (```"ml50"``` or ```"ml80"```, from ```Th_50.nc```/```Th_80.nc```). With ```"ml80"```, the scripts reproduce the older notebooks exactly, except for the PDFs in ```fig:variance-changes``` (a), which now drop each window's partial first and last DJF seasons, as (b, c) do.
+
 | Script | Paper figure | Replaces |
 | --- | --- | --- |
-| ```fig_scripts/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```timeseries.py``` (d–g) |
+| ```fig_scripts/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```explore/timeseries.py``` (d–g) |
+| ```fig_scripts/variance-changes.py``` | ```fig:variance-changes``` (a–c) | ```stats-changes.py``` (a), ```explore/timeseries.py``` (b, c) |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
-- ```timeseries.py```
-  - What it does: plots mean-state timeseries and El Niño / La Niña contributions to variance
-  - Paper figures: ```fig:variance-changes``` (b, c) (its ```fig:cesm2-meanstate``` (d–g) panels are now in ```fig_scripts/cesm2-meanstate.py```)
 - ```stats-changes.py```
   - What it does: computes ENSO statistics over time and heat flux vs. relative SST
-  - Paper figures: ```fig:variance-changes``` (a), ```fig:nhf_scatter```, ```fig:nhf-scatter```
+  - Paper figures: ```fig:nhf_scatter```, ```fig:nhf-scatter``` (its ```fig:variance-changes``` (a) panel is now in ```fig_scripts/variance-changes.py```)
   - Thesis figures: see "Thesis figures" below
 - ```composite-over-time.py```
   - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux

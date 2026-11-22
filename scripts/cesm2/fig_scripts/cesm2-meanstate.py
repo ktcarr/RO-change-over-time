@@ -29,13 +29,14 @@ def _(mo):
 
     **Inputs** (under `DATA_FP/cesm`): `consolidated/` and `consolidated_05/` (EOF-compressed
     fields, from `preprocess/consolidate.py`), `trop_sst.nc` (from `preprocess/preprocess_cesm.py`),
-    and `Th_50.nc`, `Th_80.nc` (from `preprocess/merge_Th_3D.py`).
+    and the Niño 3.4 index chosen by `T34_INDEX`: `Th_anom.nc` (SST-based, the default; from
+    `preprocess/preprocess_cesm.py`) or `Th_50.nc`/`Th_80.nc` (from `preprocess/merge_Th_3D.py`).
 
     **Output:** `SAVE_FP/figures/cesm2-meanstate.pdf`
 
     Before this script, the figure was put together by hand from `spatial_plot.pdf`,
     `depth_plot.pdf` (from `CESM_climate-change_fig.py`, now in `explore/`), and
-    `timeseries.pdf` (from `timeseries.py`).
+    `timeseries.pdf` (from `timeseries.py`, also now in `explore/`).
     """
     )
     return
@@ -95,6 +96,10 @@ def _():
     ## early (preindustrial-like) period, used for the maps and depth section
     T_EARLY = dict(time=slice("1851", "1880"))
 
+    ## Niño 3.4 index for ENSO statistics: "sst" (SST-based, used by the RO fits),
+    ## or "ml50"/"ml80" (mixed-layer temperature over the top 50/80 m)
+    T34_INDEX = "sst"
+
     ## window length and stride (months) for the changes over time in (d-g)
     WINDOW_SIZE = 480
     STRIDE = 60
@@ -103,7 +108,7 @@ def _():
     ## for the stratification and upwelling indices in (e, f)
     MLD = 50
     DELTA = 30
-    return DELTA, MLD, STRIDE, T_EARLY, WINDOW_SIZE
+    return DELTA, MLD, STRIDE, T34_INDEX, T_EARLY, WINDOW_SIZE
 
 
 @app.cell(hide_code=True)
@@ -137,13 +142,6 @@ def _(DATA_FP, xr):
     ## tropical-mean SST, 15S-15N (used for relative SST and as a warming index)
     trop_sst = xr.open_dataset(DATA_FP / "cesm" / "trop_sst.nc")["trop_sst_15"]
     return (trop_sst,)
-
-
-@app.cell
-def _(src):
-    ## Niño 3.4 index computed from mixed-layer (80 m) temperature, for ENSO amplitude
-    T34 = src.utils.load_cesm_indices_3d(mld=80)["T_34"]
-    return (T34,)
 
 
 @app.cell(hide_code=True)
@@ -371,23 +369,14 @@ def _(STRIDE, WINDOW_SIZE, dTdx, dTdz_n3, src, trop_sst, w_n3, xr):
 
 
 @app.cell
-def _(STRIDE, T34, WINDOW_SIZE, src):
-    ## Niño 3.4 anomalies: remove the ensemble mean (the forced response)
-    T34_anom = T34 - T34.mean("member")
-
-    ## cut into windows
-    T34_windowed = src.utils.get_windowed(
-        T34_anom, window_size=WINDOW_SIZE, stride=STRIDE
+def _(STRIDE, T34_INDEX, WINDOW_SIZE, fu):
+    ## Niño 3.4 anomalies (ensemble mean removed), cut into windows
+    T34_windowed = fu.load_T34_windowed(
+        index=T34_INDEX, window_size=WINDOW_SIZE, stride=STRIDE
     )
 
-    ## remove the median for each season (over members and time) within each window
-    _median = T34_windowed.groupby("time.season").median(["member", "time"])
-    T34_demedian = T34_windowed.groupby("time.season") - _median
-
-    ## DJF means, dropping the incomplete first and last seasons
-    T34_seasonal = T34_demedian.resample({"time": "QS-DEC"}).mean()
-    T34_djf = T34_seasonal.sel(time=T34_seasonal.time.dt.month == 12)
-    T34_djf = T34_djf.isel(time=slice(1, -1))
+    ## DJF means, measured from the median of each window
+    T34_djf = fu.get_djf_anom(T34_windowed)
 
     ## ENSO amplitude (d): standard deviation of DJF Niño 3.4 in each window and member
     sigma_T = T34_djf.std("time")
