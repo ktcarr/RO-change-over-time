@@ -8,6 +8,7 @@ import pathlib
 import cartopy.crs as ccrs
 import cartopy.util
 import cmocean  # noqa: F401  (registers the "cmo.*" colormaps)
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -257,6 +258,115 @@ def plot_hov_grid(warm, cold, rows, figsize, nino34_lons=(190, 240), year_line=2
                 ax.set_ylabel(
                     row["label"], rotation=0, ha="right", va="center", size=12
                 )
+
+    return fig
+
+
+def plot_lag_hov_grid(comp0, comp1, rows, titles, box_color="k", figsize=(8, 8)):
+    """
+    Lag-longitude plots of a composite ENSO event in two windows: one row per
+    variable, with the first window (left), the second (middle), and their
+    difference (right). The ENSO longitude index is drawn on each panel (solid
+    for the first window, dashed for the second).
+
+    Args:
+        - comp0 (xr.Dataset): composite in the first window, dims (lag, longitude)
+          for each variable in rows, plus "eli" (lag): the total ENSO longitude
+          index (degrees east)
+        - comp1 (xr.Dataset): composite in the second window, same variables
+        - rows (list of dict): one per row, with keys "var" (variable name),
+          "label" (colorbar label), "amp" (colorbar limit; the differences use
+          amp / 2), and optionally "cmap" (default "cmo.balance")
+        - titles (list of str): titles of the three columns
+        - box_color (str): color of the box (Niño 3.4 longitudes, lags -1 to 1)
+          on the difference panels
+        - figsize (tuple): figure size (inches)
+
+    Returns:
+        - fig (matplotlib.figure.Figure): the figure
+    """
+
+    ## one row per variable, three columns
+    fig, axs = plt.subplots(len(rows), 3, figsize=figsize, layout="constrained")
+
+    ## style of the reference lines (longitude ticks and lag 0)
+    line_kwargs = dict(c="w", ls="--", lw=0.8, alpha=0.5)
+    xticks = [210, 270]
+
+    for i, row in enumerate(rows):
+
+        ## values in each window, and the difference
+        x0 = comp0[row["var"]]
+        x1 = comp1[row["var"]]
+        panels = [x0, x1, x1 - x0]
+
+        ## colorbar limit for each panel (half for the difference)
+        amps = [row["amp"], row["amp"], row["amp"] / 2]
+
+        ## filled contours, longitude on the x axis, 20 levels per panel
+        for ax, x, amp in zip(axs[i], panels, amps):
+            cp = ax.contourf(
+                x.longitude,
+                x.lag,
+                x.transpose("lag", "longitude"),
+                levels=src.utils.make_cb_range(amp, amp / 10),
+                cmap=row.get("cmap", "cmo.balance"),
+                extend="both",
+            )
+
+            ## reference lines
+            for tick in xticks:
+                ax.axvline(tick, **line_kwargs)
+            ax.axhline(0, **line_kwargs)
+
+            ## colorbar for the second window (shared with the first) ...
+            if ax is axs[i, 1]:
+                fig.colorbar(cp, ax=ax, ticks=[-amp, 0, amp])
+            ## ... and for the difference, with the row label
+            elif ax is axs[i, 2]:
+                fig.colorbar(cp, ax=ax, ticks=[-amp, 0, amp], label=row["label"])
+            else:
+                pass
+
+        ## ENSO longitude index: solid for the first window, dashed for the second
+        axs[i, 0].plot(comp0["eli"], comp0.lag, c="k", ls="-")
+        axs[i, 1].plot(comp1["eli"], comp1.lag, c="k", ls="--")
+
+        ## both on the difference
+        axs[i, 2].plot(comp0["eli"], comp0.lag, c="k", ls="-")
+        axs[i, 2].plot(comp1["eli"], comp1.lag, c="k", ls="--")
+
+        ## box on the difference: Niño 3.4 longitudes, lags -1 to 1
+        box = mpatches.Rectangle(
+            xy=(190, -1), width=50, height=2, edgecolor=box_color, facecolor="none"
+        )
+        axs[i, 2].add_patch(box)
+
+    ## same axis range everywhere (lags -6 to 6 shown)
+    for ax in axs.flatten():
+        ax.set_xlim([145, 280])
+        ax.set_ylim([-6.5, 6.5])
+
+        ## clear the ticks (added back on the outer panels below)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    ## longitude ticks on the bottom row only
+    for ax in axs[-1]:
+        ax.set_xticks(xticks)
+        ax.set_xlabel("Lon")
+
+    ## lag ticks on the left column (lag 0 = December)
+    for ax in axs[:, 0]:
+        ax.set_yticks([-6, 0, 6], labels=["Jun(-1)", "Dec(0)", "Jun(+1)"])
+
+    ## column titles
+    for ax, title in zip(axs[0], titles):
+        ax.set_title(title, fontsize=12)
+
+    ## panel labels (a), (b), ... in the lower left, row by row
+    for k, ax in enumerate(axs.flatten()):
+        ax.text(0.02, 0.05, f"({chr(ord('a') + k)})", transform=ax.transAxes, c="k")
 
     return fig
 

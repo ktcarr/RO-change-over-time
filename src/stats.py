@@ -49,6 +49,7 @@ def get_composite_hov(
     q=0.95,
     is_warm=True,
     event_type=None,
+    indices=None,
 ):
     """
     Equatorial (LATS_EQ) composites of strong ENSO events in each window.
@@ -72,10 +73,13 @@ def get_composite_hov(
           single-, double-, or triple-year events (consecutive peaks beyond the
           cutoff; see src.utils.sort_peak_idx). For a multi-year event, the
           composite uses its first peak
+        - indices (xr.Dataset or None): optional extra series (member, time), such
+          as the ENSO longitude index, composited as they are (no reconstruction)
 
     Returns:
         - comp (xr.Dataset): dims (year, lag, longitude) for each field in varnames
-          (meridional mean over LATS_EQ), plus the composite "T_34" (year, lag)
+          (meridional mean over LATS_EQ), plus the composite "T_34" and any
+          `indices` (year, lag)
     """
 
     ## warm events are above the q quantile; cold events below the 1 - q quantile
@@ -88,6 +92,13 @@ def get_composite_hov(
 
     ## scores of the fields, plus the index used to pick the events
     scores = xr.merge([anom[varnames], T34.rename("T_34")])
+
+    ## extra series composited as they are, if any
+    if indices is None:
+        index_names = []
+    else:
+        index_names = list(indices)
+        scores = xr.merge([scores, indices])
 
     ## meridional mean, applied to the EOF patterns before reconstructing
     def eq_mean(x):
@@ -119,8 +130,10 @@ def get_composite_hov(
             event_type=event_type,
         )
 
+        ## the index (and any extra series), as composited
+        comp = comp_scores[["T_34"] + index_names]
+
         ## equatorial fields from the composite scores
-        comp = xr.Dataset({"T_34": comp_scores["T_34"]})
         for varname in varnames:
             comp[varname] = src.utils.reconstruct_fn(
                 components=anom[f"{varname}_comp"],
@@ -133,6 +146,30 @@ def get_composite_hov(
     comp = xr.concat(comps, dim=xr.DataArray(years, dims="year", name="year"))
 
     return comp.transpose("year", "lag", ...)
+
+
+def clim_at_lags(clim, lags, peak_month=12):
+    """
+    Monthly climatology arranged along composite lags (lag 0 = peak_month).
+
+    Args:
+        - clim (xr.DataArray or xr.Dataset): climatology with a "month" dimension
+          (1-12)
+        - lags (xr.DataArray): composite lags (months), with dimension "lag"
+        - peak_month (int): calendar month of lag 0
+
+    Returns:
+        - clim_lag (xr.DataArray or xr.Dataset): the climatology of each lag's
+          calendar month, with "lag" in place of "month"
+    """
+
+    ## calendar month of each lag (e.g., lag -1 is November when lag 0 is December)
+    months = 1 + np.mod(lags + peak_month - 1, 12)
+
+    ## pick that month for each lag
+    clim_lag = clim.sel(month=months).drop_vars("month")
+
+    return clim_lag
 
 
 def regress_by_sign(x, y, by_month=False):

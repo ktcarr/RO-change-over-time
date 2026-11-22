@@ -41,7 +41,7 @@ def _(mo):
     **Output:** `SAVE_FP/figures/nhf-hov.pdf`
 
     Before this script, the figure came from the cell under "Heat flux" in
-    `composite-over-time.py`, which drew the two halves as separate figures (with extra
+    `explore/composite-over-time.py`, which drew the two halves as separate figures (with extra
     rows for cloud shortwave and longwave) that were joined by hand. Changes:
 
     - $T_{34}$ is in K. It was the standardized index (divided by its standard deviation,

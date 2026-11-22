@@ -42,7 +42,7 @@ def _(mo):
 
     **Output:** `SAVE_FP/figures/composite-nino.pdf`
 
-    Before this script, (a, b) came from the `spatial_comp` cell of `composite-over-time.py`
+    Before this script, (a, b) came from the `spatial_comp` cell of `explore/composite-over-time.py`
     (via a composite cached in `SAVE_FP/composites/`), and (c-e) from the `scalar_comp`
     cell of `explore/spaghetti_updated.py`. Both panels now use the same windows (the scalar panels
     used windows one year later, 2011 and 2081). The old (d, e) took percentiles of the

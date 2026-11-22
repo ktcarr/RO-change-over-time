@@ -66,6 +66,33 @@ def test_get_composite_hov():
     assert (warm["T_34"].sel(lag=0) > 1).all()
     assert (cold["T_34"].sel(lag=0) < -1).all()
 
+    ## an extra series composited as is: -T34 composites to -(the T34 composite)
+    warm_idx = src.stats.get_composite_hov(
+        is_warm=True, indices=xr.Dataset({"y": -T34}), **kwargs
+    )
+    xr.testing.assert_allclose(warm_idx["y"], -warm_idx["T_34"].rename("y"))
+
+    ## the reconstructed field doesn't change when extra series are added
+    xr.testing.assert_allclose(warm_idx["x"], warm["x"])
+
+
+def test_clim_at_lags():
+    """With lag 0 in December, lag -1 is November and lag 1 is January."""
+
+    ## climatology equal to the month number
+    clim = xr.DataArray(np.arange(1, 13.0), coords=dict(month=np.arange(1, 13)))
+
+    ## lags -13 to 13 months
+    lags = xr.DataArray(np.arange(-13, 14), dims="lag")
+    lags = lags.assign_coords(lag=lags)
+    clim_lag = src.stats.clim_at_lags(clim, lags, peak_month=12)
+
+    ## lag -13 is November (two years before Jan(+1)), lag 0 December, lag 13 January
+    assert clim_lag.dims == ("lag",)
+    np.testing.assert_allclose(
+        clim_lag.sel(lag=[-13, -1, 0, 1, 13]), [11, 11, 12, 1, 1]
+    )
+
 
 def make_windowed(values):
     """

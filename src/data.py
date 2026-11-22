@@ -126,6 +126,27 @@ def load_eli(varname="eli_05"):
     return eli_anom
 
 
+def load_eli_forced(varname="eli_05"):
+    """
+    Forced (ensemble-mean) monthly ENSO longitude index; see load_eli.
+
+    Args:
+        - varname (str): variable in DATA_FP/cesm/eli.nc
+
+    Returns:
+        - eli_forced (xr.DataArray): ensemble mean (degrees longitude), dims (time)
+    """
+
+    ## ELI of each member
+    fp = pathlib.Path(os.environ["DATA_FP"], "cesm", "eli.nc")
+    eli = xr.open_dataset(fp)[varname]
+
+    ## forced response: the ensemble mean
+    eli_forced = eli.mean("member")
+
+    return eli_forced
+
+
 def load_T34_total(index="sst"):
     """
     Monthly Niño 3.4 index (total, forced response included) for each member.

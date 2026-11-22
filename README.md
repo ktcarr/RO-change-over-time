@@ -92,11 +92,11 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | --- | --- | --- |
 | ```fig_scripts/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```explore/timeseries.py``` (d–g) |
 | ```fig_scripts/variance-changes.py``` | ```fig:variance-changes``` (a–c) | ```explore/stats-changes.py``` (a), ```explore/timeseries.py``` (b, c) |
-| ```fig_scripts/composite-nino.py``` | ```fig:composite-nino``` (a–e) | ```composite-over-time.py``` (```spatial_comp```, a, b), ```explore/spaghetti_updated.py``` (```scalar_comp```, c–e) |
+| ```fig_scripts/composite-nino.py``` | ```fig:composite-nino``` (a–e) | ```explore/composite-over-time.py``` (```spatial_comp```, a, b), ```explore/spaghetti_updated.py``` (```scalar_comp```, c–e) |
 | ```fig_scripts/nhf_scatter.py``` | ```fig:nhf_scatter``` (a–c); also thesis ```nhf_rel-sst_triple``` | ```explore/stats-changes.py``` (```nhf_rel-sst_triple```) |
 | ```fig_scripts/nhf_scatter_by_component.py``` | ```fig:nhf_scatter_by_component``` (formerly ```fig:nhf-scatter```) | ```explore/stats-changes.py``` (cell "Similar but for NHF components") |
-| ```fig_scripts/ddt-hov.py``` | ```fig:ddt-hov``` | ```composite-over-time.py``` (cell under "Clean up fig.") |
-| ```fig_scripts/nhf-hov.py``` | ```fig:nhf-hov``` | ```composite-over-time.py``` (cell under "Heat flux") |
+| ```fig_scripts/ddt-hov.py``` | ```fig:ddt-hov``` | ```explore/composite-over-time.py``` (cell under "Clean up fig.") |
+| ```fig_scripts/nhf-hov.py``` | ```fig:nhf-hov``` | ```explore/composite-over-time.py``` (cell under "Heat flux") |
 | ```fig_scripts/RO-validation.py``` | ```fig:RO-validation``` (a–d) | ```explore/RO-change-over-time_NL.py``` (```RO-valid2_T_3```, a, b; ```RO-valid_T_3```, c, d) |
 | ```fig_scripts/seasonal-ann_comp.py``` | ```fig:seasonal-ann_comp``` | ```explore/spaghetti_updated.py``` (cells under "Get $R$ over time") |
 | ```fig_scripts/gr-over-time.py``` | ```fig:gr-over-time``` (a–c) | ```explore/RO-change-over-time_NL.py``` (```gr-over-time_ann```, cells under "Plot params over time") |
@@ -116,20 +116,17 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/thesis_skew_by-season_over-time.py``` | thesis appendix ```fig:skew_by-season_over-time``` (a–c) | ```explore/CESM_climate-change.py``` (```skew_by-season_over-time```, cells under "Nicer plot, for thesis") |
 | ```fig_scripts/thesis_skew-over-time.py``` | thesis appendix ```fig:skew-over-time``` (a–d) | ```explore/stats-changes.py``` (```nino34_djf_stats-over-time```, cells under "Variance and skewness over time") |
 | ```fig_scripts/thesis_nhf-abs-sst.py``` | thesis appendix ```fig:nhf-abs-sst``` (a–c) | ```explore/stats-changes.py``` (```nhf_abs-sst_triple```, cells under "same, but with total SST") |
+| ```fig_scripts/thesis_enso-hov.py``` | thesis ```fig:nino-hov``` and ```fig:nina-hov``` (two figures, a–l each) | ```explore/composite-over-time.py``` (```combined_hov```, ```combined_hov_nina```, cell under "SST") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
-- ```composite-over-time.py```
-  - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux
-  - Paper figures: none left (```fig:composite-nino``` (a, b), ```fig:ddt-hov```, and ```fig:nhf-hov``` are now in ```fig_scripts/```); it stays here until its thesis figures are extracted
-  - Thesis figures: see "Thesis figures" below
+- None left among the paper figures; see "Thesis figures" below for the remaining thesis-only script.
 
 ### 3. Thesis figures
 The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.tex```, and the appendix ```appendix_enso-change.tex```) used figures from these scripts that aren't in ```fig_scripts/``` yet. File names are the PDFs under ```thesis/figs/```.
 - ```CESM-ORAS_validation_v2.py```
   - What it does: validates CESM2 ENSO against ERSSTv5 (relative SST, El Niño / La Niña composites, Niño 3.4 vs. zonal gradient, PDFs, power spectrum, event timeseries)
   - Thesis figures (introduction): ```spatial-valid```, ```spatial-asym-scatter```, ```psd_spaghetti```
-- ```composite-over-time.py```: ```combined_hov```, ```combined_hov_nina``` (the same cell, with El Niño or La Niña chosen by ```_COMPS``` at its top; the save lines are commented out)
 
 ### 4. Supporting analyses (not in the current outline)
 - ```physics-bjerknes_asym_precompute.py```

@@ -39,7 +39,7 @@ def _(mo):
     **Output:** `SAVE_FP/figures/ddt-hov.pdf`
 
     Before this script, the figure came from the cell under "Clean up fig." in
-    `composite-over-time.py`, which drew the two halves as separate figures (with an
+    `explore/composite-over-time.py`, which drew the two halves as separate figures (with an
     extra $\tau_x$ row) that were joined by hand. Changes:
 
     - $T_{34}$ is in K. It was the standardized index (divided by its standard deviation,
