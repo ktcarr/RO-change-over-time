@@ -159,6 +159,70 @@ def fit_over_time(data, model, fit_kwargs=FIT_KWARGS):
     return fits
 
 
+def get_R_at(fits, data, n_sigma, t_var="T_3"):
+    """
+    The SST growth rate R for an anomaly of a given size, in each window and
+    calendar month.
+
+    The fitted T equation has dT/dt = R_1 T + R_2 T^2 + R_3 T^3 + (h and noise
+    terms), so the growth rate of an anomaly of size T is
+    R(T) = R_1 + R_2 T + R_3 T^2. T is set to n_sigma standard deviations of T
+    for that calendar month (pooling members and times in each window, then
+    averaging over windows), as in the "Get coefficients" to "Do the
+    reconstruction" cells of RO-change-over-time_NL.py.
+
+    Args:
+        - fits (xr.Dataset): fitted parameters, with a "year" dimension (from
+          fit_over_time)
+        - data (xr.Dataset): the data the RO was fitted to, dims (member, year,
+          time) (from load_ro_data)
+        - n_sigma (float): anomaly size, in standard deviations (e.g. 1.5 for
+          warm, -1.5 for cold, 0 for the linear growth rate)
+        - t_var (str): name of the T variable in data
+
+    Returns:
+        - R (xr.DataArray): growth rate (yr^-1), dims (year, cycle)
+    """
+
+    ## standard deviation of T for each calendar month and window, then the
+    ## average over windows (so the anomaly size is the same in every window)
+    sigma_T = data[t_var].groupby("time.month").std(["time", "member"]).mean("year")
+
+    ## match the fits' coordinate for the seasonal cycle
+    sigma_T = sigma_T.rename({"month": "cycle"}).assign_coords(cycle=fits["cycle"])
+
+    ## anomaly size for each calendar month
+    T = n_sigma * sigma_T
+
+    ## linear, quadratic, and cubic coefficients of the T equation
+    R_1 = fits["Lac"].isel(ranky=0, rankx=0)
+    R_2 = fits["NROT_Lac"].sel(nro_form="T2")
+    R_3 = fits["NROT_Lac"].sel(nro_form="T3")
+
+    ## growth rate of an anomaly of size T
+    R = R_1 + R_2 * T + R_3 * T**2
+
+    return R
+
+
+def get_eps(fits):
+    """
+    The thermocline damping rate epsilon (dh/dt = -epsilon h + ...), in each
+    window and calendar month.
+
+    Args:
+        - fits (xr.Dataset): fitted parameters (from fit_over_time)
+
+    Returns:
+        - eps (xr.DataArray): damping rate (yr^-1), dims (year, cycle)
+    """
+
+    ## minus the h coefficient of the h equation
+    eps = -fits["Lac"].isel(ranky=1, rankx=1)
+
+    return eps
+
+
 def simulate_over_time(model, fits, X0, sim_kwargs=SIM_KWARGS):
     """
     Simulate the RO with each window's fitted parameters.

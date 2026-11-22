@@ -99,6 +99,7 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/nhf-hov.py``` | ```fig:nhf-hov``` | ```composite-over-time.py``` (cell under "Heat flux") |
 | ```fig_scripts/RO-validation.py``` | ```fig:RO-validation``` (a–d) | ```RO-change-over-time_NL.py``` (```RO-valid2_T_3```, a, b; ```RO-valid_T_3```, c, d) |
 | ```fig_scripts/seasonal-ann_comp.py``` | ```fig:seasonal-ann_comp``` | ```explore/spaghetti_updated.py``` (cells under "Get $R$ over time") |
+| ```fig_scripts/gr-over-time.py``` | ```fig:gr-over-time``` (a–c) | ```RO-change-over-time_NL.py``` (```gr-over-time_ann```, cells under "Plot params over time") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -112,7 +113,7 @@ Once all of a script's figures have moved to ```fig_scripts/```, the script move
   - Thesis figures: see "Thesis figures" below
 - ```RO-change-over-time_NL.py```
   - What it does: fits the nonlinear RO over time; validation, growth rate, and parameter perturbation experiments
-  - Paper figures: ```fig:gr-over-time```, ```fig:RO-experiments*```, ```fig:RO-experiments_param_hov``` (```fig:RO-validation``` is now in ```fig_scripts/RO-validation.py```)
+  - Paper figures: ```fig:RO-experiments*```, ```fig:RO-experiments_param_hov``` (```fig:RO-validation``` and ```fig:gr-over-time``` are now in ```fig_scripts/```)
 - ```nhf_validation.py```
   - What it does: compares the heat flux feedback in ERA5 and CESM2
   - Paper figures: ```fig:Q-comp```, ```fig:Q-structure_era5```, ```fig:Q-structure_cesm2```
