@@ -161,19 +161,9 @@ def _(mo):
 
 
 @app.cell
-def _(H_ML, anom, src):
-    ## seawater density (kg m^-3), specific heat (J kg^-1 K^-1), seconds per year
-    RHO = 1.02e3
-    CP = 4.2e3
-    SEC_PER_YR = 12 * 30 * 8.64e4
-
-    ## net heat flux (W m^-2) averaged over Niño 3.4, from the EOF scores
-    nhf_34 = src.utils.reconstruct_wrapper(
-        anom[["nhf", "nhf_comp"]], fn=src.utils.get_nino34
-    )["nhf"]
-
-    ## convert to a temperature tendency (K/yr)
-    Q34 = nhf_34 * SEC_PER_YR / (RHO * CP * H_ML)
+def _(H_ML, fu):
+    ## Q34 anomalies (K/yr), dims (member, time)
+    Q34 = fu.load_Q34(H=H_ML)
     return (Q34,)
 
 

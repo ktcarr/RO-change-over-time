@@ -319,6 +319,69 @@ def load_T34_anom(index="sst"):
     return T34_anom
 
 
+def load_T34_total(index="sst"):
+    """
+    Monthly Niño 3.4 index (total, forced response included) for each member.
+
+    Args:
+        - index (str): which Niño 3.4 index to use:
+            - "sst": SST-based index (Th.nc)
+            - "ml50" or "ml80": mixed-layer temperature averaged over the top 50 or
+              80 m (Th_50.nc or Th_80.nc)
+
+    Returns:
+        - T34 (xr.DataArray): index (degrees C), dims (member, time), 1850-2100
+    """
+
+    ## SST-based index; drop the file's last time step (Jan 2101) so it ends in
+    ## Dec 2100 like the other data (as src.utils.load_cesm_indices does)
+    if index == "sst":
+        fp = pathlib.Path(os.environ["DATA_FP"], "cesm", "Th.nc")
+        T34 = xr.open_dataset(fp)["T_34"].isel(time=slice(None, -1))
+
+    ## mixed-layer index; "ml80" -> Th_80.nc
+    elif index in ["ml50", "ml80"]:
+        T34 = src.utils.load_cesm_indices_3d(mld=int(index[2:]))["T_34"]
+
+    ## anything else is a typo
+    else:
+        raise ValueError(f"index must be 'sst', 'ml50', or 'ml80', not {index!r}")
+
+    return T34
+
+
+def load_Q34(H=50):
+    """
+    Net surface heat flux anomaly over Niño 3.4, as a temperature tendency.
+
+    Q_34 = NHF_34 / (rho * Cp * H): the warming rate the heat flux would give a
+    mixed layer of depth H.
+
+    Args:
+        - H (float): mixed-layer depth (m)
+
+    Returns:
+        - Q34 (xr.DataArray): anomalies (ensemble mean removed), K/yr, dims
+          (member, time)
+    """
+
+    ## seawater density (kg m^-3), specific heat (J kg^-1 K^-1), seconds per year
+    rho = 1.02e3
+    cp = 4.2e3
+    sec_per_yr = 12 * 30 * 8.64e4
+
+    ## net heat flux anomaly (W m^-2) averaged over Niño 3.4, from the EOF scores
+    _, anom = src.utils.load_consolidated()
+    nhf_34 = src.utils.reconstruct_wrapper(
+        anom[["nhf", "nhf_comp"]], fn=src.utils.get_nino34
+    )["nhf"]
+
+    ## convert to a temperature tendency (K/yr)
+    Q34 = nhf_34 * sec_per_yr / (rho * cp * H)
+
+    return Q34
+
+
 def load_T34_windowed(index="sst", window_size=480, stride=60):
     """
     Niño 3.4 anomalies (ensemble mean removed), cut into overlapping windows.

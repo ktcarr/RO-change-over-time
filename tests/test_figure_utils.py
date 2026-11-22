@@ -136,3 +136,14 @@ def test_get_window_matches_get_windowed():
     for year in [1870, 2010, 2080]:
         window = fu.get_window(x, year, window_size=480)
         np.testing.assert_array_equal(window.values, windowed.sel(year=year).values)
+
+
+def test_load_T34_total_rejects_unknown_index():
+    """An unknown index name raises a ValueError before any data are read."""
+
+    ## pytest checks that the error is raised
+    import pytest
+
+    ## "SST" (capitalized) is not a valid name
+    with pytest.raises(ValueError):
+        fu.load_T34_total(index="SST")

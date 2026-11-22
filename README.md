@@ -71,7 +71,7 @@ The scripts are being split up so that each figure comes from one script in ```f
 
 Run one from ```scripts/cesm2```, e.g. ```MPLBACKEND=Agg python fig_scripts/cesm2-meanstate.py```.
 
-ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```), the one the RO fits use. The setting ```T34_INDEX``` at the top of a script switches to the mixed-layer index (```"ml50"``` or ```"ml80"```, from ```Th_50.nc```/```Th_80.nc```). With ```"ml80"```, the scripts reproduce the older notebooks exactly, except for the PDFs in ```fig:variance-changes``` (a), which now drop each window's partial first and last DJF seasons, as (b, c) do.
+ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc``` where the total is needed, as for relative SST), the one the RO fits use. The setting ```T34_INDEX``` at the top of a script switches to the mixed-layer index (```"ml50"``` or ```"ml80"```, from ```Th_50.nc```/```Th_80.nc```). With ```"ml80"```, the scripts reproduce the older notebooks exactly, except for the PDFs in ```fig:variance-changes``` (a), which now drop each window's partial first and last DJF seasons, as (b, c) do, and the ```fig:nhf_scatter``` fits, which change by less than 1e-5 K/yr after an unused fit parameter was dropped.
 
 ```fig:composite-nino``` now uses the same windows (2010, 2080) and events in all panels; (d, e) show percentiles of the difference between a random 2080 event and a random 2010 event, computed from all pairs of events in place of one arbitrary pairing (see the script's first cell).
 
@@ -80,12 +80,13 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```), the one th
 | ```fig_scripts/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```explore/timeseries.py``` (d–g) |
 | ```fig_scripts/variance-changes.py``` | ```fig:variance-changes``` (a–c) | ```stats-changes.py``` (a), ```explore/timeseries.py``` (b, c) |
 | ```fig_scripts/composite-nino.py``` | ```fig:composite-nino``` (a–e) | ```composite-over-time.py``` (```spatial_comp```, a, b), ```spaghetti_updated.py``` (```scalar_comp```, c–e) |
+| ```fig_scripts/nhf_scatter.py``` | ```fig:nhf_scatter``` (a–c); also thesis ```nhf_rel-sst_triple``` | ```stats-changes.py``` (```nhf_rel-sst_triple```) |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
 - ```stats-changes.py```
   - What it does: computes ENSO statistics over time and heat flux vs. relative SST
-  - Paper figures: ```fig:nhf_scatter```, ```fig:nhf-scatter``` (its ```fig:variance-changes``` (a) panel is now in ```fig_scripts/variance-changes.py```)
+  - Paper figures: ```fig:nhf-scatter``` (cell "Similar but for NHF components"; it has no save call) (its ```fig:variance-changes``` (a) panel and ```fig:nhf_scatter``` are now in ```fig_scripts/```)
   - Thesis figures: see "Thesis figures" below
 - ```composite-over-time.py```
   - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux
@@ -112,7 +113,7 @@ The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.te
 - ```CESM_climate-change.py```
   - What it does: broad exploration of CESM2 changes under warming (seasonal cycle, variance and skewness by month, ELI, background state)
   - Thesis figures: ```seasonal-clim```
-- ```stats-changes.py```: ```pdf-over-time_bounds```, ```eli-comparison```, ```nhf_rel-sst_triple```
+- ```stats-changes.py```: ```pdf-over-time_bounds```, ```eli-comparison```, ```nhf_rel-sst_triple``` (now made by ```fig_scripts/nhf_scatter.py```, with the SST-based index by default)
 - ```composite-over-time.py```: ```combined_hov```, ```combined_hov_nina``` (the same cell, with El Niño or La Niña chosen by ```_COMPS``` at its top; the save lines are commented out)
 
 ### 4. Supporting analyses (not in the current outline)
