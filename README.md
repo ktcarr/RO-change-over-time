@@ -73,10 +73,13 @@ Run one from ```scripts/cesm2```, e.g. ```MPLBACKEND=Agg python fig_scripts/cesm
 
 ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```), the one the RO fits use. The setting ```T34_INDEX``` at the top of a script switches to the mixed-layer index (```"ml50"``` or ```"ml80"```, from ```Th_50.nc```/```Th_80.nc```). With ```"ml80"```, the scripts reproduce the older notebooks exactly, except for the PDFs in ```fig:variance-changes``` (a), which now drop each window's partial first and last DJF seasons, as (b, c) do.
 
+```fig:composite-nino``` now uses the same windows (2010, 2080) and events in all panels; (d, e) show percentiles of the difference between a random 2080 event and a random 2010 event, computed from all pairs of events in place of one arbitrary pairing (see the script's first cell).
+
 | Script | Paper figure | Replaces |
 | --- | --- | --- |
 | ```fig_scripts/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```explore/timeseries.py``` (d–g) |
 | ```fig_scripts/variance-changes.py``` | ```fig:variance-changes``` (a–c) | ```stats-changes.py``` (a), ```explore/timeseries.py``` (b, c) |
+| ```fig_scripts/composite-nino.py``` | ```fig:composite-nino``` (a–e) | ```composite-over-time.py``` (```spatial_comp```, a, b), ```spaghetti_updated.py``` (```scalar_comp```, c–e) |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
@@ -86,11 +89,11 @@ Once all of a script's figures have moved to ```fig_scripts/```, the script move
   - Thesis figures: see "Thesis figures" below
 - ```composite-over-time.py```
   - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux
-  - Paper figures: ```fig:composite-nino``` (spatial), ```fig:ddt-hov```, ```fig:nhf-hov```
+  - Paper figures: ```fig:ddt-hov```, ```fig:nhf-hov``` (its ```fig:composite-nino``` panels are now in ```fig_scripts/composite-nino.py```)
   - Thesis figures: see "Thesis figures" below
 - ```spaghetti_updated.py```
   - What it does: plots event timeseries and the warm/cold growth rate and heat-flux feedback over time
-  - Paper figures: ```fig:composite-nino``` (scalar), ```fig:seasonal-ann_comp```
+  - Paper figures: ```fig:seasonal-ann_comp``` (its ```fig:composite-nino``` panels are now in ```fig_scripts/composite-nino.py```)
 - ```RO-change-over-time_NL.py```
   - What it does: fits the nonlinear RO over time; validation, growth rate, and parameter perturbation experiments
   - Paper figures: ```fig:RO-validation```, ```fig:gr-over-time```, ```fig:RO-experiments*```, ```fig:RO-experiments_param_hov```

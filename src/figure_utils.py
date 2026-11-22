@@ -373,3 +373,33 @@ def get_djf_anom(x_windowed):
     x_djf = x_djf - x_djf.median(["member", "time"])
 
     return x_djf
+
+
+def get_window(data, year, window_size=480):
+    """
+    One window of monthly data, the same months src.utils.get_windowed labels
+    with `year` (for data starting in January).
+
+    Cutting out one window is cheaper than windowing the whole record, which
+    matters for large fields such as EOF scores.
+
+    Args:
+        - data (xr.DataArray or xr.Dataset): monthly data with a "time" dimension
+        - year (int): window center, as in get_windowed's "year" coordinate
+        - window_size (int): window length (months); a multiple of 24
+
+    Returns:
+        - window (xr.DataArray or xr.Dataset): data from January of
+          year - window_size / 24 to December of year + window_size / 24 - 1
+          (e.g., 1990-2029 for year 2010 and 40-year windows). A window that
+          runs past the end of the record is shorter here, where get_windowed
+          pads it with NaN
+    """
+
+    ## half the window, in years
+    half = window_size // 24
+
+    ## select the window's months (keeping the real dates)
+    window = data.sel(time=slice(f"{year - half}-01-01", f"{year + half - 1}-12-31"))
+
+    return window

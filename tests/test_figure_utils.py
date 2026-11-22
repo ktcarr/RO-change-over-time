@@ -12,6 +12,7 @@ import numpy as np
 import xarray as xr
 
 import src.figure_utils as fu
+import src.utils
 
 
 def make_linear_field():
@@ -119,3 +120,19 @@ def test_load_T34_anom_rejects_unknown_index():
     ## "ml_80" is a typo for "ml80"
     with pytest.raises(ValueError):
         fu.load_T34_anom(index="ml_80")
+
+
+def test_get_window_matches_get_windowed():
+    """get_window cuts out the same months as get_windowed's window."""
+
+    ## monthly series 1850-2100 equal to the month's index
+    time = xr.date_range("1850-01-01", "2100-12-01", freq="MS")
+    x = xr.DataArray(np.arange(len(time), dtype=float), coords=dict(time=time))
+
+    ## all windows (40-year length, 5-year stride)
+    windowed = src.utils.get_windowed(x, window_size=480, stride=60)
+
+    ## compare full windows, including the first (2080 is the last full one)
+    for year in [1870, 2010, 2080]:
+        window = fu.get_window(x, year, window_size=480)
+        np.testing.assert_array_equal(window.values, windowed.sel(year=year).values)
