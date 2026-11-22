@@ -35,7 +35,7 @@ def _(mo):
 
     **Output:** `SAVE_FP/figures/variance-changes.pdf`
 
-    Before this script, (a) came from the `pdf-over-time_bounds` cell of `stats-changes.py`,
+    Before this script, (a) came from the `pdf-over-time_bounds` cell of `explore/stats-changes.py`,
     and (b, c) from the `variance-contrib` cell of `timeseries.py` (now in `explore/`).
     All panels now use the same DJF values. The old (a) also kept each window's partial first
     and last seasons (Jan-Feb only and Dec only), so its PDFs differ very slightly.

@@ -91,10 +91,10 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | Script | Figure | Replaces |
 | --- | --- | --- |
 | ```fig_scripts/cesm2-meanstate.py``` | ```fig:cesm2-meanstate``` (a–g) | ```explore/CESM_climate-change_fig.py``` (a–c), ```explore/timeseries.py``` (d–g) |
-| ```fig_scripts/variance-changes.py``` | ```fig:variance-changes``` (a–c) | ```stats-changes.py``` (a), ```explore/timeseries.py``` (b, c) |
+| ```fig_scripts/variance-changes.py``` | ```fig:variance-changes``` (a–c) | ```explore/stats-changes.py``` (a), ```explore/timeseries.py``` (b, c) |
 | ```fig_scripts/composite-nino.py``` | ```fig:composite-nino``` (a–e) | ```composite-over-time.py``` (```spatial_comp```, a, b), ```explore/spaghetti_updated.py``` (```scalar_comp```, c–e) |
-| ```fig_scripts/nhf_scatter.py``` | ```fig:nhf_scatter``` (a–c); also thesis ```nhf_rel-sst_triple``` | ```stats-changes.py``` (```nhf_rel-sst_triple```) |
-| ```fig_scripts/nhf_scatter_by_component.py``` | ```fig:nhf_scatter_by_component``` (formerly ```fig:nhf-scatter```) | ```stats-changes.py``` (cell "Similar but for NHF components") |
+| ```fig_scripts/nhf_scatter.py``` | ```fig:nhf_scatter``` (a–c); also thesis ```nhf_rel-sst_triple``` | ```explore/stats-changes.py``` (```nhf_rel-sst_triple```) |
+| ```fig_scripts/nhf_scatter_by_component.py``` | ```fig:nhf_scatter_by_component``` (formerly ```fig:nhf-scatter```) | ```explore/stats-changes.py``` (cell "Similar but for NHF components") |
 | ```fig_scripts/ddt-hov.py``` | ```fig:ddt-hov``` | ```composite-over-time.py``` (cell under "Clean up fig.") |
 | ```fig_scripts/nhf-hov.py``` | ```fig:nhf-hov``` | ```composite-over-time.py``` (cell under "Heat flux") |
 | ```fig_scripts/RO-validation.py``` | ```fig:RO-validation``` (a–d) | ```explore/RO-change-over-time_NL.py``` (```RO-valid2_T_3```, a, b; ```RO-valid_T_3```, c, d) |
@@ -110,14 +110,11 @@ ENSO statistics use the SST-based Niño 3.4 index (```Th_anom.nc```, or ```Th.nc
 | ```fig_scripts/thesis_mean-state_change.py``` | thesis ```fig:mean-state_change``` (a–f) | ```explore/mean-state-changes.py``` (```mean-state-pattern_change_labeled```, a, b; ```subsurface-change```, c, d; ```mean-state_timeseries```, e; ```nino-indices_overtime```, f) |
 | ```fig_scripts/thesis_sigma-over-time.py``` | thesis ```fig:sigma-over-time``` (a–d) | ```explore/mean-state-changes.py``` (```sigma-over-time_hov_simple```, cell under "Variance over time") |
 | ```fig_scripts/thesis_sigma-by-season.py``` | thesis ```fig:sigma-by-season``` (a–c) | ```explore/mean-state-changes.py``` (```sigma-cycle-change```, cell under "Variance over time (v2)") |
-| ```fig_scripts/thesis_pdf-over-time.py``` | thesis ```fig:pdf-over-time``` (a–c) | ```stats-changes.py``` (```pdf-over-time_bounds```, cells under "similar, but with bounds") |
+| ```fig_scripts/thesis_pdf-over-time.py``` | thesis ```fig:pdf-over-time``` (a–c) | ```explore/stats-changes.py``` (```pdf-over-time_bounds```, cells under "similar, but with bounds") |
+| ```fig_scripts/thesis_eli.py``` | thesis ```fig:eli``` (a–d) | ```explore/stats-changes.py``` (```eli-comparison```, cells under "ELI" and "Plot temperature as a function of ELI") |
 
 #### Scripts not yet split up
 Once all of a script's figures have moved to ```fig_scripts/```, the script moves unchanged to ```explore/```.
-- ```stats-changes.py```
-  - What it does: computes ENSO statistics over time and heat flux vs. relative SST
-  - Paper figures: none left (its ```fig:variance-changes``` (a) panel, ```fig:nhf_scatter```, and ```fig:nhf_scatter_by_component``` are now in ```fig_scripts/```); it stays here until its thesis figures are extracted
-  - Thesis figures: see "Thesis figures" below
 - ```composite-over-time.py```
   - What it does: computes El Niño composites in a sliding window, and Hovmöllers of SST tendency and heat flux
   - Paper figures: none left (```fig:composite-nino``` (a, b), ```fig:ddt-hov```, and ```fig:nhf-hov``` are now in ```fig_scripts/```); it stays here until its thesis figures are extracted
@@ -131,7 +128,6 @@ The published PhD thesis (chapters ```intro.tex``` and ```chapter_enso-change.te
 - ```CESM_climate-change.py```
   - What it does: broad exploration of CESM2 changes under warming (seasonal cycle, variance and skewness by month, ELI, background state)
   - Thesis figures: ```seasonal-clim```
-- ```stats-changes.py```: ```eli-comparison``` (```pdf-over-time_bounds``` is now made by ```fig_scripts/thesis_pdf-over-time.py```), ```nhf_rel-sst_triple``` (now made by ```fig_scripts/nhf_scatter.py```, with the SST-based index by default)
 - ```composite-over-time.py```: ```combined_hov```, ```combined_hov_nina``` (the same cell, with El Niño or La Niña chosen by ```_COMPS``` at its top; the save lines are commented out)
 
 ### 4. Supporting analyses (not in the current outline)

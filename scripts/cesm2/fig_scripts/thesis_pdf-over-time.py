@@ -39,7 +39,7 @@ def _(mo):
     **Output:** `SAVE_FP/figures/thesis_pdf-over-time.pdf`
 
     Before this script, the figure was `pdf-over-time_bounds`, made by
-    `stats-changes.py` (cells under "similar, but with bounds"). Changes:
+    `explore/stats-changes.py` (cells under "similar, but with bounds"). Changes:
 
     - The index is set by `T34_INDEX`, the SST-based index by default, as in the paper
       figures. The thesis figure was made with the SST-based index too (the old code

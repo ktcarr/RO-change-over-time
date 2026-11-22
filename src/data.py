@@ -52,38 +52,78 @@ def load_total(varnames):
     return total
 
 
-def load_T34_anom(index="sst"):
+def load_nino_anom(index="sst"):
     """
-    Monthly Niño 3.4 anomalies (ensemble mean removed) for each member.
+    Monthly Niño 4, 3.4, and 3 anomalies (ensemble mean removed) for each member.
 
     Args:
-        - index (str): which Niño 3.4 index to use:
-            - "sst": SST-based index (Th_anom.nc, via src.utils.load_cesm_indices);
-              the one the RO fits use
-            - "ml50" or "ml80": index from mixed-layer temperature averaged over the
+        - index (str): which indices to use:
+            - "sst": SST-based indices (Th_anom.nc, via src.utils.load_cesm_indices);
+              the ones the RO fits use
+            - "ml50" or "ml80": indices from mixed-layer temperature averaged over the
               top 50 or 80 m (Th_50.nc or Th_80.nc)
 
     Returns:
-        - T34_anom (xr.DataArray): anomalies, dims (member, time)
+        - nino_anom (xr.Dataset): "T_4", "T_34", "T_3", each with dims (member, time)
     """
 
-    ## SST-based index (already stored as anomalies, but removing the ensemble
+    ## SST-based indices (already stored as anomalies, but removing the ensemble
     ## mean again is harmless and keeps the two cases the same)
     if index == "sst":
-        T34 = src.utils.load_cesm_indices()["T_34"]
+        nino = src.utils.load_cesm_indices()
 
-    ## mixed-layer index; "ml80" -> Th_80.nc
+    ## mixed-layer indices; "ml80" -> Th_80.nc
     elif index in ["ml50", "ml80"]:
-        T34 = src.utils.load_cesm_indices_3d(mld=int(index[2:]))["T_34"]
+        nino = src.utils.load_cesm_indices_3d(mld=int(index[2:]))
 
     ## anything else is a typo
     else:
         raise ValueError(f"index must be 'sst', 'ml50', or 'ml80', not {index!r}")
 
     ## anomalies: remove the ensemble mean (the forced response)
-    T34_anom = T34 - T34.mean("member")
+    nino = nino[["T_4", "T_34", "T_3"]]
+    nino_anom = nino - nino.mean("member")
 
-    return T34_anom
+    return nino_anom
+
+
+def load_T34_anom(index="sst"):
+    """
+    Monthly Niño 3.4 anomalies (ensemble mean removed) for each member.
+
+    Args:
+        - index (str): which Niño 3.4 index to use ("sst", "ml50", "ml80"; see
+          load_nino_anom)
+
+    Returns:
+        - T34_anom (xr.DataArray): anomalies, dims (member, time)
+    """
+    return load_nino_anom(index)["T_34"]
+
+
+def load_eli(varname="eli_05"):
+    """
+    Monthly ENSO longitude index (ELI) anomalies (ensemble mean removed): the
+    average longitude of the equatorial Pacific grid points whose SST exceeds the
+    equatorial-mean SST (computed by preprocess/preprocess_cesm.py).
+
+    Args:
+        - varname (str): variable in DATA_FP/cesm/eli.nc; "eli_05" uses the
+          5S-5N mean SST as the threshold
+
+    Returns:
+        - eli_anom (xr.DataArray): anomalies (degrees longitude), dims
+          (member, time)
+    """
+
+    ## ELI of each member
+    fp = pathlib.Path(os.environ["DATA_FP"], "cesm", "eli.nc")
+    eli = xr.open_dataset(fp)[varname]
+
+    ## anomalies: remove the ensemble mean (the forced response)
+    eli_anom = eli - eli.mean("member")
+
+    return eli_anom
 
 
 def load_T34_total(index="sst"):

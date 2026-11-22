@@ -42,7 +42,7 @@ def _(mo):
     **Output:** `SAVE_FP/figures/nhf_scatter.pdf`
 
     Before this script, the figure came from the `nhf_rel-sst_triple` cell of
-    `stats-changes.py`, which used the mixed-layer index (`"ml80"`) for $T_{34}$. The fit
+    `explore/stats-changes.py`, which used the mixed-layer index (`"ml80"`) for $T_{34}$. The fit
     function there had a fourth parameter that it didn't use; it's dropped here.
     """
     )

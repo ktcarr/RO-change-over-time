@@ -41,7 +41,7 @@ def _(mo):
     **Output:** `SAVE_FP/figures/nhf_scatter_by_component.pdf`
 
     Before this script, the figure came from the cell "Similar but for NHF components" in
-    `stats-changes.py`, which used the mixed-layer index (`"ml80"`) for $T_{34}$ and didn't
+    `explore/stats-changes.py`, which used the mixed-layer index (`"ml80"`) for $T_{34}$ and didn't
     save the figure.
     """
     )
