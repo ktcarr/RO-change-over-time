@@ -16,6 +16,7 @@ results/h_ests
 results/bjerknes*
 results/composites
 results/ch3-outline
+results/figures
 tests/*.nc
 scripts/cesm2/scratch
 
