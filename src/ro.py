@@ -15,8 +15,10 @@ Pacific thermocline index h_w.
 
 import warnings
 
+import numpy as np
 import xarray as xr
 
+import src.data
 import src.utils
 import src.XRO
 
@@ -348,3 +350,172 @@ def simulate_over_time(model, fits, X0, sim_kwargs=SIM_KWARGS):
     sims = xr.concat(sims, dim=fits.year)
 
     return sims
+
+
+## surface heat fluxes for the feedback alpha: net, shortwave, latent, longwave
+FLUX_TYPES = ["nhf", "fsns", "lhflx", "flns"]
+
+## powers of T in the SST growth rate R(T) T = R_1 T + R_2 T^2 + R_3 T^3, in the
+## same order as RO_TERMS["R"]
+R_PARAMS = ["T1", "T2", "T3"]
+
+
+def load_ro_flux_data(T_scale, flux_types=FLUX_TYPES, H=50, remove_median=True):
+    """
+    Windowed, non-dimensional surface heat fluxes over Niño 3, prepared the same
+    way as T in load_ro_data, for estimating the heat flux feedback alpha.
+
+    Each flux is converted to the warming rate it gives a mixed layer of depth H
+    (K/yr; positive into the ocean), divided by T_scale (so it has the units of
+    the RO's dT/dt), cut into windows, and has each window's median (or mean)
+    removed for each calendar month.
+
+    Args:
+        - T_scale (float): standard deviation of T_3 (K) (from load_ro_data)
+        - flux_types (list of str): fluxes to load (see src.data.load_Q)
+        - H (float): mixed-layer depth (m)
+        - remove_median (bool): remove each window's median (True) or mean
+          (False) for each calendar month, as in load_ro_data
+
+    Returns:
+        - Q (xr.Dataset): one variable per flux type (yr^-1, non-dimensional),
+          dims (member, year, time)
+    """
+
+    ## non-dimensional warming rate from each flux, dims (member, time)
+    Q = xr.Dataset()
+    for flux_type in flux_types:
+        Q[flux_type] = src.data.load_Q(H=H, varname=flux_type, region="3") / T_scale
+
+    ## cut into windows, dims (member, year, time); keep full windows
+    Q = src.utils.get_windowed(Q, window_size=WINDOW_SIZE, stride=STRIDE)
+    Q = Q.sel(year=slice(None, LAST_YEAR))
+
+    ## each window's median or mean for each calendar month (over members, times)
+    if remove_median:
+        center = Q.groupby("time.month").median(["time", "member"])
+    else:
+        center = Q.groupby("time.month").mean(["time", "member"])
+
+    ## remove it
+    Q = Q.groupby("time.month") - center
+
+    return Q
+
+
+def fit_alpha(T, Q, cycle):
+    """
+    Heat flux feedback alpha in each window and calendar month: minus the
+    coefficients of the cubic fit Q = a_1 T + a_2 T^2 + a_3 T^3 (least squares,
+    pooling members and times), so that the flux damps T at the rate
+    alpha(T) = alpha_1 + alpha_2 T + alpha_3 T^2. As in the "Compute alpha" cells
+    of RO-change-over-time_NL.py (regress_pinv).
+
+    Args:
+        - T (xr.DataArray): non-dimensional T, dims (member, year, time) (from
+          load_ro_data)
+        - Q (xr.DataArray): non-dimensional heat flux, same dims (from
+          load_ro_flux_data)
+        - cycle (xr.DataArray): the fits' seasonal-cycle coordinate (one value
+          per calendar month), to label the result like the RO's parameters
+
+    Returns:
+        - alpha (xr.DataArray): coefficients alpha_1, alpha_2, alpha_3, dims
+          (year, cycle, param), with param = R_PARAMS
+    """
+
+    ## predictors T, T^2, T^3, dims (member, year, time, param)
+    powers = []
+    for i in range(1, 4):
+        powers.append(T**i)
+    X = xr.concat(powers, dim=xr.DataArray(R_PARAMS, dims="param"))
+
+    ## one regression per calendar month
+    alpha = []
+    for month in range(1, 13):
+        is_month = T.time.dt.month == month
+
+        ## pool members and times into one sample dim "s", window first
+        X_m = X.sel(time=is_month).stack(s=["time", "member"])
+        X_m = X_m.transpose("year", "s", "param")
+
+        ## same for the flux (the samples line up with X_m's)
+        Q_m = Q.sel(time=is_month).stack(s=["time", "member"])
+        Q_m = Q_m.transpose("year", "s")
+
+        ## least-squares coefficients in each window, dims (year, param)
+        coef = np.einsum("yps,ys->yp", np.linalg.pinv(X_m.values), Q_m.values)
+        coef = xr.DataArray(coef, coords=dict(year=T.year, param=R_PARAMS))
+
+        ## alpha is minus the coefficient (positive alpha damps T)
+        alpha.append(-coef)
+
+    ## stack the calendar months along the fits' seasonal-cycle coordinate
+    alpha = xr.concat(alpha, dim=cycle).transpose("year", "cycle", "param")
+
+    return alpha
+
+
+def get_R_coefs(fits):
+    """
+    Coefficients of the SST growth rate, R_1, R_2, R_3 (R(T) = R_1 + R_2 T +
+    R_3 T^2), in one array.
+
+    Args:
+        - fits (xr.Dataset): fitted parameters (from fit_over_time)
+
+    Returns:
+        - R (xr.DataArray): dims (year, cycle, param), with param = R_PARAMS
+    """
+
+    ## each coefficient's entry in the fits
+    coefs = []
+    for name, entries in RO_TERMS["R"]:
+        coefs.append(fits[name].sel(entries, drop=True))
+
+    ## stack along "param"
+    R = xr.concat(coefs, dim=xr.DataArray(R_PARAMS, dims="param"))
+    R = R.transpose("year", "cycle", "param")
+
+    return R
+
+
+def remove_change_in_R(fits, part, ref_year):
+    """
+    Copy of the fits in which one part of the SST growth rate R stays at its
+    value in a reference window, while the rest of R (and all other terms)
+    still change over time: R is replaced by R - (part - part(ref_year)).
+
+    For example, with R = R_o - alpha, part = -alpha fixes the heat flux
+    feedback and part = R_o fixes the ocean part.
+
+    Args:
+        - fits (xr.Dataset): fitted parameters with a "year" dimension (from
+          fit_over_time)
+        - part (xr.DataArray): the part's contribution to R_1, R_2, R_3, dims
+          (year, cycle, param) (like get_R_coefs)
+        - ref_year (int): window whose value the part is fixed to
+
+    Returns:
+        - fixed (xr.Dataset): same as fits, with R changed
+    """
+
+    ## change in the part since the reference window
+    change = part - part.sel(year=ref_year)
+
+    ## copy, so the original fits are unchanged
+    fixed = fits.copy(deep=True)
+
+    ## subtract the change from each coefficient of R
+    for (name, entries), param in zip(RO_TERMS["R"], R_PARAMS):
+        x = fixed[name]
+
+        ## True at the coefficient's entry, False elsewhere
+        is_term = xr.zeros_like(x, dtype=bool)
+        is_term.loc[entries] = True
+
+        ## subtract the change there, keeping the original order of dims
+        x_new = x - change.sel(param=param, drop=True)
+        fixed[name] = xr.where(is_term, x_new, x).transpose(*x.dims)
+
+    return fixed

@@ -191,3 +191,87 @@ def test_get_amplitudes():
     np.testing.assert_allclose(amp["warm"].values, 1.8)
     np.testing.assert_allclose(amp["cold"].values, 1.8)
     np.testing.assert_allclose(amp["mean"].values, 1.8)
+
+
+def test_fit_alpha():
+    """
+    Recovers known cubic coefficients, which differ by calendar month and
+    window, from noise-free fluxes.
+    """
+
+    ## random T in two windows: 10 members x 4 years of monthly times
+    rng = np.random.default_rng(0)
+    time = xr.date_range("1850-01-01", periods=48, freq="MS")
+
+    ## dims (member, year, time)
+    coords = dict(member=np.arange(10), year=[1870, 1880], time=time)
+    T = xr.DataArray(rng.normal(size=(10, 2, 48)), coords=coords)
+
+    ## true coefficients: alpha_1 = month / 12, alpha_2 = 0.1, alpha_3 = -0.05,
+    ## plus 1 in the second window
+    month = T.time.dt.month
+    shift = xr.DataArray([0.0, 1.0], coords=dict(year=[1870, 1880]))
+    a1 = month / 12 + shift
+
+    ## constant quadratic and cubic coefficients
+    a2 = 0.1
+    a3 = -0.05
+
+    ## flux that damps T at rate alpha(T): Q = -(alpha_1 T + alpha_2 T^2 + alpha_3 T^3)
+    Q = -(a1 * T + a2 * T**2 + a3 * T**3)
+
+    ## fit; label the months with a seasonal-cycle coordinate
+    cycle = xr.DataArray(np.arange(12) / 12, dims="cycle")
+    alpha = src.ro.fit_alpha(T, Q, cycle)
+
+    ## check dims and coefficients
+    assert alpha.dims == ("year", "cycle", "param")
+
+    ## alpha_1 = month / 12 (+1 in the second window); alpha_2, alpha_3 constant
+    expected_a1 = np.arange(1, 13) / 12 + np.array([[0.0], [1.0]])
+    np.testing.assert_allclose(alpha.sel(param="T1").values, expected_a1)
+
+    ## quadratic and cubic coefficients
+    np.testing.assert_allclose(alpha.sel(param="T2").values, 0.1)
+    np.testing.assert_allclose(alpha.sel(param="T3").values, -0.05, atol=1e-12)
+
+
+def test_get_R_coefs():
+    """
+    R_1, R_2, R_3 come from the T-on-T entry of Lac and the T^2, T^3 terms.
+    """
+
+    ## synthetic fits
+    fits = make_labeled_fits()
+    R = src.ro.get_R_coefs(fits)
+
+    ## check dims and values
+    assert R.dims == ("year", "cycle", "param")
+    xr.testing.assert_equal(
+        R.sel(param="T1", drop=True), fits["Lac"].sel(ranky=1, rankx=1, drop=True)
+    )
+    xr.testing.assert_equal(
+        R.sel(param="T3", drop=True),
+        fits["NROT_Lac"].sel(nro_form="T3", drop=True),
+    )
+
+
+def test_remove_change_in_R():
+    """
+    Fixing all of R matches fix_terms; fixing a part that doesn't change
+    leaves the fits unchanged.
+    """
+
+    ## synthetic fits and their R coefficients
+    fits = make_labeled_fits()
+    R = src.ro.get_R_coefs(fits)
+
+    ## part = all of R: the same as fixing R's terms
+    fixed = src.ro.remove_change_in_R(fits, R, ref_year=1870)
+    expected = src.ro.fix_terms(fits, src.ro.RO_TERMS["R"], ref_year=1870)
+    for name in ["Lac", "NROT_Lac", "xi_stdac"]:
+        xr.testing.assert_allclose(fixed[name], expected[name])
+
+    ## part that is the same in every window: nothing changes
+    fixed = src.ro.remove_change_in_R(fits, xr.ones_like(R), ref_year=1870)
+    xr.testing.assert_identical(fixed, fits)

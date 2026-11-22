@@ -115,9 +115,30 @@ def load_T34_total(index="sst"):
 
 def load_Q34(H=50, varname="nhf"):
     """
-    Surface heat flux anomaly over Niño 3.4, as a temperature tendency.
+    Surface heat flux anomaly over Niño 3.4, as a temperature tendency (see
+    load_Q).
 
-    Q_34 = F_34 / (rho * Cp * H): the warming rate the heat flux F would give a
+    Args:
+        - H (float): mixed-layer depth (m)
+        - varname (str): "nhf", "fsns", "flns", or "lhflx" (see load_Q)
+
+    Returns:
+        - Q34 (xr.DataArray): anomalies (ensemble mean removed), K/yr, dims
+          (member, time)
+    """
+
+    ## Niño 3.4 average
+    Q34 = load_Q(H=H, varname=varname, region="34")
+
+    return Q34
+
+
+def load_Q(H=50, varname="nhf", region="34"):
+    """
+    Surface heat flux anomaly averaged over a Niño region, as a temperature
+    tendency.
+
+    Q = F / (rho * Cp * H): the warming rate the heat flux F would give a
     mixed layer of depth H. All fluxes are positive into the ocean.
 
     Args:
@@ -125,9 +146,10 @@ def load_Q34(H=50, varname="nhf"):
         - varname (str): "nhf" (net surface heat flux, from consolidated/anom.nc),
           or one of its components from consolidated/flux_anom_with_clearsky.nc:
           "fsns" (net shortwave), "flns" (net longwave), "lhflx" (latent heat)
+        - region (str): "3" (Niño 3) or "34" (Niño 3.4)
 
     Returns:
-        - Q34 (xr.DataArray): anomalies (ensemble mean removed), K/yr, dims
+        - Q (xr.DataArray): anomalies (ensemble mean removed), K/yr, dims
           (member, time)
     """
 
@@ -146,15 +168,23 @@ def load_Q34(H=50, varname="nhf"):
     else:
         raise ValueError(f"unknown flux varname: {varname}")
 
-    ## flux anomaly (W m^-2) averaged over Niño 3.4, from the EOF scores
-    F_34 = src.utils.reconstruct_wrapper(
-        anom[[varname, f"{varname}_comp"]], fn=src.utils.get_nino34
-    )[varname]
+    ## function that averages a field over the region
+    if region == "3":
+        region_fn = src.utils.get_nino3
+    elif region == "34":
+        region_fn = src.utils.get_nino34
+    else:
+        raise ValueError(f"region must be '3' or '34', not {region!r}")
+
+    ## flux anomaly (W m^-2) averaged over the region, from the EOF scores
+    F = src.utils.reconstruct_wrapper(anom[[varname, f"{varname}_comp"]], fn=region_fn)[
+        varname
+    ]
 
     ## convert to a temperature tendency (K/yr), positive into the ocean
-    Q34 = flux_to_tendency(sign * F_34, H=H)
+    Q = flux_to_tendency(sign * F, H=H)
 
-    return Q34
+    return Q
 
 
 def flux_to_tendency(F, H=50):
