@@ -43,6 +43,10 @@ project can follow every script. `README.md` has the layout and the key scripts 
 - Install packages with mamba, not pip:
   `/glade/u/apps/opt/conda/bin/mamba install -p ./envs -c conda-forge <pkg>`, and add them to
   `env.yml`. Dry-run first (`--dry-run`) and check what else it would change.
+- Storage: home has a 100 GB quota, and a full home breaks PBS netCDF writes
+  ("NetCDF: HDF error"). Check `gladequota` before big runs; write caches, simulations and PBS
+  logs to `/glade/derecho/scratch/kcarr/` (symlinked where scripts expect a repo path, e.g.
+  `results/ro_sensitivity/<tag>`). For data kept long-term, ask about `/glade/work`.
 - Tests: `envs/bin/python -m pytest tests`.
 - `gh` comes from the `gh` environment module (loaded in `~/.bashrc`; `module load gh` if
   `which gh` finds nothing).
