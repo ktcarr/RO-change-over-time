@@ -54,6 +54,3 @@ project can follow every script. `README.md` has the layout and the key scripts 
 ## Conventions (this repo)
 
 - Format with `envs/bin/black`.
-- All imports at the top of the file, never inside functions (in marimo scripts, in the
-  imports cell). Side-effect imports (e.g. `import cmocean` for its colormaps) get a comment.
-- marimo: end a figure cell with `plt.gca()` (or `fig`), not `plt.show()`; one figure per cell.
