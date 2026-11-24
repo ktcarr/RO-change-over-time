@@ -407,3 +407,47 @@ def get_eq_skew(components, scores, group, lons=(130, 290)):
     skew = xr.concat(skew_list, dim=pd.Index(labels, name=group))
 
     return skew
+
+
+def get_variance_contributions(T, q_cold=0.25, q_warm=0.75):
+    """
+    Contributions of warm and cold anomalies to the variance of T, in each window
+    (as in fig:variance-changes).
+
+    T is first measured from the median of its window (over members and times), so
+    the result doesn't depend on how T was centered beforehand (e.g. mean or median
+    removed, or a drift in a simulation). The mean square about the median,
+    sum(T^2) / N, then splits into a warm part (samples above the q_warm quantile),
+    a cold part (below the q_cold quantile), and a neutral part. The quantiles pool
+    members and times in each window; the sums are over times, for each member.
+
+    Args:
+        - T (xr.DataArray): one value per season (e.g. DJF means, from
+          src.data.get_djf), dims (member, year, time)
+        - q_cold (float): quantile below which samples are cold
+        - q_warm (float): quantile above which samples are warm
+
+    Returns:
+        - contrib (xr.Dataset): "total", "warm" and "cold" mean squares (units of
+          T squared), dims (member, year)
+    """
+
+    ## measure from each window's median (over members and times)
+    T = T - T.median(["member", "time"])
+
+    ## warm/cold thresholds: quantiles over members and times in each window
+    T_cold = T.quantile(q=q_cold, dim=["member", "time"]).drop_vars("quantile")
+    T_warm = T.quantile(q=q_warm, dim=["member", "time"]).drop_vars("quantile")
+
+    ## number of samples per member in each window
+    N = (~np.isnan(T)).sum("time")
+
+    ## mean square about the median, over all samples
+    contrib = xr.Dataset()
+    contrib["total"] = (T**2).sum("time") / N
+
+    ## the same sum over warm samples only, then over cold samples only
+    contrib["warm"] = (T.where(T > T_warm) ** 2).sum("time") / N
+    contrib["cold"] = (T.where(T < T_cold) ** 2).sum("time") / N
+
+    return contrib

@@ -299,3 +299,178 @@ def test_get_model_settings():
 
     ## XRO's default lag for centered differences: 1 for each of the 4 terms
     assert list(model.taus) == [1, 1, 1, 1]
+
+
+def test_fit_alpha_harmonic():
+    """
+    Recovers known coefficients from noise-free fluxes: a linear coefficient
+    with an annual and a semi-annual cycle (exactly representable by the
+    harmonics), and either flat or seasonal nonlinear coefficients.
+    """
+
+    ## random T in two windows: 10 members x 4 years of monthly times
+    rng = np.random.default_rng(0)
+    time = xr.date_range("1850-01-01", periods=48, freq="MS")
+
+    ## dims (member, year, time)
+    coords = dict(member=np.arange(10), year=[1870, 1880], time=time)
+    T = xr.DataArray(rng.normal(size=(10, 2, 48)), coords=coords)
+
+    ## the fits' seasonal-cycle coordinate, the middle of each month
+    cycle = xr.DataArray((np.arange(12) + 0.5) / 12, dims="cycle")
+
+    ## annual and semi-annual cycles at each sample and at each month of the cycle
+    phase = 2 * np.pi * (T.time.dt.month - 0.5) / 12
+    phase_cycle = 2 * np.pi * cycle.values
+
+    ## true linear coefficient, +1 in the second window
+    shift = xr.DataArray([0.0, 1.0], coords=dict(year=[1870, 1880]))
+    a1 = 1 + 0.5 * np.cos(phase) + 0.2 * np.sin(2 * phase) + shift
+
+    ## its value at each month of the cycle, in each window
+    expected_a1 = 1 + 0.5 * np.cos(phase_cycle) + 0.2 * np.sin(2 * phase_cycle)
+    expected_a1 = expected_a1 + np.array([[0.0], [1.0]])
+
+    ## flat nonlinear coefficients: recovered by both forms
+    Q = -(a1 * T + 0.1 * T**2 - 0.05 * T**3)
+    for flat_nonlinear in [True, False]:
+        alpha = src.ro.fit_alpha_harmonic(T, Q, cycle, flat_nonlinear=flat_nonlinear)
+
+        ## dims, then each coefficient
+        assert alpha.dims == ("year", "cycle", "param")
+        np.testing.assert_allclose(alpha.sel(param="T1").values, expected_a1)
+
+        ## the nonlinear coefficients are the same in every month
+        np.testing.assert_allclose(alpha.sel(param="T2").values, 0.1, atol=1e-12)
+        np.testing.assert_allclose(alpha.sel(param="T3").values, -0.05, atol=1e-12)
+
+    ## seasonal quadratic coefficient: recovered by the seasonal form
+    a2 = 0.1 + 0.05 * np.sin(phase)
+    Q = -(a1 * T + a2 * T**2)
+    alpha = src.ro.fit_alpha_harmonic(T, Q, cycle, flat_nonlinear=False)
+
+    ## its value at each month of the cycle (the same in both windows)
+    expected_a2 = 0.1 + 0.05 * np.sin(phase_cycle)
+    np.testing.assert_allclose(
+        alpha.sel(param="T2").values, np.tile(expected_a2, (2, 1)), atol=1e-12
+    )
+
+
+def make_windowed_record(n_members=3, n_years=20, seed=0):
+    """
+    Synthetic windowed RO data: a damped, nonlinear T and h with noise, in two
+    windows of several members, dims (member, year, time) as from load_ro_data.
+
+    Args:
+        - n_members (int): number of members
+        - n_years (int): length of each window (years)
+        - seed (int): seed of the random numbers
+
+    Returns:
+        - data (xr.Dataset): "T_3" and "h_hat"
+    """
+
+    ## generator
+    rng = np.random.default_rng(seed)
+    n_months = 12 * n_years
+
+    ## the series of each member and window
+    T = np.zeros((n_members, 2, n_months))
+    h = np.zeros((n_members, 2, n_months))
+
+    ## monthly forward steps of a damped oscillator with T^2 and T^3 terms
+    dt = 1 / 12
+    for i in range(n_months - 1):
+        tendency_T = -1.5 * T[..., i] + h[..., i] + 0.3 * T[..., i] ** 2
+        tendency_T = tendency_T - 0.5 * T[..., i] ** 3
+        T[..., i + 1] = (
+            T[..., i] + dt * tendency_T + 0.3 * rng.normal(size=(n_members, 2))
+        )
+
+        ## h, recharged by T
+        tendency_h = -1.0 * T[..., i] - 0.5 * h[..., i]
+        h[..., i + 1] = (
+            h[..., i] + dt * tendency_h + 0.2 * rng.normal(size=(n_members, 2))
+        )
+
+    ## with coordinates
+    time = xr.date_range("0001-01", periods=n_months, freq="MS", use_cftime=True)
+    coords = dict(year=[1870, 1880], time=time)
+
+    ## as a Dataset
+    dims = ["member", "year", "time"]
+    data = xr.Dataset(dict(T_3=(dims, T), h_hat=(dims, h)), coords=coords)
+
+    return data
+
+
+def test_fit_flux_feedback_adds_up():
+    """
+    A "flux" whose warming rate is dT/dt itself is the whole T equation: alpha
+    is minus R_1, R_2, R_3 and F_1 of the RO's fit, in every window and month.
+    """
+
+    ## synthetic data and the RO's settings
+    data = make_windowed_record()
+    model = src.ro.get_model(taus=2, ac_order=2)
+    fit_kwargs = src.ro.get_fit_kwargs(fit_constant=True, flat_constant=True)
+
+    ## the RO fit
+    fits = src.ro.fit_over_time(data, model, fit_kwargs)
+
+    ## dT/dt as XRO computes it (centered differences, per year)
+    dTdt = data["T_3"].copy(
+        data=ro_tools.xro.gradient(data["T_3"].values, axis=-1, is_forward=False)
+    )
+
+    ## the flux part of the T equation, and alpha from it
+    flux_fits = src.ro.fit_flux_feedback(data, dTdt, model, fit_kwargs)
+    alpha = src.ro.get_alpha(flux_fits)
+
+    ## minus the RO's coefficients
+    R = src.ro.get_R_coefs(fits)
+    np.testing.assert_allclose(alpha.sel(param=src.ro.R_PARAMS).values, -R.values)
+
+    ## the flux's part of F_1
+    F1 = src.ro.get_params(fits)["F1"].transpose("year", "cycle")
+    np.testing.assert_allclose(alpha.sel(param="h").values, -F1.values)
+
+
+def test_get_flux_tendency():
+    """
+    For forward differences, the warming rate is averaged to the half step:
+    a ramp t becomes t + 1/2 (and t - 1/2 in the last month); for centered
+    ones it's unchanged.
+    """
+
+    ## a ramp in time, in one member and window
+    time = xr.date_range("0001-01", periods=6, freq="MS", use_cftime=True)
+    Q = xr.DataArray(np.arange(6.0), coords=dict(time=time))
+
+    ## forward: the half step
+    Q_fwd = src.ro.get_flux_tendency(Q, src.ro.get_model(taus=1, is_forward=True))
+    np.testing.assert_allclose(Q_fwd.values, [0.5, 1.5, 2.5, 3.5, 4.5, 4.5])
+
+    ## centered: unchanged
+    Q_ctr = src.ro.get_flux_tendency(Q, src.ro.get_model(taus=2))
+    np.testing.assert_allclose(Q_ctr.values, Q.values)
+
+
+def test_fit_window_bound():
+    """
+    With the T^3 bound, the fitted T^3 coefficient is at most zero in every month,
+    and the number of months at the bound is saved with the fit.
+    """
+
+    ## synthetic data and the settings, with seasonal nonlinear terms
+    data = make_windowed_record(seed=1)
+    model = src.ro.get_model(taus=2, ac_order=1)
+    fit_kwargs = src.ro.get_fit_kwargs(fit_constant=True, flat_constant=True)
+
+    ## the bounded fit
+    fits = src.ro.fit_over_time(data, model, fit_kwargs, nonpositive_T3=True)
+
+    ## within the bound, and the months counted
+    R3 = fits["NROT_Lac"].sel(nro_form="T3")
+    assert float(R3.max()) <= 1e-8
+    assert "T3_bound_months" in fits

@@ -17,6 +17,7 @@ results/bjerknes*
 results/composites
 results/ch3-outline
 results/figures
+results/ro_sensitivity
 tests/*.nc
 scripts/cesm2/scratch
 

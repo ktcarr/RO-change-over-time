@@ -256,3 +256,30 @@ def test_get_quantile_composites():
     ## upper quantile 6.75 -> 7, 8, 9; lower quantile 2.25 -> 0, 1, 2
     np.testing.assert_allclose(comps["warm"], 2 * 8)
     np.testing.assert_allclose(comps["cold"], 2 * 1)
+
+
+def test_get_variance_contributions():
+    """
+    Warm and cold contributions don't change when T is shifted by a constant; they
+    add up to less than the total; and for a symmetric distribution they're equal.
+    """
+
+    ## random T with dims (member, year, time); a symmetric copy (T and -T)
+    rng = np.random.default_rng(0)
+    T = xr.DataArray(rng.normal(size=(4, 2, 50)), dims=["member", "year", "time"])
+    T_sym = xr.concat([T, -T], dim="member")
+
+    ## contributions of T and of T shifted by 0.3
+    contrib = src.stats.get_variance_contributions(T)
+    contrib_shift = src.stats.get_variance_contributions(T + 0.3)
+
+    ## the shift doesn't matter (each window's median is removed first)
+    for name in ["total", "warm", "cold"]:
+        np.testing.assert_allclose(contrib[name], contrib_shift[name])
+
+    ## warm and cold together are part of the total
+    assert ((contrib["warm"] + contrib["cold"]) < contrib["total"]).all()
+
+    ## symmetric distribution: equal warm and cold parts (summed over members)
+    contrib_sym = src.stats.get_variance_contributions(T_sym).sum("member")
+    np.testing.assert_allclose(contrib_sym["warm"], contrib_sym["cold"])

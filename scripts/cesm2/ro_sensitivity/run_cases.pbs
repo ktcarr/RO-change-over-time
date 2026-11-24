@@ -1,0 +1,40 @@
+#!/bin/bash
+## Fit, simulate and round-trip test every case of the RO sensitivity tests,
+## one PBS array job per case (the index picks a tag from TAGS below).
+##
+## Submit from the repo root:
+##     qsub -o $SAVE_FP/ro_sensitivity/ scripts/cesm2/ro_sensitivity/run_cases.pbs
+## or a subset, e.g. the first case only:  qsub -J 0-0:1 ...
+## (the default, -J 6-15, is round 2; -J 0-5 is round 1)
+## or only the simulations (no round trip):  qsub -v STEPS=simulate ...
+#PBS -N ro_sensitivity
+#PBS -A UHWM0049
+#PBS -q casper
+#PBS -l select=1:ncpus=1:mem=20GB
+#PBS -l walltime=02:00:00
+#PBS -J 6-15
+#PBS -j oe
+
+## the cases, in the order of cases.CASES
+TAGS=(published mean_noconst nlseas_hmonth nlseas_hconst nlflat_hmonth nlflat_hconst
+      ac3 ac2 ac1 ac3_neg ac2_neg ac1_neg
+      fwd_ac3 fwd_ac1 fwd_ac3_neg fwd_ac1_neg)
+TAG=${TAGS[$PBS_ARRAY_INDEX]}
+
+## the repo's environment and data paths (as in envs/conda-meta/state)
+REPO=/glade/u/home/kcarr/RO-change-over-time
+export DATA_FP=/glade/work/kcarr/ro_data
+export SAVE_FP=$REPO/results
+export MPLBACKEND=Agg
+
+## run from scripts/cesm2, like the other scripts
+cd $REPO/scripts/cesm2
+## the steps to run (both by default); e.g. qsub -v STEPS=simulate ... to skip
+## the round trip, which doesn't depend on alpha or the experiments
+STEPS=${STEPS:-"simulate roundtrip"}
+if [[ $STEPS == *simulate* ]]; then
+    $REPO/envs/bin/python ro_sensitivity/simulate_case.py $TAG
+fi
+if [[ $STEPS == *roundtrip* ]]; then
+    $REPO/envs/bin/python ro_sensitivity/roundtrip.py $TAG
+fi
